@@ -1,0 +1,97 @@
+const express = require('express');
+const router = express.Router();
+const { query } = require('../db');
+const { hashPassword, comparePassword, generateToken } = require('../utils/helpers');
+const { protect } = require('../middleware/authMiddleware');
+
+// @route   POST /api/auth/register
+// @desc    Register a new user
+// @access  Public
+router.post('/register', async (req, res) => {
+    const { username, email, password, referrer_id } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Please add all fields' });
+    }
+
+    try {
+        // Check if user exists
+        const userExists = await query('SELECT * FROM users WHERE email = $1', [email]);
+
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        // Hash password
+        const hashedPassword = await hashPassword(password);
+
+        // Create user
+        const newUser = await query(
+            'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, role',
+            [username, email, hashedPassword]
+        );
+
+        const user = newUser.rows[0];
+
+        // Handle Referral
+        if (referrer_id) {
+            // Validate referrer exists
+            const referrer = await query('SELECT id FROM users WHERE id = $1', [referrer_id]);
+            if (referrer.rows.length > 0) {
+                await query(
+                    'INSERT INTO referrals (referrer_id, referred_user_id) VALUES ($1, $2)',
+                    [referrer_id, user.id]
+                );
+            }
+        }
+
+        res.status(201).json({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            token: generateToken(user.id, user.role),
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   POST /api/auth/login
+// @desc    Authenticate user & get token
+// @access  Public
+router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        // Check for user email
+        const result = await query('SELECT * FROM users WHERE email = $1', [email]);
+        const user = result.rows[0];
+
+        if (user && (await comparePassword(password, user.password))) {
+            res.json({
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                is_premium: user.is_premium,
+                token: generateToken(user.id, user.role),
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid credentials' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/auth/me
+// @desc    Get current user data
+// @access  Private
+router.get('/me', protect, async (req, res) => {
+    res.json(req.user);
+});
+
+module.exports = router;
