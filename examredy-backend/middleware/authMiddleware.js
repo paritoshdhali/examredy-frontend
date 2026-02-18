@@ -14,16 +14,22 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
 
             // Fetch user from DB to ensure valid and attach to req
-            const result = await query('SELECT id, username, email, role, is_premium, premium_expiry FROM users WHERE id = $1', [decoded.id]);
+            const result = await query('SELECT id, username, email, role, is_premium, premium_expiry, is_active FROM users WHERE id = $1', [decoded.id]);
 
             if (result.rows.length === 0) {
                 return res.status(401).json({ message: 'Not authorized, user not found' });
             }
 
-            req.user = result.rows[0];
+            const user = result.rows[0];
+
+            if (user.is_active === false) {
+                return res.status(403).json({ message: 'Your account is disabled' });
+            }
+
+            req.user = user;
             next();
         } catch (error) {
-            console.error(error);
+            console.error('Auth Error:', error.message);
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }

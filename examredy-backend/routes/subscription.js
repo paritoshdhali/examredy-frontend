@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { query } = require('../db');
+const { pool, query } = require('../db');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 const razorpay = new Razorpay({
@@ -77,35 +77,84 @@ router.post('/verify-payment', protect, async (req, res) => {
     hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
     const generated_signature = hmac.digest('hex');
 
-    if (generated_signature === razorpay_signature) {
-        // Payment success
-        try {
-            const planResult = await query('SELECT * FROM subscription_plans WHERE id = $1', [planId]);
-            const plan = planResult.rows[0];
+    if (generated_signature !== razorpay_signature) {
+        return res.status(400).json({ message: 'Invalid signature' });
+    }
 
-            // Record payment
-            await query(
-                'INSERT INTO payments (user_id, razorpay_order_id, razorpay_payment_id, amount, status) VALUES ($1, $2, $3, $4, $5)',
-                [req.user.id, razorpay_order_id, razorpay_payment_id, plan.price, 'captured']
-            );
+    const client = await pool.connect();
 
-            // Activate subscription
-            const expiry = new Date();
-            expiry.setHours(expiry.getHours() + plan.duration_hours);
+    try {
+        await client.query('BEGIN');
 
-            await query(
-                'UPDATE users SET is_premium = TRUE, premium_expiry = $1 WHERE id = $2',
-                [expiry, req.user.id]
-            );
+        // 1. Get Plan
+        const planResult = await client.query('SELECT * FROM subscription_plans WHERE id = $1', [planId]);
+        const plan = planResult.rows[0];
 
-            res.json({ message: 'Payment verified and subscription activated' });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'Server error' });
+        // 2. Record Payment
+        await client.query(
+            'INSERT INTO payments (user_id, razorpay_order_id, razorpay_payment_id, amount, status) VALUES ($1, $2, $3, $4, $5)',
+            [req.user.id, razorpay_order_id, razorpay_payment_id, plan.price, 'captured']
+        );
+
+        // 3. Activate Subscription for User (Fix: Use Transaction Timestamp or proper date logic)
+        // If user already premium, extend? For now, we overwrite or simple switch.
+        // Simple logic: Premium activates NOW for X hours.
+        const expiry = new Date();
+        expiry.setHours(expiry.getHours() + plan.duration_hours);
+
+        await client.query(
+            'UPDATE users SET is_premium = TRUE, premium_expiry = $1 WHERE id = $2',
+            [expiry, req.user.id]
+        );
+
+        // 4. CHECK REFERRAL REWARD (The Critical Fix)
+        const referralCheck = await client.query(
+            `SELECT * FROM referrals WHERE referred_user_id = $1 AND reward_given = FALSE`,
+            [req.user.id]
+        );
+
+        if (referralCheck.rows.length > 0) {
+            const referrerId = referralCheck.rows[0].referrer_id;
+
+            // Give Reward: 90 Minutes (1.5 hours) Extension to Referrer
+            const referrerUser = await client.query('SELECT is_premium, premium_expiry FROM users WHERE id = $1', [referrerId]);
+
+            if (referrerUser.rows.length > 0) {
+                let newRefExpiry = new Date();
+                const currentRef = referrerUser.rows[0];
+
+                // If currently premium and not expired, extend from expiry, else from now
+                if (currentRef.is_premium && currentRef.premium_expiry && new Date(currentRef.premium_expiry) > new Date()) {
+                    newRefExpiry = new Date(currentRef.premium_expiry);
+                }
+
+                // Add 90 minutes
+                newRefExpiry.setMinutes(newRefExpiry.getMinutes() + 90);
+
+                await client.query(
+                    'UPDATE users SET is_premium = TRUE, premium_expiry = $1 WHERE id = $2',
+                    [newRefExpiry, referrerId]
+                );
+
+                // Mark reward given
+                await client.query(
+                    'UPDATE referrals SET reward_given = TRUE, status = \'completed\' WHERE id = $1',
+                    [referralCheck.rows[0].id]
+                );
+            }
         }
-    } else {
-        res.status(400).json({ message: 'Invalid signature' });
+
+        await client.query('COMMIT');
+        res.json({ message: 'Payment verified and subscription activated' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    } finally {
+        client.release();
     }
 });
 
 module.exports = router;
+

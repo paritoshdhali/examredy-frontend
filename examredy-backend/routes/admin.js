@@ -15,13 +15,13 @@ router.get('/stats', async (req, res) => {
         const revenue = await query('SELECT SUM(amount) FROM payments WHERE status = \'captured\'');
 
         res.json({
-            totalUsers: parseInt(users.rows[0].count),
-            premiumUsers: parseInt(premiumUsers.rows[0].count),
-            totalRevenue: revenue.rows[0].sum || 0
+            totalUsers: parseInt(users.rows[0]?.count || 0),
+            premiumUsers: parseInt(premiumUsers.rows[0]?.count || 0),
+            totalRevenue: parseFloat(revenue.rows[0]?.sum || 0)
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Admin Stats Error:', error.message);
+        res.status(500).json({ message: 'Failed to fetch admin stats' });
     }
 });
 
