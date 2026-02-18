@@ -89,7 +89,7 @@ const Home = () => {
                             { title: 'Select Stream', icon: <Target size={24} />, color: 'bg-blue-500' },
                             { title: 'Choose Class', icon: <BookOpen size={24} />, color: 'bg-indigo-500' },
                             { title: 'Pick Subject', icon: <FileText size={24} />, color: 'bg-purple-500' },
-                            { title: 'Start Chapter', icon: <checkCircle size={24} />, color: 'bg-pink-500' }
+                            { title: 'Start Chapter', icon: <CheckCircle size={24} />, color: 'bg-pink-500' }
                         ].map((step, idx) => (
                             <div key={idx} className="relative z-10 bg-white p-6 rounded-xl shadow-md text-center border border-gray-100 hover:shadow-lg transition">
                                 <div className={`${step.color} w-16 h-16 rounded-full flex items-center justify-center text-white mx-auto mb-4 shadow-lg`}>
@@ -155,6 +155,15 @@ const Home = () => {
                                 Stop memorizing blindly. Our AI analyzes your mistakes, explains concepts instantly, and suggests personalized topics to improve your score.
                             </p>
                             <ul className="space-y-4">
+                                <li className="flex items-center gap-3 text-gray-300"><CheckCircle size={18} className="text-indigo-500" /> Instant AI Explanations</li>
+                                <li className="flex items-center gap-3 text-gray-300"><CheckCircle size={18} className="text-indigo-500" /> Personalized Study Plans</li>
+                                <li className="flex items-center gap-3 text-gray-300"><CheckCircle size={18} className="text-indigo-500" /> Weak Area Analysis</li>
+                            </ul>
+                        </div>
+                        <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-8 rounded-3xl border border-white/5 backdrop-blur-sm">
+                            <div className="aspect-video bg-gray-800 rounded-2xl border border-white/10 flex items-center justify-center text-gray-500">
+                                AI Dashboard Mockup
+                            </div>
                         </div>
                     </div>
                 </div>

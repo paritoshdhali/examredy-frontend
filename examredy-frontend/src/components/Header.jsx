@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Menu } from 'lucide-react';
+import { LogOut, User, Menu, X } from 'lucide-react';
 
 const Header = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const logoText = "ExamRedy";
 
     const handleLogout = () => {
         logout();
@@ -40,51 +41,57 @@ const Header = () => {
                     {/* Auth Buttons / Profile */}
                     <div className="hidden md:flex items-center space-x-4">
                         {user ? (
-                            <LogOut className="w-5 h-5" />
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-full border">
+                                    <User className="w-4 h-4 text-primary" />
+                                    <span className="text-sm font-bold text-gray-700">{user.username}</span>
+                                </div>
+                                <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                                    <LogOut className="w-5 h-5" />
                                 </button>
-                </div>
-                ) : (
-                <div className="space-x-4">
-                    <Link to="/login" className="text-gray-700 hover:text-primary font-medium">Login</Link>
-                    <Link to="/register" className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Get Started</Link>
-                </div>
+                            </div>
+                        ) : (
+                            <div className="space-x-4">
+                                <Link to="/login" className="text-gray-700 hover:text-primary font-medium">Login</Link>
+                                <Link to="/register" className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Get Started</Link>
+                            </div>
                         )}
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <div className="md:hidden flex items-center">
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-500 hover:text-primary transition-colors">
+                            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div className="md:hidden flex items-center">
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-500">
-                    <Menu className="w-6 h-6" />
-                </button>
-            </div>
-        </div>
-            </div >
-
-    {/* Mobile Menu */ }
-{
-    isMenuOpen && (
-        <div className="md:hidden bg-white border-t">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">Home</Link>
-                <Link to="/practice" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">Practice</Link>
-                <Link to="/group" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">Group Mode</Link>
-                <Link to="/prime" className="block px-3 py-2 rounded-md text-base font-medium text-amber-500 hover:text-amber-600 hover:bg-gray-50">Prime</Link>
-                {user ? (
-                    <>
-                        <Link to="/profile" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700">Profile</Link>
-                        {user.role === 'admin' && <Link to="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600">Admin Dashboard</Link>}
-                        <button onClick={handleLogout} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-red-500">Logout</button>
-                    </>
-                ) : (
-                    <>
-                        <Link to="/login" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700">Login</Link>
-                        <Link to="/register" className="block px-3 py-2 rounded-md text-base font-medium text-primary">Register</Link>
-                    </>
-                )}
-            </div>
-        </div>
-    )
-}
-        </header >
+            {/* Mobile Navigation */}
+            {isMenuOpen && (
+                <div className="md:hidden bg-white border-t animate-fadeIn">
+                    <div className="px-4 pt-2 pb-6 space-y-2">
+                        <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">Home</Link>
+                        <Link to="/practice" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50">Practice</Link>
+                        <Link to="/prime" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-amber-500 hover:bg-amber-50">👑 Prime</Link>
+                        <hr className="my-2 border-gray-100" />
+                        {user ? (
+                            <div className="space-y-2">
+                                <div className="px-3 py-2 text-sm text-gray-400 font-bold uppercase tracking-widest">Account</div>
+                                <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-gray-50">Profile</Link>
+                                {user.role === 'admin' && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-indigo-600 hover:bg-indigo-50">Admin Dashboard</Link>}
+                                <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Logout</button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-center py-3 rounded-xl font-bold text-gray-700 bg-gray-100">Login</Link>
+                                <Link to="/register" onClick={() => setIsMenuOpen(false)} className="text-center py-3 rounded-xl font-bold text-white bg-primary shadow-lg shadow-indigo-200">Register</Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </header>
     );
 };
 

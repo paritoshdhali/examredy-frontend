@@ -481,12 +481,12 @@ const Admin = () => {
                     </div>
                 )}
 
-                {['structure', 'ai'].includes(activeTab) && (
+                {['analytics', 'other'].includes(activeTab) && !stats && (
                     <div className="flex flex-col items-center justify-center p-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-200 text-gray-400 space-y-4">
                         <div className="p-6 bg-gray-50 rounded-full"><Settings size={48} className="animate-spin-slow" /></div>
                         <div className="text-center">
-                            <h3 className="text-lg font-bold text-gray-600 uppercase tracking-widest leading-none mb-1">Module In Progress</h3>
-                            <p className="text-sm">We are implementing the <strong>{activeTab}</strong> controller right now.</p>
+                            <h3 className="text-lg font-bold text-gray-600 uppercase tracking-widest leading-none mb-1">Module Coming Soon</h3>
+                            <p className="text-sm">We are expanding the <strong>{activeTab}</strong> capabilities.</p>
                         </div>
                     </div>
                 )}

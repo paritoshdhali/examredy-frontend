@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getPlans, createOrder, verifyPayment } from '../services/api';
-// Use named imports from api service for consistency
-// import { useAuth } from '../context/AuthContext'; // Ensure context is available
+import api from '../services/api';
 
 const Prime = () => {
     const [plans, setPlans] = useState([]);
-    // Mock user for now if context not fully set up in this file view, but in real app useAuth()
     const user = JSON.parse(localStorage.getItem('user')) || { username: 'Guest', email: 'guest@example.com', id: '1' };
 
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                const res = await getPlans();
+                const res = await api.get('/plans');
                 setPlans(res.data);
             } catch (err) {
                 console.error("Failed to load plans", err);
@@ -40,12 +37,12 @@ const Prime = () => {
 
         try {
             // 1. Create Order
-            const orderRes = await createOrder(planId);
+            const orderRes = await api.post('/payment/create-order', { planId });
             const order = orderRes.data;
 
             // 2. Initialize Razorpay
             const options = {
-                key: "YOUR_RAZORPAY_KEY_ID_PLACEHOLDER", // Should come from API or env in real app to keep safe? Actually key_id is public.
+                key: "YOUR_RAZORPAY_KEY_ID_PLACEHOLDER", // key_id is public
                 amount: order.amount,
                 currency: order.currency,
                 name: "ExamRedy",
@@ -54,7 +51,7 @@ const Prime = () => {
                 handler: async function (response) {
                     // 3. Verify Payment
                     try {
-                        await verifyPayment({
+                        await api.post('/payment/verify', {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,

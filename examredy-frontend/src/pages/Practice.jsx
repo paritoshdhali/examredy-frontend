@@ -1,26 +1,84 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import MCQSession from '../components/MCQSession';
 import PrimePopup from '../components/PrimePopup';
 
 const Practice = () => {
+    const [searchParams] = useSearchParams();
+    const initialCatId = searchParams.get('cat');
+    const navigate = useNavigate();
+
+    // UI States
     const [mode, setMode] = useState(null); // 'solo' | 'group'
-    const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [sessionComplete, setSessionComplete] = useState(false);
-    const [scoreData, setScoreData] = useState(null);
     const [showPopup, setShowPopup] = useState(false);
-    const navigate = useNavigate();
+
+    // Data States
+    const [questions, setQuestions] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [states, setStates] = useState([]);
+    const [boards, setBoards] = useState([]);
+    const [classes, setClasses] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [chapters, setChapters] = useState([]);
+
+    // Selection States
+    const [selectedCat, setSelectedCat] = useState(initialCatId || '');
+    const [selectedState, setSelectedState] = useState('');
+    const [selectedBoard, setSelectedBoard] = useState('');
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState('');
+    const [selectedChapter, setSelectedChapter] = useState('');
+
+    useEffect(() => {
+        const loadInitial = async () => {
+            try {
+                const [catRes, stateRes] = await Promise.all([
+                    api.get('/categories'),
+                    api.get('/structure/states')
+                ]);
+                setCategories(catRes.data);
+                setStates(stateRes.data);
+            } catch (err) {
+                console.error('Failed to load initial data');
+            }
+        };
+        loadInitial();
+    }, []);
+
+    useEffect(() => {
+        if (selectedState) {
+            api.get(`/structure/boards/${selectedState}`).then(res => setBoards(res.data));
+        } else setBoards([]);
+    }, [selectedState]);
+
+    useEffect(() => {
+        if (selectedBoard) {
+            api.get(`/structure/classes`).then(res => setClasses(res.data));
+        } else setClasses([]);
+    }, [selectedBoard]);
+
+    useEffect(() => {
+        if (selectedClass) {
+            api.get(`/structure/subjects?class_id=${selectedClass}`).then(res => setSubjects(res.data));
+        } else setSubjects([]);
+    }, [selectedClass]);
+
+    useEffect(() => {
+        if (selectedSubject) {
+            api.get(`/structure/chapters/${selectedSubject}`).then(res => setChapters(res.data));
+        } else setChapters([]);
+    }, [selectedSubject]);
 
     const startSoloPractice = async () => {
         setLoading(true);
+        setError('');
         try {
-            // Default category ID 1 (School) for now, or fetch dynamically
-            const res = await api.get('/mcq/practice?category_id=1');
+            const res = await api.get(`/mcq/practice?category_id=${selectedCat}&chapter_id=${selectedChapter}`);
             if (res.data.length === 0) {
-                setError('No questions available yet. Please generate some from Admin.');
+                setError('No questions available for this selection. Try another chapter.');
             } else {
                 setQuestions(res.data);
                 setMode('solo');
@@ -29,117 +87,92 @@ const Practice = () => {
             if (err.response?.data?.code === 'LIMIT_REACHED') {
                 setShowPopup(true);
             } else {
-                setError('Failed to start practice');
-                const initialCatId = searchParams.get('cat');
+                setError('Failed to start practice session');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
-                const [categories, setCategories] = useState([]);
-                const [states, setStates] = useState([]);
+    const handleSessionComplete = (data) => {
+        console.log('Session complete:', data);
+        setMode(null);
+        setQuestions([]);
+    };
 
-                // Selection States
-                const [selectedCat, setSelectedCat] = useState(initialCatId || '');
-                const [selectedState, setSelectedState] = useState('');
-                const [selectedBoard, setSelectedBoard] = useState('');
-                const [selectedClass, setSelectedClass] = useState('');
-                const [selectedSubject, setSelectedSubject] = useState('');
-                const [selectedChapter, setSelectedChapter] = useState('');
+    if (mode === 'solo' && questions.length > 0) {
+        return (
+            <div className="container mx-auto px-4 py-8">
+                <MCQSession questions={questions} onComplete={handleSessionComplete} />
+            </div>
+        );
+    }
 
-                // Data States for Dropdowns
-                const [boards, setBoards] = useState([]);
-                const [classes, setClasses] = useState([]);
-                const [subjects, setSubjects] = useState([]);
-                const [chapters, setChapters] = useState([]);
+    return (
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+            <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Ready to Practice?</h1>
 
-                const [loading, setLoading] = useState(false);
+            {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
 
-                // Load Initial Data
-                useEffect(() => {
-                    const loadInitial = async () => {
-                        const [catRes, stateRes] = await Promise.all([getCategories(), getStates()]);
-                        setCategories(catRes.data);
-                        setStates(stateRes.data);
-                    };
-                    loadInitial();
-                }, []);
+            <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
+                            <option value="">Choose State</option>
+                            {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState}>
+                            <option value="">Choose Board</option>
+                            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                    </div>
+                </div>
 
-                // Load Boards when State changes
-                useEffect(() => {
-                    if (selectedState) {
-                        getBoards(selectedState).then(res => setBoards(res.data)).catch(console.error);
-                    } else { setBoards([]); }
-                }, [selectedState]);
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} disabled={!selectedBoard}>
+                            <option value="">Choose Class</option>
+                            {classes.map(c => <option key={c.id} value={c.id}>Class {c.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} disabled={!selectedClass}>
+                            <option value="">Choose Subject</option>
+                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                </div>
 
-                // Load Classes when Board changes
-                useEffect(() => {
-                    if (selectedBoard) {
-                        getClasses(selectedBoard).then(res => setClasses(res.data)).catch(console.error);
-                    } else { setClasses([]); }
-                }, [selectedBoard]);
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
+                        <option value="">Choose Chapter</option>
+                        {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </div>
 
-                // Load Subjects when Class changes
-                useEffect(() => {
-                    if (selectedClass) {
-                        getSubjects(selectedClass).then(res => setSubjects(res.data)).catch(console.error);
-                    } else { setSubjects([]); }
-                }, [selectedClass]);
+                <button
+                    onClick={startSoloPractice}
+                    disabled={!selectedChapter || loading}
+                    className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 block text-center"
+                >
+                    {loading ? 'Starting Session...' : 'Start Practice Now'}
+                </button>
+            </div>
 
-                // Load Chapters when Subject changes
-                useEffect(() => {
-                    if (selectedSubject) {
-                        getChapters(selectedSubject).then(res => setChapters(res.data)).catch(console.error);
-                    } else { setChapters([]); }
-                }, [selectedSubject]);
+            <div className="mt-12 text-center text-gray-400">
+                <p className="text-sm">Want to compete with friends? <button onClick={() => navigate('/group')} className="text-secondary font-bold hover:underline">Launch Group Mode</button></p>
+            </div>
 
+            {showPopup && <PrimePopup onClose={() => setShowPopup(false)} />}
+        </div>
+    );
+};
 
-                const handleStartPractice = () => {
-                    if (!selectedChapter) {
-                        alert('Please select a chapter!');
-                        return;
-                    }
-                    if (mode === 'solo' && questions.length > 0) {
-                        return (
-                            <div className="container mx-auto px-4 py-8">
-                                <MCQSession questions={questions} onComplete={handleSessionComplete} />
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div className="container mx-auto px-4 py-12">
-                            <h1 className="text-3xl font-bold text-center text-gray-900 mb-12">Choose Your Mode</h1>
-
-                            {error && <div className="max-w-md mx-auto bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
-
-                            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                                {/* Individual Mode Card */}
-                                <div
-                                    onClick={startSoloPractice}
-                                    className="bg-white p-8 rounded-2xl shadow-md border-2 border-transparent hover:border-primary hover:shadow-xl transition cursor-pointer text-center group"
-                                >
-                                    <div className="w-20 h-20 bg-indigo-100 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl group-hover:bg-primary group-hover:text-white transition">
-                                        👤
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-gray-800 mb-3">Individual Practice</h2>
-                                    <p className="text-gray-600">Practice at your own pace. Master concepts with detailed AI explanations.</p>
-                                </div>
-
-                                {/* Group Mode Card */}
-                                <div
-                                    onClick={() => navigate('/group')}
-                                    className="bg-white p-8 rounded-2xl shadow-md border-2 border-transparent hover:border-secondary hover:shadow-xl transition cursor-pointer text-center group"
-                                >
-                                    <div className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl group-hover:bg-secondary group-hover:text-white transition">
-                                        👥
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-gray-800 mb-3">Group Competition</h2>
-                                    <p className="text-gray-600">Compete with friends in real-time. Join a session and climb the leaderboard.</p>
-                                </div>
-                            </div>
-
-                            {loading && <div className="text-center mt-8 text-gray-500">Starting session...</div>}
-
-                            {showPopup && <PrimePopup onClose={() => setShowPopup(false)} />}
-                        </div>
-                    );
-                };
-
-                export default Practice;
+export default Practice;

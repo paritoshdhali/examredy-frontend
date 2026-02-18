@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createGroupSession, joinGroupSession, getGroupSession, getGroupLeaderboard } from '../services/api';
+import api from '../services/api';
 import MCQSession from '../components/MCQSession';
 
 const Group = () => {
@@ -14,10 +14,9 @@ const Group = () => {
     const handleCreate = async () => {
         setLoading(true);
         try {
-            const res = await createGroupSession();
+            const res = await api.post('/group/create'); // Updated to use axios instance
             setSessionCode(res.data.code);
             setStep('lobby');
-            // Poll for participants or use socket in future
             setParticipants([{ username: 'You (Host)', isHost: true }]);
         } catch (err) {
             setError('Failed to create session. Please try again.');
@@ -31,7 +30,7 @@ const Group = () => {
         if (!inputCode) return;
         setLoading(true);
         try {
-            await joinGroupSession(inputCode);
+            await api.post(`/group/join/${inputCode}`); // Updated to use axios instance
             setSessionCode(inputCode);
             setStep('lobby');
             setParticipants([{ username: 'You', isHost: false }]);
