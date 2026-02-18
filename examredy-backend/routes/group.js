@@ -4,6 +4,13 @@ const { query } = require('../db');
 const { protect } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
 
+// @route   GET /api/group
+// @desc    Group service health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'Group service is running' });
+});
+
 // @route   POST /api/group/create
 // @desc    Create a new group session
 // @access  Private

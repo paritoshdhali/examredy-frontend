@@ -103,8 +103,8 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
                                 className={optionClass}
                             >
                                 <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mr-4 text-sm font-bold ${isChecked && index === result?.correct_option ? "border-green-500 bg-green-500 text-white" :
-                                        isChecked && index === selectedOption && !result?.is_correct ? "border-red-500 bg-red-500 text-white" :
-                                            selectedOption === index ? "border-primary bg-primary text-white" : "border-gray-300 text-gray-500"
+                                    isChecked && index === selectedOption && !result?.is_correct ? "border-red-500 bg-red-500 text-white" :
+                                        selectedOption === index ? "border-primary bg-primary text-white" : "border-gray-300 text-gray-500"
                                     }`}>
                                     {String.fromCharCode(65 + index)}
                                 </span>
@@ -125,28 +125,85 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
                 )}
 
                 {/* Actions */}
-                <div className="mt-8 flex justify-end">
-                    {!isChecked ? (
-                        <button
-                            onClick={handleCheckAnswer}
-                            disabled={selectedOption === null}
-                            className={`px-6 py-3 rounded-lg font-bold text-white transition ${selectedOption === null ? 'bg-gray-300 cursor-not-allowed' : 'bg-primary hover:bg-indigo-700 shadow-lg'
-                                }`}
-                        >
-                            Check Answer
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleNext}
-                            className="px-6 py-3 rounded-lg font-bold text-white bg-primary hover:bg-indigo-700 shadow-lg"
-                        >
-                            {currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Session'}
-                        </button>
-                    )}
+                <div className="min-h-screen bg-gray-100 flex flex-col">
+                    {/* Top Bar */}
+                    <div className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+                        <div className="font-bold text-gray-700">Q {currentIndex + 1} / {mcqs.length}</div>
+                        <div className={`font-mono font-bold text-lg px-4 py-1 rounded-lg ${timeLeft < 60 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-700'}`}>
+                            {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
+                        </div>
+                        <div className="font-bold text-green-600">Score: {score}</div>
+                    </div>
+
+                    {/* Question Area */}
+                    <div className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
+                        <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
+                            {/* Progress Bar */}
+                            <div className="h-2 bg-gray-100 w-full">
+                                <div
+                                    className="h-full bg-blue-500 transition-all duration-300"
+                                    style={{ width: `${((currentIndex + 1) / mcqs.length) * 100}%` }}
+                                ></div>
+                            </div>
+
+                            <div className="p-8 md:p-12">
+                                <h2 className="text-xl md::text-2xl font-bold text-gray-800 mb-8 leading-relaxed">
+                                    {currentMCQ.question}
+                                </h2>
+
+                                <div className="space-y-4">
+                                    {currentMCQ.options && JSON.parse(currentMCQ.options).map((opt, idx) => {
+                                        let optionClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 font-medium text-lg ";
+                                        if (selectedOption === null) {
+                                            optionClass += "border-gray-100 hover:border-blue-400 hover:bg-blue-50 text-gray-600";
+                                        } else {
+                                            if (idx === feedback?.correct_option) {
+                                                optionClass += "border-green-500 bg-green-50 text-green-700";
+                                            } else if (idx === selectedOption && !feedback?.is_correct) {
+                                                optionClass += "border-red-500 bg-red-50 text-red-700";
+                                            } else {
+                                                optionClass += "border-gray-100 opacity-50";
+                                            }
+                                        }
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleOptionClick(idx)}
+                                                disabled={selectedOption !== null}
+                                                className={optionClass}
+                                            >
+                                                <span className="mr-3 font-bold opacity-60">{String.fromCharCode(65 + idx)}.</span>
+                                                {opt}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Explanation Area */}
+                                {feedback && (
+                                    <div className="mt-8 animate-fade-in-up">
+                                        <div className={`p-6 rounded-xl border ${feedback.is_correct ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                                            <div className="font-bold mb-2 flex items-center">
+                                                {feedback.is_correct ? '✅ Crushed it!' : '❌ Not quite right'}
+                                            </div>
+                                            <p className="text-gray-700">{feedback.explanation || "No explanation provided."}</p>
+                                        </div>
+                                        <div className="mt-6 flex justify-end">
+                                            <button
+                                                onClick={handleNext}
+                                                className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition transform hover:-translate-y-1"
+                                            >
+                                                {currentIndex === mcqs.length - 1 ? 'Finish Result' : 'Next Question ->'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    );
+                );
 };
 
-export default MCQSession;
+                export default MCQSession;

@@ -3,6 +3,13 @@ const router = express.Router();
 const { query } = require('../db');
 const { protect } = require('../middleware/authMiddleware');
 
+// @route   GET /api/referral
+// @desc    Referral service health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'Referral service is running' });
+});
+
 // @route   GET /api/referral/stats
 // @desc    Get referral stats for the current user
 // @access  Private

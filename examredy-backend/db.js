@@ -38,6 +38,51 @@ const testConnection = async () => {
     }
 };
 
+// Preload essential data
+const preloadData = async () => {
+    try {
+        // 1. States Preload
+        const stateCount = await query('SELECT COUNT(*) FROM states');
+        if (parseInt(stateCount.rows[0].count) === 0) {
+            const indianStates = [
+                'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
+                'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+                'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+                'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+                'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi',
+                'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+            ];
+            for (const state of indianStates) {
+                await query(`INSERT INTO states (name) VALUES ($1) ON CONFLICT (name) DO NOTHING;`, [state]);
+            }
+            console.log('✅ States Preloaded');
+        }
+
+        // 2. Languages Preload
+        const langCount = await query('SELECT COUNT(*) FROM languages');
+        if (parseInt(langCount.rows[0].count) === 0) {
+            const officialLanguages = ['Hindi', 'English', 'Bengali', 'Marathi', 'Telugu', 'Tamil', 'Gujarati', 'Urdu', 'Kannada', 'Odia', 'Malayalam', 'Punjabi', 'Assamese', 'Maithili', 'Santhali', 'Kashmiri', 'Nepali', 'Sindhi', 'Konkani', 'Dogri', 'Manipuri', 'Sanskrit'];
+            for (const lang of officialLanguages) {
+                await query(`INSERT INTO languages (name) VALUES ($1) ON CONFLICT (name) DO NOTHING;`, [lang]);
+            }
+            console.log('✅ Languages Preloaded');
+        }
+
+        // 3. Categories Preload
+        const catCount = await query('SELECT COUNT(*) FROM categories');
+        if (parseInt(catCount.rows[0].count) === 0) {
+            const cats = ['School', 'University', 'UPSC', 'CTET', 'SSC', 'Banking', 'Railway', 'State Govt Exams', 'Others'];
+            for (let i = 0; i < cats.length; i++) {
+                await query(`INSERT INTO categories (name, sort_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING;`, [cats[i], i]);
+            }
+            console.log('✅ Categories Preloaded');
+        }
+
+    } catch (err) {
+        console.error('❌ Error preloading data:', err);
+    }
+};
+
 // Auto-create tables logic
 const initDB = async () => {
     try {
@@ -58,42 +103,73 @@ const initDB = async () => {
 
         // Categories
         await query(`CREATE TABLE IF NOT EXISTS categories (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, image_url TEXT, description TEXT, is_active BOOLEAN DEFAULT TRUE, sort_order INTEGER DEFAULT 0);`);
-        const cats = ['School', 'University', 'UPSC', 'CTET', 'SSC', 'Banking', 'Railway', 'State Govt', 'Others'];
-        for (let i = 0; i < cats.length; i++) {
-            await query(`INSERT INTO categories (name, sort_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING;`, [cats[i], i]);
+
+        // States & UT
+        await query(`CREATE TABLE IF NOT EXISTS states (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL);`);
+
+        // Languages
+        await query(`CREATE TABLE IF NOT EXISTS languages (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL);`);
+
+        // Hierarchy Tables
+        await query(`CREATE TABLE IF NOT EXISTS boards (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, state_id INTEGER REFERENCES states(id), is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS classes (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS streams (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS universities (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL, state_id INTEGER REFERENCES states(id), is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS semesters (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, university_id INTEGER REFERENCES universities(id), is_active BOOLEAN DEFAULT TRUE);`);
+
+        // Auto-create Classes
+        const defaultClasses = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
+        for (const cls of defaultClasses) {
+            await query(`INSERT INTO classes (name) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM classes WHERE name = $1);`, [cls]);
         }
 
-        // Subscriptions
+        // Auto-create Streams
+        const defaultStreams = ['Science', 'Arts', 'Commerce'];
+        for (const stm of defaultStreams) {
+            await query(`INSERT INTO streams (name) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM streams WHERE name = $1);`, [stm]);
+        }
+
+        await query(`CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, board_id INTEGER REFERENCES boards(id), class_id INTEGER REFERENCES classes(id), stream_id INTEGER REFERENCES streams(id), semester_id INTEGER REFERENCES semesters(id), is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS chapters (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, subject_id INTEGER REFERENCES subjects(id), is_active BOOLEAN DEFAULT TRUE);`);
+
+        // Other System Tables
         await query(`CREATE TABLE IF NOT EXISTS subscription_plans (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, duration_hours INTEGER NOT NULL, price DECIMAL(10, 2) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
         await query(`INSERT INTO subscription_plans (name, duration_hours, price) VALUES ('1 Hour Pass', 1, 10), ('3 Hour Pass', 3, 25) ON CONFLICT DO NOTHING;`);
-
-        // Payments
         await query(`CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), razorpay_order_id VARCHAR(100), razorpay_payment_id VARCHAR(100), amount DECIMAL(10, 2), status VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-
-        // Referrals
         await query(`CREATE TABLE IF NOT EXISTS referrals (id SERIAL PRIMARY KEY, referrer_id INTEGER REFERENCES users(id), referred_user_id INTEGER REFERENCES users(id), status VARCHAR(20) DEFAULT 'pending', reward_given BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-
-        // Content Hierarchy
-        await query(`CREATE TABLE IF NOT EXISTS states (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL);`);
-        await query(`CREATE TABLE IF NOT EXISTS boards (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, state_id INTEGER REFERENCES states(id));`);
-        await query(`CREATE TABLE IF NOT EXISTS classes (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL);`);
-        await query(`CREATE TABLE IF NOT EXISTS streams (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL);`);
-        await query(`CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, board_id INTEGER REFERENCES boards(id), class_id INTEGER REFERENCES classes(id), stream_id INTEGER REFERENCES streams(id));`);
-        await query(`CREATE TABLE IF NOT EXISTS chapters (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, subject_id INTEGER REFERENCES subjects(id));`);
-
-        // NEW: Languages
-        await query(`CREATE TABLE IF NOT EXISTS languages (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE);`);
-
-        // NEW: AI Providers
         await query(`CREATE TABLE IF NOT EXISTS ai_providers (id SERIAL PRIMARY KEY, name VARCHAR(100), base_url TEXT, api_key TEXT, model_name TEXT, is_active BOOLEAN DEFAULT TRUE);`);
-
-        // NEW: AI Fetch Logs
         await query(`CREATE TABLE IF NOT EXISTS ai_fetch_logs (id SERIAL PRIMARY KEY, fetch_type VARCHAR(100), reference_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-
-        // Ads
         await query(`CREATE TABLE IF NOT EXISTS ads_settings (id SERIAL PRIMARY KEY, location VARCHAR(50), script_content TEXT, is_active BOOLEAN DEFAULT TRUE);`);
 
-        // MCQ Pool with Duplicate Prevention
+        // NEW: Admin Dashboard Tables
+        await query(`CREATE TABLE IF NOT EXISTS legal_pages (id SERIAL PRIMARY KEY, slug VARCHAR(50) UNIQUE NOT NULL, title VARCHAR(200) NOT NULL, content TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+        const legals = ['about-us', 'contact-us', 'privacy-policy', 'terms-conditions', 'refund-policy'];
+        for (const slug of legals) {
+            await query(`INSERT INTO legal_pages (slug, title, content) VALUES ($1, $2, $3) ON CONFLICT (slug) DO NOTHING;`, [slug, slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 'Content coming soon...']);
+        }
+
+        await query(`CREATE TABLE IF NOT EXISTS payment_gateway_settings (id SERIAL PRIMARY KEY, provider VARCHAR(50) UNIQUE NOT NULL, api_key TEXT, api_secret TEXT, is_active BOOLEAN DEFAULT FALSE);`);
+        await query(`INSERT INTO payment_gateway_settings (provider) VALUES ('razorpay'), ('stripe') ON CONFLICT (provider) DO NOTHING;`);
+
+        await query(`CREATE TABLE IF NOT EXISTS revenue_logs (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), amount DECIMAL(10, 2), source VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+
+        // Extend system_settings with SEO and Site Config
+        const siteDefaults = {
+            'SITE_TITLE': 'ExamRedy - AI MCQ Practice',
+            'SITE_LOGO_URL': '',
+            'HOME_BANNER_TEXT': 'Master Your Exams with AI-Powered MCQ Practice',
+            'SUPPORT_EMAIL': 'support@examredy.in',
+            'WHATSAPP_NUMBER': '',
+            'GOOGLE_ANALYTICS_ID': '',
+            'GOOGLE_SEARCH_CONSOLE_CODE': '',
+            'FOOTER_CONTENT': '© 2026 ExamRedy. All rights reserved.',
+            'META_TAGS': 'MCQ, Exam Practice, AI, Study'
+        };
+        for (const [key, value] of Object.entries(siteDefaults)) {
+            await query(`INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, value]);
+        }
+
+        // MCQ Pool
         await query(`
             CREATE TABLE IF NOT EXISTS mcq_pool (
                 id SERIAL PRIMARY KEY, 
@@ -106,29 +182,37 @@ const initDB = async () => {
                 chapter VARCHAR(100), 
                 difficulty VARCHAR(20) DEFAULT 'medium', 
                 is_approved BOOLEAN DEFAULT FALSE, 
+                question_hash VARCHAR(64),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-
-        // CRITICAL: Add question_hash if it doesn't exist
-        await query(`ALTER TABLE mcq_pool ADD COLUMN IF NOT EXISTS question_hash VARCHAR(64);`);
-        // CRITICAL: Add Unique Index on hash
         await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_question_hash_unique ON mcq_pool(question_hash);`);
 
-        // History
+        // History & Groups
         await query(`CREATE TABLE IF NOT EXISTS user_mcq_history (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), mcq_id INTEGER REFERENCES mcq_pool(id), is_correct BOOLEAN, attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-
-        // Groups
         await query(`CREATE TABLE IF NOT EXISTS group_sessions (id VARCHAR(50) PRIMARY KEY, creator_id INTEGER REFERENCES users(id), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS group_participants (id SERIAL PRIMARY KEY, session_id VARCHAR(50) REFERENCES group_sessions(id), user_id INTEGER REFERENCES users(id), score INTEGER DEFAULT 0, joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
 
+        // Ensure Admin user exists (For testing - in production should be handled carefully)
+        const bcrypt = require('bcryptjs');
+        const adminPass = await bcrypt.hash('admin123', 10);
+        await query(`INSERT INTO users (username, email, password, role) VALUES ('admin', 'admin@examredy.in', $1, 'admin') ON CONFLICT (email) DO NOTHING;`, [adminPass]);
+
         // PERFORMANCE INDEXES
-        await query(`CREATE INDEX IF NOT EXISTS idx_mcq_subject ON mcq_pool(subject);`); // Assuming subject is stored as string for now based on previous schema, ideal is foreign key
-        await query(`CREATE INDEX IF NOT EXISTS idx_mcq_category ON mcq_pool(category_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_boards_state ON boards(state_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_subjects_board ON subjects(board_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_subjects_class ON subjects(class_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_chapters_subject ON chapters(subject_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_univ_state ON universities(state_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_sem_univ ON semesters(university_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_mcq_cat ON mcq_pool(category_id);`);
         await query(`CREATE INDEX IF NOT EXISTS idx_user_usage ON user_daily_usage(user_id);`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);`);
 
         console.log('✅ All Database Tables Verified/Created & Indexes Applied');
+
+        // Run Preload after DB init
+        await preloadData();
+
     } catch (err) {
         console.error('❌ Error initializing database tables:', err);
     }

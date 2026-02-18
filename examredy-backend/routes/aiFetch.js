@@ -3,6 +3,13 @@ const router = express.Router();
 const { query } = require('../db');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+// @route   GET /api/ai-fetch
+// @desc    AI Fetch service health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'AI Fetch service is running' });
+});
+
 // @route   GET /api/ai-fetch/providers
 // @desc    Get active AI providers (Admin)
 // @access  Admin

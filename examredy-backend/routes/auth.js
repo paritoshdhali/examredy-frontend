@@ -4,6 +4,13 @@ const { query } = require('../db');
 const { hashPassword, comparePassword, generateToken } = require('../utils/helpers');
 const { protect } = require('../middleware/authMiddleware');
 
+// @route   GET /api/auth
+// @desc    Auth health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'Auth service is running' });
+});
+
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
@@ -92,6 +99,13 @@ router.post('/login', async (req, res) => {
 // @access  Private
 router.get('/me', protect, async (req, res) => {
     res.json(req.user);
+});
+
+// @route   GET /api/auth/google
+// @desc    Google OAuth Placeholder
+// @access  Public
+router.get('/google', (req, res) => {
+    res.json({ message: 'Google OAuth flow would start here' });
 });
 
 module.exports = router;

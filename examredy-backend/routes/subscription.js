@@ -10,6 +10,13 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET || 'secret_placeholder'
 });
 
+// @route   GET /api/subscription
+// @desc    Subscription health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'Subscription service is running' });
+});
+
 // @route   GET /api/subscription/plans
 // @desc    Get all active subscription plans
 // @access  Public

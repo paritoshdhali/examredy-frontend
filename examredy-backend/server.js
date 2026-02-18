@@ -37,7 +37,7 @@ app.get('/', (req, res) => {
     res.status(200).send('Backend Running - ExamRedy');
 });
 
-// 2. Health Check (DB Aware)
+// Health Check
 app.get('/api/health', async (req, res) => {
     try {
         const client = await pool.connect();
@@ -50,8 +50,10 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// App Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/structure', require('./routes/structure'));
+app.use('/api/structure', require('./routes/structure')); // Standardized xyz pattern
+app.use('/api', require('./routes/structure')); // Compatibility for /api/categories etc.
 app.use('/api/mcq', require('./routes/mcq'));
 app.use('/api/subscription', require('./routes/subscription'));
 app.use('/api/group', require('./routes/group'));

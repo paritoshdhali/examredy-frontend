@@ -6,6 +6,13 @@ const { protect, admin } = require('../middleware/authMiddleware');
 const { generateMCQInitial } = require('../services/aiService');
 const { subscriptionCheck } = require('../middleware/subscriptionMiddleware');
 
+// @route   GET /api/mcq
+// @desc    MCQ health check
+// @access  Public
+router.get('/', (req, res) => {
+    res.json({ message: 'MCQ service is running' });
+});
+
 // @route   POST /api/mcq/generate
 // @desc    Generate MCQs using AI (Admin only)
 // @access  Admin
