@@ -6,7 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Practice from './pages/Practice';
 import Group from './pages/Group';
-import Admin from './pages/Admin';
+import Admin from './admin/AdminDashboard';
 import Prime from './pages/Prime';
 // import MCQSession from './components/MCQSession'; // To be implemented
 
