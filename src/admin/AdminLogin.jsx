@@ -9,7 +9,7 @@ const AdminLogin = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { setAuthData } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -17,23 +17,22 @@ const AdminLogin = () => {
         setError('');
         setLoading(true);
         try {
-            console.log(`[DEBUG] Login Process Started`);
-            console.log(`[DEBUG] Email: ${email}, Password Length: ${password.length}`);
-            console.log(`[DEBUG] API Config:`, {
-                baseURL: api.defaults.baseURL,
-                headers: api.defaults.headers
-            });
-
+            console.log(`[DEBUG] Admin Login Process Started`);
             const res = await api.post('/admin/login', { email, password });
-            console.log('[DEBUG] Login Success! Response:', res.data);
+            console.log('[DEBUG] Admin Login Success! Response:', res.data);
 
-            if (res.data.token) {
-                localStorage.setItem('adminToken', res.data.token);
-                // Store user info if desired
-                localStorage.setItem('adminUser', JSON.stringify(res.data.user));
-                navigate('/admin/dashboard');
+            if (res.data.token && res.data.user?.role === 'admin') {
+                // Sync with AuthContext
+                setAuthData({
+                    token: res.data.token,
+                    user: res.data.user,
+                    role: 'admin'
+                });
+
+                // Explicitly navigate to dashboard
+                navigate('/admin');
             } else {
-                setError('Login failed. No token received.');
+                setError('Login failed. Not authorized as admin.');
             }
         } catch (err) {
             console.error('[DEBUG] Login Error Details:', {

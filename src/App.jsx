@@ -18,7 +18,10 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
     if (loading) return <div className="p-10 text-center">Loading...</div>;
 
     if (adminOnly) {
-        if (user?.role !== 'admin') {
+        if (!user) {
+            return <Navigate to="/admin/login" replace />;
+        }
+        if (user.role !== 'admin') {
             return <Navigate to="/" replace />;
         }
         return children;
@@ -59,12 +62,13 @@ function AppRoutes() {
                         </ProtectedRoute>
                     } />
 
-                    <Route path="/admin" element={<AdminLogin />} />
-                    <Route path="/admin/dashboard" element={
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin" element={
                         <ProtectedRoute adminOnly={true}>
                             <AdminDashboard />
                         </ProtectedRoute>
                     } />
+                    <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
 
                     {/* Add more routes as needed */}
                 </Routes>

@@ -9,14 +9,17 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const loadUser = async () => {
-            const token = localStorage.getItem('token');
+            // Prioritize adminToken over regular token
+            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
             if (token) {
                 try {
+                    // This endpoint should verify the token and return user data regardless of role
                     const res = await api.get('/auth/me');
                     setUser(res.data);
                 } catch (error) {
                     console.error("Failed to load user", error);
                     localStorage.removeItem('token');
+                    localStorage.removeItem('adminToken');
                 }
             }
             setLoading(false);
@@ -24,27 +27,39 @@ export const AuthProvider = ({ children }) => {
         loadUser();
     }, []);
 
+    const setAuthData = (data) => {
+        if (data.token) {
+            if (data.role === 'admin') {
+                localStorage.setItem('adminToken', data.token);
+                localStorage.removeItem('token'); // Clear regular user session
+            } else {
+                localStorage.setItem('token', data.token);
+                localStorage.removeItem('adminToken'); // Clear admin session
+            }
+        }
+        setUser(data.user || data);
+    };
+
     const login = async (email, password) => {
         const res = await api.post('/auth/login', { email, password });
-        localStorage.setItem('token', res.data.token);
-        setUser(res.data);
+        setAuthData(res.data);
         return res.data;
     };
 
     const register = async (username, email, password, referrerId = null) => {
         const res = await api.post('/auth/register', { username, email, password, referrer_id: referrerId });
-        localStorage.setItem('token', res.data.token);
-        setUser(res.data);
+        setAuthData(res.data);
         return res.data;
     };
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('adminToken');
         setUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, setAuthData }}>
             {children}
         </AuthContext.Provider>
     );
