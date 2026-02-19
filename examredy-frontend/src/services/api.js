@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://examredy-backend1-production.up.railway.app/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -29,10 +29,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        console.error('[API-ERROR]', error.response?.status, error.response?.data || error.message);
         if (error.response && error.response.status === 401) {
             // Token expired or invalid
-            localStorage.removeItem('token');
-            if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            const path = window.location.pathname;
+            if (path.startsWith('/admin')) {
+                console.warn('[AUTH] Admin 401 - staying on page');
+                localStorage.removeItem('adminToken');
+            } else if (path !== '/login' && path !== '/register') {
+                localStorage.removeItem('token');
                 window.location.href = '/login';
             }
         }

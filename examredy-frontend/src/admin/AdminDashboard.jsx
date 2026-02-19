@@ -6,42 +6,20 @@ import {
     Settings, ShieldAlert, Cpu, Share2,
     Eye, Edit, Trash2, Check, X, Search,
     Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
-    LogOut
+    LogOut, Globe, BookOpen, Book
 } from 'lucide-react';
 
 const Admin = () => {
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Protection logic
-    useEffect(() => {
-        const token = localStorage.getItem('adminToken');
-        if (!token) {
-            navigate('/admin/login');
-            return;
-        }
-
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
-
-            if (payload.role !== 'admin') {
-                localStorage.removeItem('adminToken');
-                navigate('/admin/login');
-            }
-        } catch (e) {
-            localStorage.removeItem('adminToken');
-            navigate('/admin/login');
-        }
-    }, [navigate]);
-
     const handleLogout = () => {
-        localStorage.removeItem('adminToken');
-        navigate('/admin/login');
+        logout();
+        navigate('/admin');
     };
 
     // Module States
@@ -52,9 +30,11 @@ const Admin = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     // Structural States
-    const [states, setStates] = useState([]);
-    const [boards, setBoards] = useState([]);
-    const [classes, setClasses] = useState([]);
+    const [plans, setPlans] = useState([]);
+    const [languages, setLanguages] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [chapters, setChapters] = useState([]);
+    const [streams, setStreams] = useState([]);
 
     useEffect(() => {
         fetchStats();
@@ -98,17 +78,30 @@ const Admin = () => {
 
     const fetchStructure = async () => {
         try {
-            const [sRes, bRes, cRes] = await Promise.all([
+            const [sRes, bRes, cRes, lRes, subRes, chRes, stRes] = await Promise.all([
                 api.get('/admin/states'),
                 api.get('/admin/boards'),
-                api.get('/admin/classes')
+                api.get('/admin/classes'),
+                api.get('/admin/languages'),
+                api.get('/admin/subjects'),
+                api.get('/admin/chapters'),
+                api.get('/admin/streams')
             ]);
             setStates(sRes.data);
             setBoards(bRes.data);
             setClasses(cRes.data);
+            setLanguages(lRes.data);
+            setSubjects(subRes.data);
+            setChapters(chRes.data);
+            setStreams(stRes.data);
         } catch (err) {
             console.error('Error fetching structure:', err);
         }
+    };
+
+    const fetchPlans = async () => {
+        const res = await api.get('/admin/plans');
+        setPlans(res.data);
     };
 
     useEffect(() => {
@@ -117,6 +110,7 @@ const Admin = () => {
         if (activeTab === 'mcqs') fetchMcqs();
         if (activeTab === 'settings' || activeTab === 'ai') fetchSettings();
         if (activeTab === 'structure') fetchStructure();
+        if (activeTab === 'plans') fetchPlans();
     }, [activeTab, searchQuery]);
 
     const handleUserStatus = async (id, status) => {
@@ -158,6 +152,20 @@ const Admin = () => {
             alert('Settings saved');
         } catch (err) {
             alert('Failed to save settings');
+        }
+    };
+
+    const handleAIFetch = async (type, payload) => {
+        try {
+            setLoading(true);
+            const endpoint = `/ai-fetch/${type}`;
+            await api.post(endpoint, payload);
+            fetchStructure();
+            setLoading(false);
+            alert(`AI Fetch for ${type} complete!`);
+        } catch (err) {
+            setLoading(false);
+            alert(`AI Fetch failed: ${err.response?.data?.message || err.message}`);
         }
     };
 
@@ -343,6 +351,7 @@ const Admin = () => {
                 <nav className="flex-1 space-y-2">
                     <SidebarItem id="overview" label="Dashboard" icon={LayoutDashboard} />
                     <SidebarItem id="users" label="User Management" icon={Users} />
+                    <SidebarItem id="plans" label="Subscription Plans" icon={DollarSign} />
                     <SidebarItem id="categories" label="Categories" icon={Layers} />
                     <SidebarItem id="mcqs" label="Approve MCQs" icon={CheckSquare} />
                     <SidebarItem id="structure" label="Education Setup" icon={Share2} />
@@ -433,64 +442,129 @@ const Admin = () => {
                 )}
 
                 {activeTab === 'structure' && (
-                    <div className="space-y-6 animate-fadeIn">
+                    <div className="space-y-6 animate-fadeIn pb-20">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold">Education Structure</h2>
                             <div className="flex gap-2">
-                                <button className="bg-white border px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-50 transition-colors text-gray-600 focus:ring-2 focus:ring-indigo-100 outline-none">
-                                    <Plus size={16} /> Add State
-                                </button>
-                                <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm">
-                                    <Share2 size={16} /> AI Fetch Sub/Chapters
+                                <button
+                                    onClick={() => handleAIFetch('boards', { state_id: states[0]?.id, state_name: states[0]?.name })}
+                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
+                                >
+                                    <Cpu size={16} /> AI Fetch Boards
                                 </button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Indian States ({states.length})</h3>
-                                <div className="flex-1 overflow-y-auto space-y-1 pr-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* States & UT */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">States ({states.length})</h3>
+                                <div className="flex-1 overflow-y-auto space-y-1">
                                     {states.map((s) => (
-                                        <div key={s.id} className="flex justify-between items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group cursor-pointer border border-transparent hover:border-indigo-100">
-                                            <span className="font-bold text-gray-700 group-hover:text-indigo-700">{s.name}</span>
-                                            <div className="flex gap-2">
-                                                <Edit size={14} className="text-gray-300 group-hover:text-indigo-400" />
-                                            </div>
+                                        <div key={s.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
+                                            <span className="text-sm font-bold text-gray-700">{s.name}</span>
+                                            <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
                                         </div>
                                     ))}
-                                    {states.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No states found</p>}
                                 </div>
                             </div>
 
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards per State ({boards.length})</h3>
-                                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                            {/* Languages */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Languages ({languages.length})</h3>
+                                <div className="flex-1 overflow-y-auto space-y-1">
+                                    {languages.map((l) => (
+                                        <div key={l.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
+                                            <span className="text-sm font-bold text-gray-700">{l.name}</span>
+                                            <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Boards */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards ({boards.length})</h3>
+                                <div className="flex-1 overflow-y-auto space-y-1">
                                     {boards.map((b) => (
-                                        <div key={b.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-bold text-gray-800">{b.name}</span>
-                                                <div className="flex gap-1">
-                                                    <button className="p-1 hover:bg-white rounded transition-colors"><Edit size={14} /></button>
-                                                    <button className="p-1 hover:bg-white text-red-500 rounded transition-colors"><Trash2 size={14} /></button>
-                                                </div>
+                                        <div key={b.id} className="p-2 border-b last:border-0 hover:bg-gray-50">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm font-bold">{b.name}</span>
+                                                <span className={`text-[8px] px-1 rounded ${b.is_active ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{b.is_active ? 'LIVE' : 'PENDING'}</span>
                                             </div>
-                                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">{b.state_name || 'Global'}</p>
+                                            <p className="text-[9px] text-gray-400">{b.state_name}</p>
                                         </div>
                                     ))}
-                                    {boards.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No boards found</p>}
                                 </div>
                             </div>
 
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams ({classes.length})</h3>
+                            {/* Classes & Streams */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams</h3>
                                 <div className="flex-1 overflow-y-auto space-y-1">
                                     {classes.map(c => (
-                                        <div key={c.id} className="p-3 bg-indigo-50/30 rounded-lg flex justify-between items-center border border-indigo-100/50">
-                                            <span className="font-black text-indigo-900">{c.name}</span>
-                                            {(c.name.includes('11') || c.name.includes('12')) && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-black">STREAMS ENABLED</span>}
+                                        <div key={c.id} className="p-2 bg-gray-50 rounded text-sm font-bold flex justify-between">
+                                            {c.name}
+                                            <button className="text-gray-400 hover:text-indigo-600"><Edit size={12} /></button>
                                         </div>
                                     ))}
-                                    {classes.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No classes found</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subjects & Chapters Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
+                                <div className="flex justify-between mb-4">
+                                    <h3 className="font-bold">Subjects ({subjects.length})</h3>
+                                    <button
+                                        onClick={() => handleAIFetch('subjects', { class_id: classes[9]?.id, class_name: classes[9]?.name, board_id: boards[0]?.id })}
+                                        className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
+                                    >
+                                        AI Fetch Subjects
+                                    </button>
+                                </div>
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                    {subjects.map(sub => (
+                                        <div key={sub.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
+                                            <div>
+                                                <span className="font-bold text-gray-800">{sub.name}</span>
+                                                <p className="text-[10px] text-gray-400">{sub.board_name} • {sub.class_name}</p>
+                                            </div>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button className="text-indigo-600"><Edit size={14} /></button>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded font-black ${sub.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {sub.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
+                                <div className="flex justify-between mb-4">
+                                    <h3 className="font-bold">Chapters ({chapters.length})</h3>
+                                    <button
+                                        onClick={() => handleAIFetch('chapters', { subject_id: subjects[0]?.id, subject_name: subjects[0]?.name })}
+                                        className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
+                                    >
+                                        AI Fetch Chapters
+                                    </button>
+                                </div>
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                    {chapters.map(ch => (
+                                        <div key={ch.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
+                                            <div>
+                                                <span className="font-bold text-gray-800">{ch.name}</span>
+                                                <p className="text-[10px] text-gray-400">{ch.subject_name}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button className="text-indigo-600 opacity-0 group-hover:opacity-100"><Edit size={14} /></button>
+                                                {!ch.is_active && <button onClick={() => api.put(`/admin/chapters/${ch.id}`, { ...ch, is_active: true }).then(() => fetchStructure())} className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-black">PUBLISH</button>}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -577,26 +651,72 @@ const Admin = () => {
                     </div>
                 )}
 
-                {activeTab === 'settings' && settings && (
+                {activeTab === 'plans' && (
                     <div className="space-y-6 animate-fadeIn">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold">Subscription Plans</h2>
+                            <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+                                <Plus size={18} /> Add Plan
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {plans.map(plan => (
+                                <div key={plan.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${plan.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            {plan.is_active ? 'ACTIVE' : 'DISABLED'}
+                                        </span>
+                                        <button className="text-gray-400 hover:text-indigo-600"><Edit size={18} /></button>
+                                    </div>
+                                    <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter mb-2">{plan.name}</h3>
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <span className="text-3xl font-black">₹{plan.price}</span>
+                                        <span className="text-gray-400 text-sm">/ {plan.duration_hours} Hours</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <button onClick={() => api.put(`/admin/plans/${plan.id}`, { ...plan, is_active: !plan.is_active }).then(() => fetchPlans())} className={`w-full py-2.5 rounded-xl font-bold text-xs transition-colors ${plan.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                                            {plan.is_active ? 'Disable Plan' : 'Enable Plan'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'settings' && settings && (
+                    <div className="space-y-6 animate-fadeIn pb-20">
                         <h2 className="text-2xl font-bold">Site & System Settings</h2>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* System Config */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-2">
                                 <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Settings size={18} className="text-indigo-600" /> System Configuration</h3>
-                                <div className="space-y-4">
-                                    {Object.entries(settings.system).map(([key, value]) => (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    {Object.entries(settings.system).filter(([k]) => !k.includes('ADS')).map(([key, value]) => (
                                         <div key={key}>
-                                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">{key.replace(/_/g, ' ')}</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{key.replace(/_/g, ' ')}</label>
                                             <input
                                                 type="text"
                                                 className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                                 defaultValue={value}
+                                                id={`setting-${key}`}
                                             />
                                         </div>
                                     ))}
-                                    <button className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors mt-4">Save Changes</button>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        const updates = {};
+                                        Object.keys(settings.system).forEach(k => {
+                                            const el = document.getElementById(`setting-${k}`);
+                                            if (el) updates[k] = el.value;
+                                        });
+                                        handleUpdateSettings(updates);
+                                    }}
+                                    className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors"
+                                >
+                                    Save All System Settings
+                                </button>
                             </div>
 
                             {/* Legal Pages */}
@@ -607,11 +727,63 @@ const Admin = () => {
                                         <div key={page.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors group">
                                             <div>
                                                 <p className="font-bold text-gray-700">{page.title}</p>
-                                                <p className="text-xs text-gray-400">Slug: /{page.slug}</p>
+                                                <p className="text-xs text-gray-400">/{page.slug}</p>
                                             </div>
                                             <button className="p-2 bg-white rounded-lg shadow-sm border group-hover:text-indigo-600 transition-colors"><Edit size={18} /></button>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Ads Control Section */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-3">
+                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Share2 size={18} className="text-indigo-600" /> Ads Control (Google AdSense)</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AdSense Script Injection</label>
+                                            <textarea
+                                                className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-32 outline-none focus:ring-2 focus:ring-indigo-500"
+                                                placeholder="<script async src='...'></script>"
+                                                defaultValue={settings.system['ADSENSE_SCRIPT']}
+                                                id="ads-script"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                            <div>
+                                                <p className="font-bold text-indigo-900">Enable Advertisements</p>
+                                                <p className="text-[10px] text-indigo-600 font-bold uppercase">Toggle Global Visibility</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="w-6 h-6 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                                                defaultChecked={settings.system['ADS_ENABLED'] === 'true'}
+                                                id="ads-enabled"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ads.txt Content</label>
+                                        <textarea
+                                            className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-48 outline-none focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
+                                            defaultValue={settings.system['ADS_TXT']}
+                                            id="ads-txt"
+                                        />
+                                        <button
+                                            onClick={async () => {
+                                                const script = document.getElementById('ads-script').value;
+                                                const txt = document.getElementById('ads-txt').value;
+                                                const enabled = document.getElementById('ads-enabled').checked;
+                                                await api.put('/admin/settings/ads', { ADSENSE_SCRIPT: script, ADS_TXT: txt, ADS_ENABLED: enabled });
+                                                alert('Ads Settings Saved');
+                                                fetchSettings();
+                                            }}
+                                            className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors"
+                                        >
+                                            Update Ads Infrastructure
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
