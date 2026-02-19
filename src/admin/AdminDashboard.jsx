@@ -58,26 +58,43 @@ const Admin = () => {
 
     const fetchUsers = async () => {
         try {
+            setError(null);
             const res = await api.get(`/admin/users?search=${searchQuery}`);
             setUsers(res.data.users);
         } catch (err) {
             console.error('Error fetching users:', err);
+            setError(`Users Error: ${err.response?.data?.message || err.message} (${err.response?.status || 'Network'})`);
         }
     };
 
     const fetchCategories = async () => {
-        const res = await api.get('/admin/categories');
-        setCategories(res.data);
+        try {
+            setError(null);
+            const res = await api.get('/admin/categories');
+            setCategories(res.data);
+        } catch (err) {
+            setError(`Categories Error: ${err.response?.data?.message || err.message}`);
+        }
     };
 
     const fetchMcqs = async () => {
-        const res = await api.get('/admin/mcqs?status=pending');
-        setMcqs(res.data);
+        try {
+            setError(null);
+            const res = await api.get('/admin/mcqs?status=pending');
+            setMcqs(res.data);
+        } catch (err) {
+            setError(`MCQ Error: ${err.response?.data?.message || err.message}`);
+        }
     };
 
     const fetchSettings = async () => {
-        const res = await api.get('/admin/settings');
-        setSettings(res.data);
+        try {
+            setError(null);
+            const res = await api.get('/admin/settings');
+            setSettings(res.data);
+        } catch (err) {
+            setError(`Settings Error: ${err.response?.data?.message || err.message}`);
+        }
     };
 
     const fetchStructure = async () => {

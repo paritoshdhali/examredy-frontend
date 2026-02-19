@@ -14,9 +14,12 @@ api.interceptors.request.use(
     (config) => {
         const adminToken = localStorage.getItem('adminToken');
         const userToken = localStorage.getItem('token');
-        const token = adminToken || userToken; // Prioritize adminToken for admin routes if both exist, or handle as needed
+        const token = adminToken || userToken;
+
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            // Standardize header setting across axios versions
+            config.headers = config.headers || {};
+            config.headers['Authorization'] = `Bearer ${token}`;
         }
         return config;
     },
