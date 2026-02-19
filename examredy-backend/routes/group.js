@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
-const { protect } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
 
 // @route   GET /api/group
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // @route   POST /api/group/create
 // @desc    Create a new group session
 // @access  Private
-router.post('/create', protect, async (req, res) => {
+router.post('/create', verifyToken, async (req, res) => {
     try {
         // Generate unique 6-char code
         const code = crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -40,7 +40,7 @@ router.post('/create', protect, async (req, res) => {
 // @route   POST /api/group/join
 // @desc    Join an existing group session
 // @access  Private
-router.post('/join', protect, async (req, res) => {
+router.post('/join', verifyToken, async (req, res) => {
     const { code } = req.body;
     try {
         // Check session exists and is active
@@ -76,7 +76,7 @@ router.post('/join', protect, async (req, res) => {
 // @route   GET /api/group/:id/leaderboard
 // @desc    Get leaderboard for a session
 // @access  Private
-router.get('/:id/leaderboard', protect, async (req, res) => {
+router.get('/:id/leaderboard', verifyToken, async (req, res) => {
     const { id } = req.params;
     try {
         const result = await query(`
@@ -97,7 +97,7 @@ router.get('/:id/leaderboard', protect, async (req, res) => {
 // @route   POST /api/group/:id/submit
 // @desc    Submit score for group session
 // @access  Private
-router.post('/:id/submit', protect, async (req, res) => {
+router.post('/:id/submit', verifyToken, async (req, res) => {
     const { id } = req.params;
     const { score } = req.body; // Score derived from frontend or calculated backend?
 

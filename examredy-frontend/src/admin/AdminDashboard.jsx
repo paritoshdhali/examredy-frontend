@@ -1,17 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Layers, CheckSquare,
     Settings, ShieldAlert, Cpu, Share2,
     Eye, Edit, Trash2, Check, X, Search,
-    Plus, DollarSign, UserCheck, TrendingUp, Clock
+    Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
+    LogOut
 } from 'lucide-react';
 
 const Admin = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Protection logic
+    useEffect(() => {
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            navigate('/admin/login');
+            return;
+        }
+
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(window.atob(base64));
+
+            if (payload.role !== 'admin') {
+                localStorage.removeItem('adminToken');
+                navigate('/admin/login');
+            }
+        } catch (e) {
+            localStorage.removeItem('adminToken');
+            navigate('/admin/login');
+        }
+    }, [navigate]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+    };
 
     // Module States
     const [users, setUsers] = useState([]);
@@ -19,6 +50,11 @@ const Admin = () => {
     const [mcqs, setMcqs] = useState([]);
     const [settings, setSettings] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Structural States
+    const [states, setStates] = useState([]);
+    const [boards, setBoards] = useState([]);
+    const [classes, setClasses] = useState([]);
 
     useEffect(() => {
         fetchStats();
@@ -60,11 +96,27 @@ const Admin = () => {
         setSettings(res.data);
     };
 
+    const fetchStructure = async () => {
+        try {
+            const [sRes, bRes, cRes] = await Promise.all([
+                api.get('/admin/states'),
+                api.get('/admin/boards'),
+                api.get('/admin/classes')
+            ]);
+            setStates(sRes.data);
+            setBoards(bRes.data);
+            setClasses(cRes.data);
+        } catch (err) {
+            console.error('Error fetching structure:', err);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'categories') fetchCategories();
         if (activeTab === 'mcqs') fetchMcqs();
-        if (activeTab === 'settings') fetchSettings();
+        if (activeTab === 'settings' || activeTab === 'ai') fetchSettings();
+        if (activeTab === 'structure') fetchStructure();
     }, [activeTab, searchQuery]);
 
     const handleUserStatus = async (id, status) => {
@@ -86,6 +138,26 @@ const Admin = () => {
         if (window.confirm('Are you sure you want to delete this MCQ?')) {
             await api.delete(`/admin/mcqs/${id}`);
             fetchMcqs();
+        }
+    };
+
+    const handleUpdateAI = async (id, data) => {
+        try {
+            await api.put(`/admin/settings/ai/${id}`, data);
+            fetchSettings();
+            alert('AI Provider updated successfully');
+        } catch (err) {
+            alert('Failed to update AI provider');
+        }
+    };
+
+    const handleUpdateSettings = async (data) => {
+        try {
+            await api.put('/admin/settings/system', data);
+            fetchSettings();
+            alert('Settings saved');
+        } catch (err) {
+            alert('Failed to save settings');
         }
     };
 
@@ -201,7 +273,11 @@ const Admin = () => {
                                 </td>
                                 <td className="px-6 py-4 flex items-center space-x-3 text-gray-400">
                                     <button onClick={() => handleUserStatus(user.id, user.is_active)} title={user.is_active ? 'Disable' : 'Enable'}>
-                                        {user.is_active ? <X className="text-red-500 hover:scale-120 transition-transform" /> : <Check className="text-green-500 hover:scale-120 transition-transform" />}
+                                        {user.is_active ? (
+                                            <><X className="text-red-500 hover:scale-120 transition-transform" /></>
+                                        ) : (
+                                            <><Check className="text-green-500 hover:scale-120 transition-transform" /></>
+                                        )}
                                     </button>
                                     <button onClick={() => handleUserSub(user.id, 'extend')} className="hover:text-indigo-600" title="Extend Subscription">
                                         <Plus size={20} />
@@ -275,12 +351,21 @@ const Admin = () => {
                 </nav>
 
                 <div className="mt-auto border-t pt-6 px-4">
-                    <div className="flex items-center space-x-3 text-gray-600">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">A</div>
-                        <div>
-                            <p className="text-sm font-bold">System Admin</p>
-                            <p className="text-xs text-gray-400">admin@examredy.in</p>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 text-gray-600">
+                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">A</div>
+                            <div>
+                                <p className="text-sm font-bold">System Admin</p>
+                                <p className="text-xs text-gray-400">admin@examredy.in</p>
+                            </div>
                         </div>
+                        <button
+                            onClick={handleLogout}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Sign Out"
+                        >
+                            <LogOut size={20} />
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -363,76 +448,128 @@ const Admin = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Indian States</h3>
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Indian States ({states.length})</h3>
                                 <div className="flex-1 overflow-y-auto space-y-1 pr-2">
-                                    {['West Bengal', 'Bihar', 'Delhi', 'Maharashtra', 'Karnataka'].map((s, i) => (
-                                        <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group cursor-pointer border border-transparent hover:border-indigo-100">
-                                            <span className="font-bold text-gray-700 group-hover:text-indigo-700">{s}</span>
-                                            <Edit size={14} className="text-gray-300 group-hover:text-indigo-400" />
+                                    {states.map((s) => (
+                                        <div key={s.id} className="flex justify-between items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group cursor-pointer border border-transparent hover:border-indigo-100">
+                                            <span className="font-bold text-gray-700 group-hover:text-indigo-700">{s.name}</span>
+                                            <div className="flex gap-2">
+                                                <Edit size={14} className="text-gray-300 group-hover:text-indigo-400" />
+                                            </div>
                                         </div>
                                     ))}
+                                    {states.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No states found</p>}
                                 </div>
                             </div>
 
                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards per State</h3>
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards per State ({boards.length})</h3>
                                 <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                    {['WBBSE', 'CBSE', 'ICSE'].map((b, i) => (
-                                        <div key={i} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                    {boards.map((b) => (
+                                        <div key={b.id} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                                             <div className="flex justify-between items-center">
-                                                <span className="font-bold text-gray-800">{b}</span>
+                                                <span className="font-bold text-gray-800">{b.name}</span>
                                                 <div className="flex gap-1">
                                                     <button className="p-1 hover:bg-white rounded transition-colors"><Edit size={14} /></button>
                                                     <button className="p-1 hover:bg-white text-red-500 rounded transition-colors"><Trash2 size={14} /></button>
                                                 </div>
                                             </div>
-                                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Global Board</p>
+                                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">{b.state_name || 'Global'}</p>
                                         </div>
                                     ))}
+                                    {boards.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No boards found</p>}
                                 </div>
                             </div>
 
                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[500px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams</h3>
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams ({classes.length})</h3>
                                 <div className="flex-1 overflow-y-auto space-y-1">
-                                    {[1, 2, 3, 4, 10, 11, 12].map(c => (
-                                        <div key={c} className="p-3 bg-indigo-50/30 rounded-lg flex justify-between items-center border border-indigo-100/50">
-                                            <span className="font-black text-indigo-900">Class {c}</span>
-                                            {c >= 11 && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-black">STREAMS ENABLED</span>}
+                                    {classes.map(c => (
+                                        <div key={c.id} className="p-3 bg-indigo-50/30 rounded-lg flex justify-between items-center border border-indigo-100/50">
+                                            <span className="font-black text-indigo-900">{c.name}</span>
+                                            {(c.name.includes('11') || c.name.includes('12')) && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-black">STREAMS ENABLED</span>}
                                         </div>
                                     ))}
+                                    {classes.length === 0 && <p className="text-center text-gray-400 py-10 text-xs italic">No classes found</p>}
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {activeTab === 'ai' && (
+                {activeTab === 'ai' && settings?.aiProviders && (
                     <div className="space-y-6 animate-fadeIn">
-                        <h2 className="text-2xl font-bold">AI Provider Control</h2>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold">AI Provider Control</h2>
+                            <span className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold uppercase tracking-widest">Enterprise Orchestration</span>
+                        </div>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {['Google Gemini', 'OpenRouter (Claude)', 'OpenAI (GPT-4)'].map((ai, i) => (
-                                <div key={i} className={`bg-white p-6 rounded-2xl shadow-sm border ${i === 0 ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-gray-100'} relative overflow-hidden`}>
-                                    {i === 0 && <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-widest">Active Provider</div>}
+                            {settings.aiProviders.map((ai, i) => (
+                                <div key={ai.id} className={`bg-white p-6 rounded-2xl shadow-sm border ${ai.is_active ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-gray-100'} relative overflow-hidden transition-all duration-300`}>
+                                    {ai.is_active && (
+                                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1">
+                                            <CheckCircle size={10} /> Active Provider
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-4 mb-6">
-                                        <div className={`p-3 rounded-xl ${i === 0 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-100 text-gray-400'}`}><Cpu size={24} /></div>
+                                        <div className={`p-3 rounded-xl ${ai.is_active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-100 text-gray-400'}`}><Cpu size={24} /></div>
                                         <div>
-                                            <h4 className="font-black text-gray-800 uppercase tracking-widest leading-none mb-1">{ai}</h4>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Model: {i === 0 ? 'gemini-1.5-flash' : 'Disconnected'}</p>
+                                            <h4 className="font-black text-gray-800 uppercase tracking-widest leading-none mb-1">{ai.name}</h4>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {ai.id} • {ai.model_name}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base URL</label>
-                                            <input type="text" className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none" placeholder="https://api..." readOnly={i !== 0} />
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Base URL</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
+                                                defaultValue={ai.base_url}
+                                                id={`url-${ai.id}`}
+                                            />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">API Key</label>
-                                            <input type="password" value="********" className="w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none" readOnly={i !== 0} />
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">API Key</label>
+                                            <input
+                                                type="password"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
+                                                defaultValue={ai.api_key ? "********" : ""}
+                                                placeholder={ai.api_key ? "Leave blank to keep same" : "Enter API Key"}
+                                                id={`key-${ai.id}`}
+                                            />
                                         </div>
-                                        <button className={`w-full py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${i === 0 ? 'bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50' : 'bg-gray-100 text-gray-400'}`}>
-                                            {i === 0 ? 'Update Config' : 'Activate Provider'}
-                                        </button>
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Model Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
+                                                defaultValue={ai.model_name}
+                                                id={`model-${ai.id}`}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {!ai.is_active && (
+                                                <button
+                                                    onClick={() => handleUpdateAI(ai.id, { ...ai, is_active: true })}
+                                                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
+                                                >
+                                                    Activate
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    const u = document.getElementById(`url-${ai.id}`).value;
+                                                    const k = document.getElementById(`key-${ai.id}`).value;
+                                                    const m = document.getElementById(`model-${ai.id}`).value;
+                                                    const updates = { base_url: u, model_name: m };
+                                                    if (k && k !== "********") updates.api_key = k;
+                                                    handleUpdateAI(ai.id, { ...ai, ...updates });
+                                                }}
+                                                className={`py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${ai.is_active ? 'w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50' : 'px-4 bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                            >
+                                                Save Config
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

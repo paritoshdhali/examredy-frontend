@@ -1,10 +1,55 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { verifyToken, admin } = require('../middleware/authMiddleware');
+const { hashPassword, comparePassword, generateToken } = require('../utils/helpers');
 
-// Middleware to ensure admin
-router.use(protect, admin);
+// @route   POST /api/admin/login
+// @desc    Admin Login
+// @access  Public
+router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const result = await query('SELECT id, username, email, password, role FROM users WHERE email = $1', [email]);
+        const user = result.rows[0];
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid admin credentials' });
+        }
+
+        if (user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized, admin role required' });
+        }
+
+        const isMatch = await comparePassword(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid admin credentials' });
+        }
+
+        const token = generateToken(user.id, user.role, user.email);
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Admin Login Error:', error);
+        res.status(500).json({ message: 'Server error during admin login' });
+    }
+});
+
+// @route   GET /api/admin/test
+// @desc    Admin health check (unprotected)
+router.get('/test', (req, res) => {
+    res.json({ message: 'Admin API is accessible' });
+});
+
+// Middleware to protect subsequent admin routes
+router.use(verifyToken, admin);
 
 // @route   GET /api/admin
 // @desc    Admin service health check
@@ -199,6 +244,24 @@ router.put('/settings/legal/:slug', async (req, res) => {
         res.json({ message: 'Legal page updated' });
     } catch (error) {
         res.status(500).json({ message: 'Failed to update legal page' });
+    }
+});
+
+// @route   PUT /api/admin/settings/ai/:id
+router.put('/settings/ai/:id', async (req, res) => {
+    const { name, base_url, api_key, model_name, is_active } = req.body;
+    try {
+        if (is_active) {
+            // Deactivate others if this one is being activated
+            await query('UPDATE ai_providers SET is_active = FALSE');
+        }
+        await query(
+            'UPDATE ai_providers SET name=$1, base_url=$2, api_key=$3, model_name=$4, is_active=$5 WHERE id=$6',
+            [name, base_url, api_key, model_name, is_active, req.params.id]
+        );
+        res.json({ message: 'AI Provider updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update AI provider' });
     }
 });
 

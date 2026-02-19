@@ -132,14 +132,14 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
                             disabled={selectedOption === null}
                             className={`px-8 py-3 rounded-xl font-bold transition shadow-lg ${selectedOption === null ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:bg-indigo-700'}`}
                         >
-                            Check Answer
+                            <>Check Answer</>
                         </button>
                     ) : (
                         <button
                             onClick={handleNext}
                             className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 shadow-lg transition"
                         >
-                            {currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'}
+                            <>{currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'}</>
                         </button>
                     )}
                 </div>

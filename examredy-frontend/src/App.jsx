@@ -6,7 +6,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Practice from './pages/Practice';
 import Group from './pages/Group';
-import Admin from './admin/AdminDashboard';
+import AdminDashboard from './admin/AdminDashboard';
+import AdminLogin from './admin/AdminLogin';
 import Prime from './pages/Prime';
 // import MCQSession from './components/MCQSession'; // To be implemented
 
@@ -16,12 +17,15 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
     if (loading) return <div className="p-10 text-center">Loading...</div>;
 
-    if (!user) {
-        return <Navigate to="/login" replace />;
+    if (adminOnly) {
+        if (user?.role !== 'admin') {
+            return <Navigate to="/" replace />;
+        }
+        return children;
     }
 
-    if (adminOnly && user.role !== 'admin') {
-        return <Navigate to="/" replace />;
+    if (!user) {
+        return <Navigate to="/login" replace />;
     }
 
     return children;
@@ -55,9 +59,10 @@ function AppRoutes() {
                         </ProtectedRoute>
                     } />
 
-                    <Route path="/admin/*" element={
+                    <Route path="/admin" element={<AdminLogin />} />
+                    <Route path="/admin/dashboard" element={
                         <ProtectedRoute adminOnly={true}>
-                            <Admin />
+                            <AdminDashboard />
                         </ProtectedRoute>
                     } />
 

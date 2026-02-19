@@ -34,7 +34,7 @@ const Header = () => {
                             <span className="mr-1">👑</span> Prime
                         </Link>
                         {user?.role === 'admin' && (
-                            <Link to="/admin" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Admin</Link>
+                            <Link to="/admin/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Admin</Link>
                         )}
                     </nav>
 
@@ -61,7 +61,11 @@ const Header = () => {
                     {/* Mobile Menu Button */}
                     <div className="md:hidden flex items-center">
                         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-500 hover:text-primary transition-colors">
-                            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            {isMenuOpen ? (
+                                <><X className="w-6 h-6" /></>
+                            ) : (
+                                <><Menu className="w-6 h-6" /></>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -79,7 +83,7 @@ const Header = () => {
                             <div className="space-y-2">
                                 <div className="px-3 py-2 text-sm text-gray-400 font-bold uppercase tracking-widest">Account</div>
                                 <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-gray-50">Profile</Link>
-                                {user.role === 'admin' && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-indigo-600 hover:bg-indigo-50">Admin Dashboard</Link>}
+                                {user.role === 'admin' && <Link to="/admin/dashboard" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-medium text-indigo-600 hover:bg-indigo-50">Admin Dashboard</Link>}
                                 <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Logout</button>
                             </div>
                         ) : (

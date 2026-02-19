@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
-const { protect } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/authMiddleware');
 
 // @route   GET /api/referral
 // @desc    Referral service health check
@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
 // @route   GET /api/referral/stats
 // @desc    Get referral stats for the current user
 // @access  Private
-router.get('/stats', protect, async (req, res) => {
+router.get('/stats', verifyToken, async (req, res) => {
     try {
         const result = await query(
             `SELECT 
@@ -33,7 +33,7 @@ router.get('/stats', protect, async (req, res) => {
 // @route   GET /api/referral/list
 // @desc    Get list of referred users
 // @access  Private
-router.get('/list', protect, async (req, res) => {
+router.get('/list', verifyToken, async (req, res) => {
     try {
         const result = await query(
             `SELECT u.username, r.created_at, r.reward_given

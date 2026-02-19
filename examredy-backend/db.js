@@ -19,7 +19,15 @@ pool.on('error', (err) => {
 });
 
 // Helper for running queries
-const query = (text, params) => pool.query(text, params);
+// Helper for running queries
+const query = async (text, params) => {
+    try {
+        return await pool.query(text, params);
+    } catch (err) {
+        console.error('Database Query Error:', err.message);
+        throw err; // Re-throw to let the route handler deal with the specific response
+    }
+};
 
 // Connection verification
 const testConnection = async () => {

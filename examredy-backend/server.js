@@ -24,7 +24,7 @@ app.use(globalLimiter);
 
 // Strict CORS (Adjust origin for production)
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*', // Ideally strict URL in prod
+    origin: process.env.FRONTEND_URL || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -35,6 +35,11 @@ app.use(morgan('combined'));
 // 1. Root Route
 app.get('/', (req, res) => {
     res.status(200).send('Backend Running - ExamRedy');
+});
+
+// Root API Route
+app.get('/api', (req, res) => {
+    res.json({ message: 'ExamRedy API is running' });
 });
 
 // Health Check
@@ -52,12 +57,11 @@ app.get('/api/health', async (req, res) => {
 
 // App Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/structure', require('./routes/structure')); // Standardized xyz pattern
-app.use('/api', require('./routes/structure')); // Compatibility for /api/categories etc.
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/structure', require('./routes/structure'));
 app.use('/api/mcq', require('./routes/mcq'));
 app.use('/api/subscription', require('./routes/subscription'));
 app.use('/api/group', require('./routes/group'));
-app.use('/api/admin', require('./routes/admin'));
 app.use('/api/referral', require('./routes/referral'));
 app.use('/api/ai-fetch', require('./routes/aiFetch'));
 app.use('/api/ads', require('./routes/ads'));

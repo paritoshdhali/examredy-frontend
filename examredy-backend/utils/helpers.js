@@ -13,7 +13,7 @@ const comparePassword = async (password, hashedPassword) => {
 const generateToken = (id, role, email) => {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-        console.warn('⚠️ Critical: JWT_SECRET not found in environment, using insecure fallback.');
+        console.error('❌ CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
     }
     return jwt.sign({ id, role, email }, secret || 'dev-secret-123', {
         expiresIn: '7d',

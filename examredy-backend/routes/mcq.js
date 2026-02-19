@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { pool, query } = require('../db');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { verifyToken, admin } = require('../middleware/authMiddleware');
 const { generateMCQInitial } = require('../services/aiService');
 const { subscriptionCheck } = require('../middleware/subscriptionMiddleware');
 
@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
 // @route   POST /api/mcq/generate
 // @desc    Generate MCQs using AI (Admin only)
 // @access  Admin
-router.post('/generate', protect, admin, async (req, res) => {
+router.post('/generate', verifyToken, admin, async (req, res) => {
     const { topic, category_id, count } = req.body;
 
     if (!topic || !category_id) {
@@ -61,7 +61,7 @@ router.post('/generate', protect, admin, async (req, res) => {
 // @route   GET /api/mcq/practice
 // @desc    Get MCQs for practice
 // @access  Private (with limits)
-router.get('/practice', protect, subscriptionCheck, async (req, res) => {
+router.get('/practice', verifyToken, subscriptionCheck, async (req, res) => {
     const { category_id, limit = 10 } = req.query;
     const client = await pool.connect(); // Use direct client for transaction
 
@@ -155,7 +155,7 @@ router.get('/practice', protect, subscriptionCheck, async (req, res) => {
 // @route   POST /api/mcq/submit
 // @desc    Submit answer and get result
 // @access  Private
-router.post('/submit', protect, async (req, res) => {
+router.post('/submit', verifyToken, async (req, res) => {
     const { mcq_id, selected_option } = req.body;
 
     try {

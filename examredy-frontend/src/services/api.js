@@ -9,6 +9,21 @@ const api = axios.create({
     },
 });
 
+// Add a request interceptor
+api.interceptors.request.use(
+    (config) => {
+        const adminToken = localStorage.getItem('adminToken');
+        const userToken = localStorage.getItem('token');
+        const token = adminToken || userToken; // Prioritize adminToken for admin routes if both exist, or handle as needed
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 // Add a response interceptor
 api.interceptors.response.use(

@@ -3,7 +3,7 @@ const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { pool, query } = require('../db');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { verifyToken, admin } = require('../middleware/authMiddleware');
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
@@ -33,7 +33,7 @@ router.get('/plans', async (req, res) => {
 // @route   POST /api/subscription/plans
 // @desc    Create a new plan
 // @access  Admin
-router.post('/plans', protect, admin, async (req, res) => {
+router.post('/plans', verifyToken, admin, async (req, res) => {
     const { name, duration_hours, price } = req.body;
     try {
         const result = await query(
@@ -50,7 +50,7 @@ router.post('/plans', protect, admin, async (req, res) => {
 // @route   POST /api/subscription/create-order
 // @desc    Create Razorpay order
 // @access  Private
-router.post('/create-order', protect, async (req, res) => {
+router.post('/create-order', verifyToken, async (req, res) => {
     const { planId } = req.body;
     try {
         const planResult = await query('SELECT * FROM subscription_plans WHERE id = $1', [planId]);
@@ -76,7 +76,7 @@ router.post('/create-order', protect, async (req, res) => {
 // @route   POST /api/subscription/verify-payment
 // @desc    Verify Razorpay payment and activate subscription
 // @access  Private
-router.post('/verify-payment', protect, async (req, res) => {
+router.post('/verify-payment', verifyToken, async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId } = req.body;
 
     // Verify signature
