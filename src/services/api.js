@@ -12,12 +12,8 @@ const api = axios.create({
 // Add a request interceptor
 api.interceptors.request.use(
     (config) => {
-        const adminToken = localStorage.getItem('adminToken');
-        const userToken = localStorage.getItem('token');
-        const token = adminToken || userToken;
-
+        const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
         if (token) {
-            // Standardize header setting across axios versions
             config.headers = config.headers || {};
             config.headers['Authorization'] = `Bearer ${token}`;
         }
