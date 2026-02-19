@@ -13,7 +13,7 @@ import {
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
