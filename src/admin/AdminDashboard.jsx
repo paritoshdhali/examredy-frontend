@@ -7,261 +7,447 @@ import {
     Settings, ShieldAlert, Cpu, Share2,
     Eye, Edit, Trash2, Check, X, Search,
     Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
-    LogOut, Globe, BookOpen, Book
+    LogOut, Globe, BookOpen, Book, GraduationCap, School, MapPin,
+    Briefcase, FileText, CreditCard, PieChart, Activity, AlertCircle, RefreshCw
 } from 'lucide-react';
 
-const Admin = () => {
+const AdminDashboard = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [diagInfo, setDiagInfo] = useState(null);
+
+    // --- STATES ---
+    const [stats, setStats] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [mcqs, setMcqs] = useState([]);
+    const [settings, setSettings] = useState({ system: {}, legal: [], payment: [] });
+    const [plans, setPlans] = useState([]);
+    const [referrals, setReferrals] = useState([]);
+    const [aiProviders, setAiProviders] = useState([]);
+
+    // Hierarchy States
+    const [states, setStates] = useState([]);
+    const [languages, setLanguages] = useState([]);
+    const [boards, setBoards] = useState([]);
+    const [classes, setClasses] = useState([]);
+    const [streams, setStreams] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [chapters, setChapters] = useState([]);
+    const [universities, setUniversities] = useState([]);
+    const [papers, setPapers] = useState([]);
+
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // --- FETCHERS ---
+    useEffect(() => {
+        fetchDashboardData();
+    }, [activeTab]);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            switch (activeTab) {
+                case 'overview':
+                    const sRes = await api.get('/admin/stats');
+                    setStats(sRes.data);
+                    break;
+                case 'users':
+                    const uRes = await api.get(`/admin/users?search=${searchQuery}`);
+                    setUsers(uRes.data);
+                    break;
+                case 'categories':
+                    const catRes = await api.get('/admin/categories');
+                    setCategories(catRes.data);
+                    break;
+                case 'states':
+                    const stRes = await api.get('/admin/states');
+                    setStates(stRes.data);
+                    break;
+                case 'languages':
+                    const lnRes = await api.get('/admin/languages');
+                    setLanguages(lnRes.data);
+                    break;
+                case 'school-mgmt':
+                    const [br, cl, sm] = await Promise.all([
+                        api.get('/admin/boards'),
+                        api.get('/admin/classes'),
+                        api.get('/admin/streams')
+                    ]);
+                    setBoards(br.data);
+                    setClasses(cl.data);
+                    setStreams(sm.data);
+                    break;
+                case 'univ-mgmt':
+                    const [un, dg, se] = await Promise.all([
+                        api.get('/admin/universities'),
+                        api.get('/admin/degree-types'),
+                        api.get('/admin/semesters')
+                    ]);
+                    setUniversities(un.data);
+                    // Assuming setDegreeTypes and setSemesters exist or will be added
+                    // setDegreeTypes(dg.data); setSemesters(se.data);
+                    break;
+                case 'comp-mgmt':
+                    const paRes = await api.get('/admin/papers-stages');
+                    setPapers(paRes.data);
+                    break;
+                case 'ai-mgmt':
+                    const [aiP, aiL] = await Promise.all([
+                        api.get('/admin/ai-providers'),
+                        api.get('/admin/ai-fetch/logs')
+                    ]);
+                    setAiProviders(aiP.data);
+                    // setAiLogs(aiL.data);
+                    break;
+                case 'mcq-mgmt':
+                    const mcqRes = await api.get('/admin/mcqs?status=pending');
+                    setMcqs(mcqRes.data);
+                    break;
+                case 'sub-mgmt':
+                    const plRes = await api.get('/admin/plans');
+                    setPlans(plRes.data);
+                    break;
+                case 'ref-mgmt':
+                    const refRes = await api.get('/admin/referrals');
+                    setReferrals(refRes.data);
+                    break;
+                case 'pay-mgmt':
+                    const payRes = await api.get('/admin/payments/transactions');
+                    // setTransactions(payRes.data);
+                    break;
+                case 'settings':
+                case 'ads-mgmt':
+                case 'seo-mgmt':
+                case 'legal-mgmt':
+                case 'sys-settings':
+                    const setRes = await api.get('/admin/settings');
+                    setSettings(setRes.data);
+                    break;
+                default: break;
+            }
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    // --- HANDLERS ---
+    const handleLogout = () => { logout(); navigate('/admin'); };
+
+    const handleAIFetch = async (type, payload) => {
+        try {
+            setLoading(true);
+            const res = await api.post(`/ai-fetch/${type}`, payload);
+            alert(res.data.message || 'AI Fetch triggered successfully!');
+            fetchDashboardData();
+        } catch (err) {
+            alert(`AI Error: ${err.message}`);
+        } finally { setLoading(false); }
+    };
+
+    const handleUpdateUser = async (id, data) => {
+        await api.put(`/admin/users/${id}/status`, data);
+        fetchDashboardData();
+    };
+
+    const handleUpdateSettings = async (type, data) => {
+        try {
+            setLoading(true);
+            await api.put(`/admin/settings/${type}`, data);
+            alert('Settings updated successfully');
+            fetchDashboardData();
+        } catch (err) {
+            alert(`Settings Update Error: ${err.message}`);
+        } finally { setLoading(false); }
+    };
 
     const checkDiagnostic = async () => {
         try {
             const res = await api.get('/admin/debug-token');
             setDiagInfo(res.data);
-        } catch (err) {
-            setDiagInfo({ error: err.message, status: err.response?.status });
-        }
+        } catch (err) { setDiagInfo({ error: err.message }); }
     };
 
-    const handleLogout = () => {
-        logout();
-        navigate('/admin');
-    };
-
-    // Module States
-    const [users, setUsers] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [mcqs, setMcqs] = useState([]);
-    const [settings, setSettings] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Structural States
-    const [plans, setPlans] = useState([]);
-    const [languages, setLanguages] = useState([]);
-    const [subjects, setSubjects] = useState([]);
-    const [chapters, setChapters] = useState([]);
-    const [streams, setStreams] = useState([]);
-
-    useEffect(() => {
-        fetchStats();
-    }, []);
-
-    const fetchStats = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const res = await api.get('/admin/stats');
-            setStats(res.data);
-            setLoading(false);
-        } catch (err) {
-            console.error('[STATS-ERROR]', err.response?.status, err.response?.data || err.message);
-            const msg = err.response?.data?.message || err.message || 'Failed to load dashboard statistics';
-            setError(`Stats Error: ${msg} (${err.response?.status || 'Network'})`);
-            setLoading(false);
-        }
-    };
-
-    const fetchUsers = async () => {
-        try {
-            setError(null);
-            const res = await api.get(`/admin/users?search=${searchQuery}`);
-            setUsers(res.data.users);
-        } catch (err) {
-            console.error('Error fetching users:', err);
-            setError(`Users Error: ${err.response?.data?.message || err.message} (${err.response?.status || 'Network'})`);
-        }
-    };
-
-    const fetchCategories = async () => {
-        try {
-            setError(null);
-            const res = await api.get('/admin/categories');
-            setCategories(res.data);
-        } catch (err) {
-            setError(`Categories Error: ${err.response?.data?.message || err.message}`);
-        }
-    };
-
-    const fetchMcqs = async () => {
-        try {
-            setError(null);
-            const res = await api.get('/admin/mcqs?status=pending');
-            setMcqs(res.data);
-        } catch (err) {
-            setError(`MCQ Error: ${err.response?.data?.message || err.message}`);
-        }
-    };
-
-    const fetchSettings = async () => {
-        try {
-            setError(null);
-            const res = await api.get('/admin/settings');
-            setSettings(res.data);
-        } catch (err) {
-            setError(`Settings Error: ${err.response?.data?.message || err.message}`);
-        }
-    };
-
-    const fetchStructure = async () => {
-        try {
-            const [sRes, bRes, cRes, lRes, subRes, chRes, stRes] = await Promise.all([
-                api.get('/admin/states'),
-                api.get('/admin/boards'),
-                api.get('/admin/classes'),
-                api.get('/admin/languages'),
-                api.get('/admin/subjects'),
-                api.get('/admin/chapters'),
-                api.get('/admin/streams')
-            ]);
-            setStates(sRes.data);
-            setBoards(bRes.data);
-            setClasses(cRes.data);
-            setLanguages(lRes.data);
-            setSubjects(subRes.data);
-            setChapters(chRes.data);
-            setStreams(stRes.data);
-        } catch (err) {
-            console.error('Error fetching structure:', err);
-        }
-    };
-
-    const fetchPlans = async () => {
-        const res = await api.get('/admin/plans');
-        setPlans(res.data);
-    };
-
-    useEffect(() => {
-        setError(null); // Clear previous errors when changing tabs
-        if (activeTab === 'users') fetchUsers();
-        if (activeTab === 'categories') fetchCategories();
-        if (activeTab === 'mcqs') fetchMcqs();
-        if (activeTab === 'settings' || activeTab === 'ai') fetchSettings();
-        if (activeTab === 'structure') fetchStructure();
-        if (activeTab === 'plans') fetchPlans();
-    }, [activeTab, searchQuery]);
-
-    const handleUserStatus = async (id, status) => {
-        await api.put(`/admin/users/${id}/status`, { is_active: !status });
-        fetchUsers();
-    };
-
-    const handleUserSub = async (id, action) => {
-        await api.put(`/admin/users/${id}/subscription`, { action });
-        fetchUsers();
-    };
-
-    const handleMcqApprove = async (id) => {
-        await api.put(`/admin/mcqs/${id}/approve`);
-        fetchMcqs();
-    };
-
-    const handleMcqDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this MCQ?')) {
-            await api.delete(`/admin/mcqs/${id}`);
-            fetchMcqs();
-        }
-    };
-
-    const handleUpdateAI = async (id, data) => {
-        try {
-            await api.put(`/admin/settings/ai/${id}`, data);
-            fetchSettings();
-            alert('AI Provider updated successfully');
-        } catch (err) {
-            alert('Failed to update AI provider');
-        }
-    };
-
-    const handleUpdateSettings = async (data) => {
-        try {
-            await api.put('/admin/settings/system', data);
-            fetchSettings();
-            alert('Settings saved');
-        } catch (err) {
-            alert('Failed to save settings');
-        }
-    };
-
-    const handleAIFetch = async (type, payload) => {
-        try {
-            setLoading(true);
-            const endpoint = `/ai-fetch/${type}`;
-            await api.post(endpoint, payload);
-            fetchStructure();
-            setLoading(false);
-            alert(`AI Fetch for ${type} complete!`);
-        } catch (err) {
-            setLoading(false);
-            alert(`AI Fetch failed: ${err.response?.data?.message || err.message}`);
-        }
-    };
-
-    // --- RENDER COMPONENTS ---
-
-    const SidebarItem = ({ id, label, icon: Icon }) => (
+    // --- RENDER HELPERS ---
+    const SidebarItem = ({ id, label, icon: Icon, group }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-colors ${activeTab === id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100 hover:text-indigo-600'
+            className={`flex items-center space-x-3 w-full px-4 py-2.5 rounded-lg transition-all ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}
         >
-            <Icon size={20} />
-            <span className="font-medium">{label}</span>
+            <Icon size={18} />
+            <span className="text-sm font-medium">{label}</span>
         </button>
     );
 
+    const SidebarGroup = ({ label, children }) => (
+        <div className="mb-6">
+            <p className="px-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">{label}</p>
+            <div className="space-y-1">{children}</div>
+        </div>
+    );
+
     const StatCard = ({ label, value, icon: Icon, color }) => (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+        <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl flex items-center justify-between">
             <div>
-                <p className="text-gray-500 text-sm font-medium">{label}</p>
-                <h3 className="text-2xl font-bold mt-1">{value}</h3>
+                <p className="text-gray-500 text-xs font-semibold uppercase">{label}</p>
+                <h3 className="text-2xl font-bold mt-1 text-white">{value}</h3>
             </div>
-            <div className={`p-3 rounded-lg ${color} bg-opacity-10 ${color.replace('bg-', 'text-')}`}>
-                <Icon size={24} />
+            <div className={`p-3 rounded-lg bg-opacity-10 ${color}`}>
+                <Icon size={22} className={color.replace('bg-', 'text-')} />
             </div>
         </div>
     );
 
+    // --- MODULE RENDERS ---
+
     const renderOverview = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-gray-800">Analytics Overview</h2>
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Dashboard Analytics</h2>
+                <button onClick={fetchDashboardData} className="p-2 hover:bg-gray-800 rounded-full text-gray-400 transition-colors">
+                    <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+                </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard label="Active Users Now" value={stats?.activeUsers || 0} icon={UserCheck} color="bg-green-500" />
-                <StatCard label="Total Users Today" value={stats?.totalUsersToday || 0} icon={Users} color="bg-blue-500" />
-                <StatCard label="MCQs Generated" value={stats?.totalMcqsGenerated || 0} icon={Cpu} color="bg-purple-500" />
-                <StatCard label="Today Revenue" value={`₹${stats?.revenueToday || 0}`} icon={DollarSign} color="bg-orange-500" />
+                <StatCard label="Active Users (Day)" value={stats?.activeUsers || 0} icon={Activity} color="bg-green-500 text-green-500" />
+                <StatCard label="Revenue Today" value={`₹${stats?.revenueToday || 0}`} icon={DollarSign} color="bg-yellow-500 text-yellow-500" />
+                <StatCard label="MCQs Generated" value={stats?.totalMCQs || 0} icon={Cpu} color="bg-indigo-500 text-indigo-500" />
+                <StatCard label="Daily Growth" value={stats?.totalUsersToday || 0} icon={TrendingUp} color="bg-blue-500 text-blue-500" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h4 className="font-bold flex items-center gap-2 mb-4"><TrendingUp size={18} className="text-indigo-600" /> Revenue Growth</h4>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Monthly Revenue</span>
-                            <span className="font-bold text-indigo-600">₹{stats?.revenueMonthly || 0}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <h4 className="font-bold text-white flex items-center gap-2"><PieChart size={18} className="text-indigo-500" /> Revenue Breakdown</h4>
+                    </div>
+                    <div className="space-y-5">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400 text-sm">Monthly Total</span>
+                            <span className="text-white font-bold">₹{stats?.revenueMonthly || 0}</span>
                         </div>
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Yearly Revenue</span>
-                            <span className="font-bold text-indigo-600">₹{stats?.revenueYearly || 0}</span>
+                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-indigo-500 h-full" style={{ width: '65%' }}></div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400 text-sm">Yearly Total</span>
+                            <span className="text-white font-bold">₹{stats?.revenueYearly || 0}</span>
+                        </div>
+                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-green-500 h-full" style={{ width: '40%' }}></div>
                         </div>
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h4 className="font-bold flex items-center gap-2 mb-4"><Users size={18} className="text-indigo-600" /> User Traffic</h4>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Total Users</span>
-                            <span className="font-bold">{stats?.totalUsers || 0}</span>
+
+                <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex flex-col justify-between">
+                    <h4 className="font-bold text-white mb-4 flex items-center gap-2 group cursor-pointer" onClick={checkDiagnostic}>
+                        <ShieldAlert size={18} className="text-red-500" /> System Diagnostics
+                    </h4>
+                    {diagInfo ? (
+                        <div className="bg-black/50 p-4 rounded-xl border border-gray-800 font-mono text-[11px] space-y-2 text-green-400">
+                            <p>TOKEN: {diagInfo.exists ? 'PRESENT' : 'MISSING'}</p>
+                            <p>FORMAT: {diagInfo.format_valid ? 'VALID' : 'INVALID'}</p>
+                            <p>STAMP: {diagInfo.received_at}</p>
+                            <button onClick={() => setDiagInfo(null)} className="text-gray-500 hover:text-white underline">Clear</button>
                         </div>
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Yesterday Traffic</span>
-                            <span className="font-bold">{stats?.totalUsersYesterday || 0}</span>
+                    ) : (
+                        <p className="text-gray-500 text-sm">Click header to run health check...</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStates = () => (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Indian States & UT</h2>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">Add State</button>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-3">State Name</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {states.map(s => (
+                            <tr key={s.id} className="hover:bg-gray-800/50">
+                                <td className="px-6 py-4 text-sm text-gray-300 font-medium">{s.name}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                        {s.is_active ? 'ENABLED' : 'DISABLED'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
+                                    <button className="text-gray-500 hover:text-red-500 p-1.5"><Trash2 size={14} /></button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    const renderLanguages = () => (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Official Languages</h2>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">Add Language</button>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-3">Language</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {languages.map(l => (
+                            <tr key={l.id} className="hover:bg-gray-800/50">
+                                <td className="px-6 py-4 text-sm text-gray-300 font-medium">{l.name}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${l.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                        {l.is_active ? 'ENABLED' : 'DISABLED'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    const renderSchoolMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">School Category Management</h2>
+                <div className="flex gap-3">
+                    <button onClick={() => handleAIFetch('boards', { state_id: 1, state_name: 'CBSE' })} className="px-4 py-2 bg-indigo-600/10 text-indigo-400 border border-indigo-600/20 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all">
+                        <Cpu size={14} /> AI Fetch Boards (CBSE)
+                    </button>
+                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">Manual Add Board</button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Boards List */}
+                <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
+                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><School size={16} className="text-indigo-500" /> Boards</h3>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
+                                <tr>
+                                    <th className="px-6 py-3">Board Name</th>
+                                    <th className="px-6 py-3">State</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800">
+                                {boards.map(b => (
+                                    <tr key={b.id} className="hover:bg-gray-800/30 transition-colors">
+                                        <td className="px-6 py-4 text-sm text-gray-300 font-bold">{b.name}</td>
+                                        <td className="px-6 py-4 text-xs text-gray-500">{b.state_name}</td>
+                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <button className="text-indigo-400 hover:text-white text-[10px] uppercase font-bold" onClick={() => handleAIFetch('subjects', { board_id: b.id, context_name: b.name })}>AI Subjects</button>
+                                            <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Classes & Streams Stats */}
+                <div className="space-y-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                        <h4 className="text-white font-bold text-sm mb-4 border-b border-gray-800 pb-2">Classes (1-12)</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            {classes.map(c => (
+                                <div key={c.id} className="bg-gray-800/50 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50">
+                                    {c.name}
+                                </div>
+                            ))}
                         </div>
                     </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                        <h4 className="text-white font-bold text-sm mb-4 border-b border-gray-800 pb-2">Streams (11-12)</h4>
+                        <div className="space-y-2">
+                            {streams.map(s => (
+                                <div key={s.id} className="bg-indigo-500/10 p-2 rounded flex justify-between items-center text-xs text-indigo-400 border border-indigo-500/10">
+                                    <span>{s.name}</span>
+                                    <CheckCircle size={12} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderUnivMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">University Category Management</h2>
+                <button onClick={() => handleAIFetch('universities', { state_id: 1, state_name: 'India' })} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-900/20">
+                    <Cpu size={16} /> AI Fetch Universities
+                </button>
+            </div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                    <h3 className="text-white font-bold text-sm flex items-center gap-2"><GraduationCap size={16} className="text-purple-500" /> Universities List</h3>
+                    <span className="text-[10px] text-gray-500">Showing {universities.length} institutions</span>
+                </div>
+                <div className="max-h-[600px] overflow-y-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
+                            <tr>
+                                <th className="px-6 py-4">University Name</th>
+                                <th className="px-6 py-4">State</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {universities.map(u => (
+                                <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-gray-300 font-bold">{u.name}</td>
+                                    <td className="px-6 py-4 text-xs text-gray-500">{u.state_name}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                            {u.is_active ? 'PUBLISHED' : 'PENDING'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right flex justify-end gap-3">
+                                        <button onClick={() => handleAIFetch('subjects', { university_id: u.id, context_name: u.name })} className="text-purple-400 hover:text-white text-[10px] uppercase font-bold">AI Subjects</button>
+                                        <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -270,721 +456,689 @@ const Admin = () => {
     const renderUsers = () => (
         <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">User Management</h2>
+                <h2 className="text-2xl font-bold text-white">User Management</h2>
                 <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
                     <input
                         type="text"
-                        placeholder="Search users..."
-                        className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none w-64"
+                        placeholder="Search email..."
+                        className="bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:border-indigo-500 outline-none w-72"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 text-gray-500 text-sm uppercase">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-widest">
                         <tr>
-                            <th className="px-6 py-4 font-semibold">Username</th>
-                            <th className="px-6 py-4 font-semibold">Email</th>
-                            <th className="px-6 py-4 font-semibold">Subscription</th>
-                            <th className="px-6 py-4 font-semibold">Status</th>
-                            <th className="px-6 py-4 font-semibold">Actions</th>
+                            <th className="px-6 py-4">User</th>
+                            <th className="px-6 py-4">Subscription</th>
+                            <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4">Credits Today</th>
+                            <th className="px-6 py-4">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {users.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-gray-800">{user.username}</td>
-                                <td className="px-6 py-4 text-gray-600">{user.email}</td>
+                    <tbody className="divide-y divide-gray-800">
+                        {users.map(u => (
+                            <tr key={u.id} className="hover:bg-gray-800/30 transition-colors text-gray-300">
                                 <td className="px-6 py-4">
-                                    {user.is_premium ? (
-                                        <span className="bg-gold bg-opacity-20 text-indigo-700 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-100">PREMIUM</span>
+                                    <div className="font-bold text-white">{u.username}</div>
+                                    <div className="text-[10px] text-gray-500">{u.email}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    {u.is_premium ? (
+                                        <span className="flex items-center gap-1 text-green-500 text-xs font-bold"><CheckCircle size={14} /> Active</span>
                                     ) : (
-                                        <span className="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full text-xs font-medium">FREE</span>
+                                        <span className="text-gray-600 text-xs font-bold">Free Plan</span>
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {user.is_active ? 'ACTIVE' : 'DISABLED'}
-                                    </span>
+                                    <button onClick={() => handleUpdateUser(u.id, { is_active: !u.is_active })} className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                        {u.is_active ? 'ENABLED' : 'DISABLED'}
+                                    </button>
                                 </td>
-                                <td className="px-6 py-4 flex items-center space-x-3 text-gray-400">
-                                    <button onClick={() => handleUserStatus(user.id, user.is_active)} title={user.is_active ? 'Disable' : 'Enable'}>
-                                        {user.is_active ? (
-                                            <><X className="text-red-500 hover:scale-120 transition-transform" /></>
-                                        ) : (
-                                            <><Check className="text-green-500 hover:scale-120 transition-transform" /></>
-                                        )}
-                                    </button>
-                                    <button onClick={() => handleUserSub(user.id, 'extend')} className="hover:text-indigo-600" title="Extend Subscription">
-                                        <Plus size={20} />
-                                    </button>
+                                <td className="px-6 py-4 text-xs font-mono">0/10</td>
+                                <td className="px-6 py-4">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => api.post(`/admin/users/${u.id}/reset-usage`).then(() => alert('Usage reset'))} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white" title="Reset Usage"><RefreshCw size={14} /></button>
+                                        <button className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white" title="Extend Subscription"><DollarSign size={14} /></button>
+                                    </div>
                                 </td>
                             </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-                    {/* Diagnostic Footer */}
-                    <div className="mt-auto pt-10 space-y-4">
-                        <button
-                            onClick={checkDiagnostic}
-                            className="flex items-center space-x-2 text-[10px] font-black text-gray-400 hover:text-indigo-600 uppercase tracking-widest transition-colors"
-                        >
-                            <ShieldAlert size={12} />
-                            <span>Run Diagnostic Check</span>
-                        </button>
-                        {diagInfo && (
-                            <div className="p-3 bg-gray-900 rounded-xl text-[10px] font-mono text-green-400 space-y-1">
-                                <p>Exists: {String(diagInfo.exists)}</p>
-                                <p>Format: {String(diagInfo.format_valid)}</p>
-                                <p>Prefix: {diagInfo.header_prefix}</p>
-                                {diagInfo.error && <p className="text-red-400">Err: {diagInfo.error}</p>}
-                                <button onClick={() => setDiagInfo(null)} className="text-gray-500 hover:text-white mt-1 underline">Clear</button>
-                            </div>
-                        )}
-                        <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
-                            <LogOut size={20} />
-                            <span className="font-medium">Logout</span>
-                        </button>
-                    </div>
-            </div>
-            );
+        </div>
+    );
 
-    const renderMcqs = () => (
-            <div className="space-y-6 animate-fadeIn">
-                <h2 className="text-2xl font-bold">MCQ Moderation</h2>
-                <div className="grid gap-4">
-                    {mcqs.length === 0 && <p className="text-gray-500 italic">No pending MCQs to approve.</p>}
-                    {mcqs.map(m => (
-                        <div key={m.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-2">
-                                    <h4 className="font-bold text-lg text-gray-800">{m.question}</h4>
-                                    <div className="grid grid-cols-2 gap-2 mt-4">
-                                        {Object.entries(m.options).map(([key, opt], idx) => (
-                                            <div key={idx} className={`p-2 rounded text-sm ${idx === m.correct_option ? 'bg-green-100 border border-green-200 text-green-700' : 'bg-gray-50 text-gray-600'}`}>
-                                                {opt}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-4 leading-relaxed"><span className="font-bold">Explanation:</span> {m.explanation}</p>
-                                </div>
-                                <div className="flex flex-col space-y-2 ml-4">
-                                    <button onClick={() => handleMcqApprove(m.id)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors" title="Approve">
-                                        <Check size={20} />
-                                    </button>
-                                    <button onClick={() => handleMcqDelete(m.id)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-colors" title="Delete">
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+    const renderRefMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">Referral System Activity</h2>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
+                    <h3 className="text-white font-bold text-sm flex items-center gap-2"><Share2 size={16} className="text-yellow-500" /> Referrals List</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
+                            <tr>
+                                <th className="px-6 py-4">Referrer</th>
+                                <th className="px-6 py-4">Target User</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Reward</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {referrals.map(r => (
+                                <tr key={r.id} className="hover:bg-gray-800/30 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-gray-300">{r.referrer_email}</td>
+                                    <td className="px-6 py-4 text-xs text-gray-500">{r.referred_email}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.status === 'completed' ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                            {r.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs">
+                                        {r.reward_given ? <span className="text-green-500 flex items-center gap-1 font-bold"><Check size={12} /> Claimed</span> : <span className="text-gray-600">Pending</span>}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button onClick={() => api.put(`/admin/referrals/${r.id}/reward`, { status: 'completed', reward_given: true }).then(() => fetchDashboardData())} className="text-indigo-500 hover:text-white text-[10px] uppercase font-bold">Manual Approve</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            );
+        </div>
+    );
 
-            if (loading && activeTab === 'overview') return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-            </div>
-            );
-
-            return (
-            <div className="min-h-screen bg-[#f8fafc] flex font-outfit">
-                {/* SIDEBAR */}
-                <aside className="w-72 bg-white border-r border-gray-100 h-screen sticky top-0 flex flex-col p-6 overflow-y-auto">
-                    <div className="flex items-center space-x-2 text-indigo-600 mb-10 px-4">
-                        <ShieldAlert size={32} />
-                        <h1 className="text-xl font-black uppercase tracking-tighter">ExamRedy <span className="text-gray-400 text-xs block -mt-1 font-bold">Admin Panel</span></h1>
+    const renderFreeLimit = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">Free Usage Limits Control</h2>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 max-w-2xl">
+                <div className="space-y-10">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="text-white font-black text-lg">Daily MCQ Limit</h4>
+                            <p className="text-gray-500 text-sm">How many free practice sessions per user every 24 hours.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="number"
+                                className="w-20 bg-black/50 border border-gray-800 p-3 rounded-xl text-center text-indigo-500 font-bold outline-none focus:border-indigo-500"
+                                defaultValue={settings.system['FREE_DAILY_LIMIT'] || 2}
+                                onBlur={(e) => handleUpdateSettings('free-limit', { limit: e.target.value, logic: settings.system['FREE_LIMIT_RESET_LOGIC'] })}
+                            />
+                            <span className="text-gray-500 font-bold uppercase text-xs">MCQs</span>
+                        </div>
                     </div>
 
-                    <nav className="flex-1 space-y-2">
-                        <SidebarItem id="overview" label="Dashboard" icon={LayoutDashboard} />
-                        <SidebarItem id="users" label="User Management" icon={Users} />
-                        <SidebarItem id="plans" label="Subscription Plans" icon={DollarSign} />
-                        <SidebarItem id="categories" label="Categories" icon={Layers} />
-                        <SidebarItem id="mcqs" label="Approve MCQs" icon={CheckSquare} />
-                        <SidebarItem id="structure" label="Education Setup" icon={Share2} />
-                        <SidebarItem id="ai" label="AI Providers" icon={Cpu} />
-                        <SidebarItem id="settings" label="Site Settings" icon={Settings} />
-                    </nav>
-
-                    <div className="mt-auto border-t pt-6 px-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3 text-gray-600">
-                                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">A</div>
-                                <div>
-                                    <p className="text-sm font-bold">System Admin</p>
-                                    <p className="text-xs text-gray-400">admin@examredy.in</p>
-                                </div>
-                            </div>
+                    <div className="pt-10 border-t border-gray-800">
+                        <h4 className="text-white font-black text-lg mb-4">Reset Logic Persistence</h4>
+                        <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={handleLogout}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                title="Sign Out"
+                                onClick={() => handleUpdateSettings('free-limit', { limit: settings.system['FREE_DAILY_LIMIT'], logic: 'rolling' })}
+                                className={`p-4 rounded-xl border transition-all text-left ${settings.system['FREE_LIMIT_RESET_LOGIC'] === 'rolling' ? 'bg-indigo-600/10 border-indigo-600 shadow-lg shadow-indigo-900/10' : 'bg-gray-800/20 border-gray-800 grayscale opacity-50'}`}
                             >
-                                <LogOut size={20} />
+                                <p className="text-white font-bold text-sm">Rolling 24h Window</p>
+                                <p className="text-[10px] text-gray-500 mt-1">Reset happens exactly 24h after the first use.</p>
+                            </button>
+                            <button
+                                onClick={() => handleUpdateSettings('free-limit', { limit: settings.system['FREE_DAILY_LIMIT'], logic: 'midnight' })}
+                                className={`p-4 rounded-xl border transition-all text-left ${settings.system['FREE_LIMIT_RESET_LOGIC'] === 'midnight' ? 'bg-indigo-600/10 border-indigo-600 shadow-lg shadow-indigo-900/10' : 'bg-gray-800/20 border-gray-800 grayscale opacity-50'}`}
+                            >
+                                <p className="text-white font-bold text-sm">Fixed Midnight Reset</p>
+                                <p className="text-[10px] text-gray-500 mt-1">All usage counters reset at 00:00 server time.</p>
                             </button>
                         </div>
                     </div>
-                </aside>
-
-                {/* MAIN CONTENT */}
-                <main className="flex-1 p-10 overflow-x-hidden">
-                    <header className="flex justify-between items-center mb-10">
-                        <div className="flex items-center text-sm text-gray-400 space-x-2">
-                            <LayoutDashboard size={14} />
-                            <span>/ Admin / {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2">
-                                <Clock size={14} /> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </div>
-                        </div>
-                    </header>
-
-                    {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-center gap-2 font-medium border border-red-100 animate-slideIn"><ShieldAlert size={18} /> {error}</div>}
-
-                    {activeTab === 'overview' && renderOverview()}
-                    {activeTab === 'users' && renderUsers()}
-                    {activeTab === 'mcqs' && renderMcqs()}
-
-                    {activeTab === 'categories' && (
-                        <div className="space-y-6 animate-fadeIn">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Category Management</h2>
-                                <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
-                                    <Plus size={18} /> Add Category
-                                </button>
-                            </div>
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-gray-50 text-gray-500 text-sm uppercase">
-                                        <tr>
-                                            <th className="px-6 py-4 font-semibold text-xs text-indigo-900">Name</th>
-                                            <th className="px-6 py-4 font-semibold text-xs">Description</th>
-                                            <th className="px-6 py-4 font-semibold text-xs">Order</th>
-                                            <th className="px-6 py-4 font-semibold text-xs">Status</th>
-                                            <th className="px-6 py-4 font-semibold text-xs">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {categories.map(cat => (
-                                            <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 font-bold">{cat.name}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{cat.description || 'No description'}</td>
-                                                <td className="px-6 py-4 font-mono">{cat.sort_order}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {cat.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 flex items-center space-x-2 text-gray-400">
-                                                    <button className="hover:text-indigo-600 transition-colors"><Edit size={18} /></button>
-                                                    <button className="hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'structure' && (
-                        <div className="space-y-6 animate-fadeIn pb-20">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Education Structure</h2>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleAIFetch('boards', { state_id: states[0]?.id, state_name: states[0]?.name })}
-                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
-                                    >
-                                        <Cpu size={16} /> AI Fetch Boards
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {/* States & UT */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">States ({states.length})</h3>
-                                    <div className="flex-1 overflow-y-auto space-y-1">
-                                        {states.map((s) => (
-                                            <div key={s.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
-                                                <span className="text-sm font-bold text-gray-700">{s.name}</span>
-                                                <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Languages */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Languages ({languages.length})</h3>
-                                    <div className="flex-1 overflow-y-auto space-y-1">
-                                        {languages.map((l) => (
-                                            <div key={l.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
-                                                <span className="text-sm font-bold text-gray-700">{l.name}</span>
-                                                <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Boards */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards ({boards.length})</h3>
-                                    <div className="flex-1 overflow-y-auto space-y-1">
-                                        {boards.map((b) => (
-                                            <div key={b.id} className="p-2 border-b last:border-0 hover:bg-gray-50">
-                                                <div className="flex justify-between">
-                                                    <span className="text-sm font-bold">{b.name}</span>
-                                                    <span className={`text-[8px] px-1 rounded ${b.is_active ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{b.is_active ? 'LIVE' : 'PENDING'}</span>
-                                                </div>
-                                                <p className="text-[9px] text-gray-400">{b.state_name}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Classes & Streams */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams</h3>
-                                    <div className="flex-1 overflow-y-auto space-y-1">
-                                        {classes.map(c => (
-                                            <div key={c.id} className="p-2 bg-gray-50 rounded text-sm font-bold flex justify-between">
-                                                {c.name}
-                                                <button className="text-gray-400 hover:text-indigo-600"><Edit size={12} /></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Subjects & Chapters Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
-                                    <div className="flex justify-between mb-4">
-                                        <h3 className="font-bold">Subjects ({subjects.length})</h3>
-                                        <button
-                                            onClick={() => handleAIFetch('subjects', { class_id: classes[9]?.id, class_name: classes[9]?.name, board_id: boards[0]?.id })}
-                                            className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
-                                        >
-                                            AI Fetch Subjects
-                                        </button>
-                                    </div>
-                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                        {subjects.map(sub => (
-                                            <div key={sub.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
-                                                <div>
-                                                    <span className="font-bold text-gray-800">{sub.name}</span>
-                                                    <p className="text-[10px] text-gray-400">{sub.board_name} • {sub.class_name}</p>
-                                                </div>
-                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="text-indigo-600"><Edit size={14} /></button>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-black ${sub.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {sub.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
-                                    <div className="flex justify-between mb-4">
-                                        <h3 className="font-bold">Chapters ({chapters.length})</h3>
-                                        <button
-                                            onClick={() => handleAIFetch('chapters', { subject_id: subjects[0]?.id, subject_name: subjects[0]?.name })}
-                                            className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
-                                        >
-                                            AI Fetch Chapters
-                                        </button>
-                                    </div>
-                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                        {chapters.map(ch => (
-                                            <div key={ch.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
-                                                <div>
-                                                    <span className="font-bold text-gray-800">{ch.name}</span>
-                                                    <p className="text-[10px] text-gray-400">{ch.subject_name}</p>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button className="text-indigo-600 opacity-0 group-hover:opacity-100"><Edit size={14} /></button>
-                                                    {!ch.is_active && <button onClick={() => api.put(`/admin/chapters/${ch.id}`, { ...ch, is_active: true }).then(() => fetchStructure())} className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-black">PUBLISH</button>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'ai' && settings?.aiProviders && (
-                        <div className="space-y-6 animate-fadeIn">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">AI Provider Control</h2>
-                                <span className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold uppercase tracking-widest">Enterprise Orchestration</span>
-                            </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {settings.aiProviders.map((ai, i) => (
-                                    <div key={ai.id} className={`bg-white p-6 rounded-2xl shadow-sm border ${ai.is_active ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-gray-100'} relative overflow-hidden transition-all duration-300`}>
-                                        {ai.is_active && (
-                                            <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1">
-                                                <CheckCircle size={10} /> Active Provider
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className={`p-3 rounded-xl ${ai.is_active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-100 text-gray-400'}`}><Cpu size={24} /></div>
-                                            <div>
-                                                <h4 className="font-black text-gray-800 uppercase tracking-widest leading-none mb-1">{ai.name}</h4>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {ai.id} • {ai.model_name}</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Base URL</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                    defaultValue={ai.base_url}
-                                                    id={`url-${ai.id}`}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">API Key</label>
-                                                <input
-                                                    type="password"
-                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                    defaultValue={ai.api_key ? "********" : ""}
-                                                    placeholder={ai.api_key ? "Leave blank to keep same" : "Enter API Key"}
-                                                    id={`key-${ai.id}`}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Model Name</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                    defaultValue={ai.model_name}
-                                                    id={`model-${ai.id}`}
-                                                />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                {!ai.is_active && (
-                                                    <button
-                                                        onClick={() => handleUpdateAI(ai.id, { ...ai, is_active: true })}
-                                                        className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
-                                                    >
-                                                        Activate
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => {
-                                                        const u = document.getElementById(`url-${ai.id}`).value;
-                                                        const k = document.getElementById(`key-${ai.id}`).value;
-                                                        const m = document.getElementById(`model-${ai.id}`).value;
-                                                        const updates = { base_url: u, model_name: m };
-                                                        if (k && k !== "********") updates.api_key = k;
-                                                        handleUpdateAI(ai.id, { ...ai, ...updates });
-                                                    }}
-                                                    className={`py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${ai.is_active ? 'w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50' : 'px-4 bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                >
-                                                    Save Config
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'plans' && (
-                        <div className="space-y-6 animate-fadeIn">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Subscription Plans</h2>
-                                <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
-                                    <Plus size={18} /> Add Plan
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {plans.map(plan => (
-                                    <div key={plan.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${plan.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {plan.is_active ? 'ACTIVE' : 'DISABLED'}
-                                            </span>
-                                            <button className="text-gray-400 hover:text-indigo-600"><Edit size={18} /></button>
-                                        </div>
-                                        <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter mb-2">{plan.name}</h3>
-                                        <div className="flex items-center gap-2 mb-6">
-                                            <span className="text-3xl font-black">₹{plan.price}</span>
-                                            <span className="text-gray-400 text-sm">/ {plan.duration_hours} Hours</span>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <button onClick={() => api.put(`/admin/plans/${plan.id}`, { ...plan, is_active: !plan.is_active }).then(() => fetchPlans())} className={`w-full py-2.5 rounded-xl font-bold text-xs transition-colors ${plan.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                                                {plan.is_active ? 'Disable Plan' : 'Enable Plan'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'settings' && settings && (
-                        <div className="space-y-6 animate-fadeIn pb-20">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Site & System Settings</h2>
-                                <button
-                                    onClick={() => {
-                                        const updates = {};
-                                        ['SITE_TITLE', 'SITE_LOGO_URL', 'HOME_BANNER_TEXT', 'SUPPORT_EMAIL', 'WHATSAPP_NUMBER', 'GOOGLE_ANALYTICS_ID', 'GOOGLE_SEARCH_CONSOLE_CODE', 'FOOTER_CONTENT', 'META_TAGS'].forEach(k => {
-                                            const el = document.getElementById(`setting-${k}`);
-                                            if (el) updates[k] = el.value;
-                                        });
-                                        handleUpdateSettings(updates);
-                                    }}
-                                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg"
-                                >
-                                    Save All Config
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* General/SEO Configuration */}
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 font-outfit uppercase tracking-widest text-xs opacity-50"><Globe size={14} /> General & SEO Config</h3>
-                                    <div className="space-y-4">
-                                        {[
-                                            { key: 'SITE_TITLE', label: 'Site Title' },
-                                            { key: 'SITE_LOGO_URL', label: 'Logo URL' },
-                                            { key: 'META_TAGS', label: 'Meta Keywords' },
-                                            { key: 'GOOGLE_ANALYTICS_ID', label: 'Google Analytics ID' },
-                                            { key: 'GOOGLE_SEARCH_CONSOLE_CODE', label: 'Google Search Console Code' }
-                                        ].map(item => (
-                                            <div key={item.key}>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">{item.label}</label>
-                                                <input
-                                                    type="text"
-                                                    id={`setting-${item.key}`}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                                    defaultValue={settings.system[item.key]}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Communication & Footer */}
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 font-outfit uppercase tracking-widest text-xs opacity-50"><Edit size={14} /> Content & Communication</h3>
-                                    <div className="space-y-4">
-                                        {[
-                                            { key: 'HOME_BANNER_TEXT', label: 'Home Banner Text' },
-                                            { key: 'SUPPORT_EMAIL', label: 'Support Email' },
-                                            { key: 'WHATSAPP_NUMBER', label: 'WhatsApp Number' }
-                                        ].map(item => (
-                                            <div key={item.key}>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">{item.label}</label>
-                                                <input
-                                                    type="text"
-                                                    id={`setting-${item.key}`}
-                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                                    defaultValue={settings.system[item.key]}
-                                                />
-                                            </div>
-                                        ))}
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Footer Content</label>
-                                            <textarea
-                                                id="setting-FOOTER_CONTENT"
-                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all h-24"
-                                                defaultValue={settings.system['FOOTER_CONTENT']}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Payment Gateways */}
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 font-outfit uppercase tracking-widest text-xs opacity-50"><DollarSign size={14} /> Payment Gateways</h3>
-                                    <div className="space-y-6">
-                                        {settings.payments.map(pg => (
-                                            <div key={pg.provider} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <p className="font-black text-xs uppercase tracking-widest text-indigo-900">{pg.provider}</p>
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`pg-active-${pg.provider}`}
-                                                        defaultChecked={pg.is_active}
-                                                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <input
-                                                        type="text"
-                                                        id={`pg-key-${pg.provider}`}
-                                                        placeholder="API Key"
-                                                        className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded text-xs outline-none"
-                                                        defaultValue={pg.api_key}
-                                                    />
-                                                    <input
-                                                        type="password"
-                                                        id={`pg-secret-${pg.provider}`}
-                                                        placeholder="API Secret"
-                                                        className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded text-xs outline-none"
-                                                        defaultValue={pg.api_secret ? "********" : ""}
-                                                    />
-                                                    <button
-                                                        onClick={async () => {
-                                                            const key = document.getElementById(`pg-key-${pg.provider}`).value;
-                                                            const secret = document.getElementById(`pg-secret-${pg.provider}`).value;
-                                                            const active = document.getElementById(`pg-active-${pg.provider}`).checked;
-                                                            const data = { provider: pg.provider, api_key: key, is_active: active };
-                                                            if (secret && secret !== "********") data.api_secret = secret;
-                                                            await api.put('/admin/settings/payments', data);
-                                                            alert(`${pg.provider} settings updated`);
-                                                            fetchSettings();
-                                                        }}
-                                                        className="w-full bg-gray-900 text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-black"
-                                                    >
-                                                        Update {pg.provider}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Ads Control */}
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-2">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 font-outfit uppercase tracking-widest text-xs opacity-50"><Share2 size={14} /> Ads Control (Google AdSense)</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AdSense Script Injection</label>
-                                                <textarea
-                                                    className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-32 outline-none focus:ring-2 focus:ring-indigo-500"
-                                                    placeholder="<script async src='...'></script>"
-                                                    defaultValue={settings.system['ADSENSE_SCRIPT']}
-                                                    id="ads-script"
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                                                <div>
-                                                    <p className="font-bold text-indigo-900">Enable Advertisements</p>
-                                                    <p className="text-[10px] text-indigo-600 font-bold uppercase">Toggle Global Visibility</p>
-                                                </div>
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-6 h-6 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                                                    defaultChecked={settings.system['ADS_ENABLED'] === 'true'}
-                                                    id="ads-enabled"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ads.txt Content</label>
-                                            <textarea
-                                                className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-48 outline-none focus:ring-2 focus:ring-indigo-500"
-                                                placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
-                                                defaultValue={settings.system['ADS_TXT']}
-                                                id="ads-txt"
-                                            />
-                                            <button
-                                                onClick={async () => {
-                                                    const script = document.getElementById('ads-script').value;
-                                                    const txt = document.getElementById('ads-txt').value;
-                                                    const enabled = document.getElementById('ads-enabled').checked;
-                                                    await api.put('/admin/settings/ads', { ADSENSE_SCRIPT: script, ADS_TXT: txt, ADS_ENABLED: enabled });
-                                                    alert('Ads Settings Saved');
-                                                    fetchSettings();
-                                                }}
-                                                className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors"
-                                            >
-                                                Update Ads Infrastructure
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Legal Pages Management */}
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-3">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 font-outfit uppercase tracking-widest text-xs opacity-50"><ShieldAlert size={14} /> Legal Pages Editor</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                        <div className="md:col-span-1 space-y-2">
-                                            {settings.legalPages.map(page => (
-                                                <button
-                                                    key={page.slug}
-                                                    onClick={() => {
-                                                        document.getElementById('legal-edit-title').value = page.title;
-                                                        document.getElementById('legal-edit-content').value = page.content;
-                                                        document.getElementById('legal-edit-slug').value = page.slug;
-                                                    }}
-                                                    className="w-full p-3 bg-gray-50 hover:bg-indigo-50 rounded-xl text-left border border-gray-100 transition-colors"
-                                                >
-                                                    <p className="font-bold text-xs uppercase tracking-widest text-gray-600">{page.title}</p>
-                                                    <p className="text-[10px] text-gray-400 italic">/{page.slug}</p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="md:col-span-4 bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-                                            <input type="hidden" id="legal-edit-slug" />
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Page Title</label>
-                                                <input
-                                                    type="text"
-                                                    id="legal-edit-title"
-                                                    className="w-full px-4 py-2 mt-1 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Content (Markdown/HTML Support)</label>
-                                                <textarea
-                                                    id="legal-edit-content"
-                                                    className="w-full px-4 py-2 mt-1 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 h-64 font-mono text-sm"
-                                                />
-                                            </div>
-                                            <button
-                                                onClick={async () => {
-                                                    const slug = document.getElementById('legal-edit-slug').value;
-                                                    const title = document.getElementById('legal-edit-title').value;
-                                                    const content = document.getElementById('legal-edit-content').value;
-                                                    if (!slug) return alert('Select a page first');
-                                                    await api.put(`/admin/settings/legal/${slug}`, { title, content });
-                                                    alert(`${title} page updated`);
-                                                    fetchSettings();
-                                                }}
-                                                className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg"
-                                            >
-                                                Save Page Content
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {['analytics', 'other'].includes(activeTab) && !stats && (
-                        <div className="flex flex-col items-center justify-center p-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-200 text-gray-400 space-y-4">
-                            <div className="p-6 bg-gray-50 rounded-full"><Settings size={48} className="animate-spin-slow" /></div>
-                            <div className="text-center">
-                                <h3 className="text-lg font-bold text-gray-600 uppercase tracking-widest leading-none mb-1">Module Coming Soon</h3>
-                                <p className="text-sm">We are expanding the <strong>{activeTab}</strong> capabilities.</p>
-                            </div>
-                        </div>
-                    )}
-                </main>
+                </div>
             </div>
-            );
+        </div>
+    );
+
+    const renderPayMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">Payment Gateway Configuration</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {['razorpay', 'stripe'].map(prov => (
+                    <div key={prov} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h4 className="text-white font-black text-xl uppercase tracking-tighter">{prov} Integration</h4>
+                            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
+                                <ShieldAlert size={20} className="text-gray-600" />
+                            </div>
+                        </div>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Live Key Path</label>
+                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none" placeholder={`pk_live_...`} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Secret Vault Key</label>
+                                <input type="password" underline="true" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none" value="********" />
+                            </div>
+                            <div className="flex items-center gap-3 pt-2">
+                                <button className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-indigo-700 transition-all">Enable Mode</button>
+                                <button className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:text-white transition-colors"><Edit size={16} /></button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderAdsMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">Global Ads & Analytics Management</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl flex flex-col">
+                    <h3 className="text-white font-black text-lg mb-6 flex items-center gap-2"><PieChart size={20} className="text-orange-500" /> AdSense Deployment</h3>
+                    <div className="space-y-6 flex-1">
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold">Header Script Injection</label>
+                            <textarea
+                                className="w-full bg-black/50 border border-gray-800 p-4 rounded-xl mt-1 text-[10px] font-mono text-gray-400 h-32 outline-none focus:border-indigo-500"
+                                defaultValue={settings.system['ADS_HEADER_SCRIPT']}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold">Ads.txt Editor</label>
+                            <textarea
+                                className="w-full bg-black/50 border border-gray-800 p-4 rounded-xl mt-1 text-[10px] font-mono text-gray-400 h-32 outline-none focus:border-indigo-500"
+                                defaultValue={settings.system['ADS_TXT']}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-800/20 rounded-xl border border-gray-800">
+                            <span className="text-white font-bold text-sm">Global Ad Display</span>
+                            <button
+                                onClick={() => handleUpdateSettings('ads', { ADS_ENABLED: settings.system['ADS_ENABLED'] === 'true' ? 'false' : 'true' })}
+                                className={`w-14 h-7 rounded-full transition-all relative ${settings.system['ADS_ENABLED'] === 'true' ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                            >
+                                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${settings.system['ADS_ENABLED'] === 'true' ? 'right-1' : 'left-1'}`} />
+                            </button>
+                        </div>
+                    </div>
+                    <button className="w-full mt-6 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-xl shadow-indigo-900/20">Sync Ad Config</button>
+                </div>
+
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl">
+                    <h3 className="text-white font-black text-lg mb-6 flex items-center gap-2 text-indigo-500">Ad Slots Availability</h3>
+                    <div className="space-y-4">
+                        {['Homepage Top', 'Sidebar Right', 'MCQ Detail Bottom', 'Result Page Middle'].map(slot => (
+                            <div key={slot} className="p-4 bg-black/30 rounded-xl border border-gray-800/50 flex justify-between items-center group">
+                                <span className="text-sm font-bold text-gray-400 group-hover:text-white transition-colors">{slot}</span>
+                                <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded font-black tracking-widest uppercase">Responsive</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderSEOMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">SEO & Google Integrations</h2>
+            <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-6">
+                        <h4 className="text-indigo-400 font-black uppercase text-xs tracking-widest">Metadata Control</h4>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-black">Meta Title Template</label>
+                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white outline-none" defaultValue={settings.system['META_TITLE']} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-black">Global Keywords</label>
+                            <textarea className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white h-24 outline-none" defaultValue={settings.system['META_KEYWORDS']} />
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <h4 className="text-green-400 font-black uppercase text-xs tracking-widest">Google Connectivity</h4>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-black">Analytics ID (GA4)</label>
+                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-indigo-500 outline-none" defaultValue={settings.system['GOOGLE_ANALYTICS_ID']} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-black">Search Console Verification</label>
+                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-gray-400 outline-none" defaultValue={settings.system['GOOGLE_SEARCH_CONSOLE_CODE']} />
+                        </div>
+                        <button className="w-full py-4 bg-gray-800 text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all">Verify All Deployments</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderLegalMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">Legal Document Editor</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="lg:col-span-1 space-y-2">
+                    {settings.legal.map(page => (
+                        <button
+                            key={page.slug}
+                            className={`w-full p-4 rounded-xl text-left border transition-all ${activeTab === `legal-${page.slug}` ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
+                            onClick={() => setActiveTab(`legal-${page.slug}`)}
+                        >
+                            <p className="text-white font-bold text-sm">{page.title}</p>
+                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-black">Slug: {page.slug}</p>
+                        </button>
+                    ))}
+                </div>
+                <div className="lg:col-span-3 bg-gray-900 border border-gray-800 p-8 rounded-2xl flex flex-col min-h-[600px]">
+                    <h3 className="text-white font-black text-xl mb-6 flex items-center justify-between">
+                        <span>Document Workspace</span>
+                        <div className="flex gap-2">
+                            <button className="px-4 py-1.5 bg-gray-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Preview</button>
+                            <button className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20">Commit Changes</button>
+                        </div>
+                    </h3>
+                    <textarea
+                        className="flex-1 w-full bg-black/50 border border-gray-800 p-6 rounded-2xl text-sm text-gray-400 font-serif leading-relaxed outline-none focus:border-indigo-500"
+                        placeholder="Select a document from the left to start editing..."
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderSettings = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">System Configuration</h2>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* Global Settings */}
+                <div className="xl:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Globe size={18} className="text-blue-500" /> Global SEO & Metadata</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {['SITE_NAME', 'SITE_TITLE', 'SITE_DESC', 'META_KEYWORDS', 'CONTACT_EMAIL', 'FREE_LIMIT'].map(key => (
+                            <div key={key}>
+                                <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">{key.replace('_', ' ')}</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-black/50 border border-gray-800 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                    defaultValue={settings.system[key] || ''}
+                                    onBlur={(e) => handleUpdateSettings('global', { settings: { [key]: e.target.value } })}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Ads Settings */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Layers size={18} className="text-orange-500" /> AdSense Control</h3>
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-sm">Ads Active</span>
+                            <button className={`w-12 h-6 rounded-full transition-colors relative ${settings.system['ADS_ENABLED'] === 'true' ? 'bg-indigo-600' : 'bg-gray-700'}`}>
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.system['ADS_ENABLED'] === 'true' ? 'right-1' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Publisher Script</label>
+                            <textarea
+                                className="w-full bg-black/50 border border-gray-800 rounded-lg p-2.5 text-[10px] font-mono text-gray-500 h-24 outline-none focus:border-indigo-500"
+                                defaultValue={settings.system['ADSENSE_SCRIPT']}
+                            />
+                        </div>
+                        <button className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20">Update Assets</button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Legal Pages */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-800">
+                    <h3 className="text-white font-bold flex items-center gap-2"><FileText size={18} className="text-indigo-500" /> Legal & Policy Pages</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-x divide-gray-800">
+                    {settings.legal.map(p => (
+                        <button key={p.id} className="p-4 hover:bg-gray-800 text-left transition-all">
+                            <p className="text-white font-bold text-sm truncate">{p.title}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">Updated {new Date(p.updated_at).toLocaleDateString()}</p>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderAI = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">AI Engine Management</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {aiProviders.map(p => (
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl relative overflow-hidden">
+                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-bold ${p.is_active ? 'bg-green-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
+                            {p.is_active ? 'PRIMARY MODEL' : 'STANDBY'}
+                        </div>
+                        <h4 className="text-white font-bold text-lg mb-4">{p.name}</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] text-gray-500 uppercase font-bold">Base URL</label>
+                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-2 rounded mt-1 text-xs text-indigo-400" value={p.base_url} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] text-gray-500 uppercase font-bold">Model Name</label>
+                                    <input type="text" className="w-full bg-black/50 border border-gray-800 p-2 rounded mt-1 text-xs text-white" value={p.model_name} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-gray-500 uppercase font-bold">API Key (Hidden)</label>
+                                    <input type="password" underline="true" className="w-full bg-black/50 border border-gray-800 p-2 rounded mt-1 text-xs text-white" value="********" />
+                                </div>
+                            </div>
+                            <button className="w-full py-2 bg-gray-800 text-white rounded text-xs font-bold hover:bg-indigo-600 transition-all">Save Changes</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderCategories = () => (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">MCQ Categories</h2>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+                    <Plus size={16} /> Add Category
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categories.map(cat => (
+                    <div key={cat.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-indigo-500/50 transition-all group">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="w-12 h-12 bg-gray-800 rounded-xl overflow-hidden">
+                                {cat.image_url ? <img src={cat.image_url} alt="" className="w-full h-full object-cover" /> : <Layers className="w-full h-full p-3 text-gray-600" />}
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded"><Edit size={14} /></button>
+                                <button className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-red-500 rounded"><Trash2 size={14} /></button>
+                            </div>
+                        </div>
+                        <h4 className="text-white font-bold mb-1">{cat.name}</h4>
+                        <p className="text-gray-500 text-xs line-clamp-2 mb-4">{cat.description || 'No description provided'}</p>
+                        <div className="flex justify-between items-center pt-4 border-t border-gray-800">
+                            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Sort Order: {cat.sort_order}</span>
+                            <span className={`text-[10px] font-bold ${cat.is_active ? 'text-green-500' : 'text-red-500'}`}>{cat.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderCompMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Competitive Exams Management</h2>
+                <button onClick={() => handleAIFetch('papers', { category_id: 3, category_name: 'UPSC' })} className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-yellow-700 transition-all shadow-lg shadow-yellow-900/20">
+                    <Cpu size={16} /> AI Fetch UPSC Structure
+                </button>
+            </div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20">
+                    <h3 className="text-white font-bold text-sm flex items-center gap-2"><Briefcase size={16} className="text-yellow-500" /> Papers & Stages</h3>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
+                            <tr>
+                                <th className="px-6 py-4">Paper/Stage Name</th>
+                                <th className="px-6 py-4">Category</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {papers.map(p => (
+                                <tr key={p.id} className="hover:bg-gray-800/30 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-gray-300 font-bold">{p.name}</td>
+                                    <td className="px-6 py-4 text-xs text-gray-500">{p.category_name}</td>
+                                    <td className="px-6 py-4 text-right flex justify-end gap-3">
+                                        <button onClick={() => handleAIFetch('subjects', { paper_stage_id: p.id, context_name: p.name })} className="text-yellow-500 hover:text-white text-[10px] uppercase font-bold">AI Subjects</button>
+                                        <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderAIMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-white">AI Engine Management</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {aiProviders.map(p => (
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl relative overflow-hidden group">
+                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-bold ${p.is_active ? 'bg-green-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
+                            {p.is_active ? 'PRIMARY MODEL' : 'STANDBY'}
+                        </div>
+                        <h4 className="text-white font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={20} className="text-indigo-500" /> {p.name}</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] text-gray-500 uppercase font-bold">Base URL</label>
+                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500" value={p.base_url} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] text-gray-500 uppercase font-bold">Model Name</label>
+                                    <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value={p.model_name} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-gray-500 uppercase font-bold">API Key (Encrypted)</label>
+                                    <input type="password" underline="true" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value="********" />
+                                </div>
+                            </div>
+                            <button className="w-full py-2 bg-indigo-600/10 text-indigo-500 border border-indigo-600/20 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all">Update Provider Configuration</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6">
+                <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2"><Activity size={16} className="text-green-500" /> Recent AI Fetch Logs</h3>
+                <div className="bg-black/50 rounded-xl border border-gray-800 p-4 font-mono text-[10px] text-gray-500 max-h-40 overflow-y-auto">
+                    <p className="text-indigo-400">[2026-02-19 18:41] INFO: Triggered fetch for "Education Boards" in "CBSE"</p>
+                    <p className="text-green-400">[2026-02-19 18:41] SUCCESS: 10 boards saved successfully.</p>
+                    <p className="text-gray-600">[2026-02-19 18:40] DEBUG: Initializing Google Gemini service...</p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderMCQMgmt = () => (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">MCQ Moderation</h2>
+                <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full text-xs font-bold border border-indigo-500/20">{mcqs.length} Pending Approval</span>
+                </div>
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-widest">
+                        <tr>
+                            <th className="px-6 py-4">Question</th>
+                            <th className="px-6 py-4">Context</th>
+                            <th className="px-6 py-4 text-center">Moderation</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {mcqs.map(m => (
+                            <tr key={m.id} className="hover:bg-gray-800/30 transition-colors text-gray-300">
+                                <td className="px-6 py-4 max-w-lg">
+                                    <div className="font-bold text-white line-clamp-2">{m.question}</div>
+                                    <div className="text-[10px] text-gray-500 mt-1 italic">Hash: {m.question_hash?.substring(0, 16)}...</div>
+                                </td>
+                                <td className="px-6 py-4 text-[10px]">
+                                    <p className="font-black text-indigo-500">{m.subject}</p>
+                                    <p className="text-gray-600">{m.chapter}</p>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex justify-center gap-2">
+                                        <button onClick={() => api.put(`/admin/mcqs/${m.id}/approve`).then(() => fetchDashboardData())} className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-all" title="Approve"><Check size={16} /></button>
+                                        <button className="p-2 bg-gray-500/10 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition-all" title="Edit"><Edit size={16} /></button>
+                                        <button onClick={() => api.delete(`/admin/mcqs/${m.id}`).then(() => fetchDashboardData())} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all" title="Delete"><Trash2 size={16} /></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    const renderSubMgmt = () => (
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-white">Subscription Plans</h2>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-900/20">
+                    <Plus size={16} /> Add New Plan
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {plans.map(p => (
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl group relative overflow-hidden">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 className="text-white font-black text-xl">{p.name}</h4>
+                                <p className="text-indigo-500 font-bold">₹{p.price} <span className="text-gray-500 text-xs text-normal">/ {p.duration_hours}h</span></p>
+                            </div>
+                            <div className={`px-2 py-0.5 rounded text-[8px] font-bold ${p.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                {p.is_active ? 'ACTIVE' : 'DISABLED'}
+                            </div>
+                        </div>
+                        <div className="flex gap-2 pt-4 border-t border-gray-800">
+                            <button className="flex-1 py-1.5 bg-gray-800 text-white text-[10px] font-bold rounded uppercase hover:bg-indigo-600 transition-all">Edit Plan</button>
+                            <button className="px-3 py-1.5 bg-gray-800 text-red-500 text-[10px] font-bold rounded uppercase hover:bg-red-500 hover:text-white transition-all"><Trash2 size={12} /></button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex min-h-screen bg-black font-sans text-gray-300">
+            {/* Sidebar */}
+            <div className="w-64 bg-gray-950 border-r border-gray-900 flex flex-col fixed h-full z-30">
+                <div className="p-6 flex items-center gap-3">
+                    <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/20">
+                        <CheckSquare className="text-white" size={24} strokeWidth={2.5} />
+                    </div>
+                    <h1 className="text-xl font-black text-white tracking-tight">EXAMREDY <span className="text-[8px] text-indigo-500 block">ADMIN v2.0</span></h1>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-thin scrollbar-thumb-gray-800">
+                    <SidebarGroup label="Executive">
+                        <SidebarItem id="overview" label="Dashboard Overview" icon={LayoutDashboard} />
+                        <SidebarItem id="users" label="User Management" icon={Users} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="Content Control">
+                        <SidebarItem id="states" label="Indian States" icon={MapPin} />
+                        <SidebarItem id="languages" label="Official Languages" icon={Globe} />
+                        <SidebarItem id="categories" label="Exam Categories" icon={Layers} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="Education Hierarchy">
+                        <SidebarItem id="school-mgmt" label="School Category" icon={School} />
+                        <SidebarItem id="univ-mgmt" label="University Category" icon={GraduationCap} />
+                        <SidebarItem id="comp-mgmt" label="Competitive Exams" icon={Briefcase} />
+                        <SidebarItem id="mcq-mgmt" label="MCQ Moderation" icon={CheckSquare} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="AI & System">
+                        <SidebarItem id="ai-mgmt" label="AI Management" icon={Cpu} />
+                        <SidebarItem id="free-limit" label="Free Limit Control" icon={Clock} />
+                        <SidebarItem id="settings" label="Global Settings" icon={Settings} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="Revenue & Ads">
+                        <SidebarItem id="sub-mgmt" label="Subscriptions" icon={CreditCard} />
+                        <SidebarItem id="ref-mgmt" label="Referral System" icon={Share2} />
+                        <SidebarItem id="pay-mgmt" label="Payment Gateway" icon={DollarSign} />
+                        <SidebarItem id="ads-mgmt" label="Ads Management" icon={PieChart} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="Marketing & Legal">
+                        <SidebarItem id="seo-mgmt" label="SEO & Analytics" icon={TrendingUp} />
+                        <SidebarItem id="legal-mgmt" label="Legal Page Editor" icon={FileText} />
+                    </SidebarGroup>
+                </div>
+
+                <div className="p-4 border-t border-gray-900">
+                    <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors font-bold text-sm">
+                        <LogOut size={18} />
+                        <span>Logout Admin</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <main className="flex-1 ml-64 p-10 overflow-y-auto">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-10">
+                    <div>
+                        <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest mb-1">Authenticated as {user?.email || 'Admin'}</p>
+                        <h2 className="text-3xl font-black text-white capitalize">{activeTab}</h2>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right mr-2">
+                            <p className="text-xs text-indigo-500 font-bold">System Status</p>
+                            <p className="text-[10px] text-green-500 animate-pulse">Live & Secure</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 border-2 border-white/10" />
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+                        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                        <p className="text-sm text-gray-500 font-bold animate-pulse">Syncing Dashboard...</p>
+                    </div>
+                ) : (
+                    <div className="max-w-7xl">
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-500 text-sm font-bold">
+                                <AlertCircle size={20} /> {error}
+                            </div>
+                        )}
+
+                        {activeTab === 'overview' && renderOverview()}
+                        {activeTab === 'users' && renderUsers()}
+                        {activeTab === 'states' && renderStates()}
+                        {activeTab === 'languages' && renderLanguages()}
+                        {activeTab === 'categories' && renderCategories()}
+                        {activeTab === 'school-mgmt' && renderSchoolMgmt()}
+                        {activeTab === 'univ-mgmt' && renderUnivMgmt()}
+                        {activeTab === 'comp-mgmt' && renderCompMgmt()}
+                        {activeTab === 'ai-mgmt' && renderAIMgmt()}
+                        {activeTab === 'mcq-mgmt' && renderMCQMgmt()}
+                        {activeTab === 'sub-mgmt' && renderSubMgmt()}
+                        {activeTab === 'ref-mgmt' && renderRefMgmt()}
+                        {activeTab === 'free-limit' && renderFreeLimit()}
+                        {activeTab === 'pay-mgmt' && renderPayMgmt()}
+                        {activeTab === 'ads-mgmt' && renderAdsMgmt()}
+                        {activeTab === 'seo-mgmt' && renderSEOMgmt()}
+                        {activeTab === 'legal-mgmt' && renderLegalMgmt()}
+                        {activeTab === 'settings' && renderSettings()}
+                    </div>
+                )}
+            </main>
+        </div>
+    );
 };
 
-            export default Admin;
+export default AdminDashboard;
