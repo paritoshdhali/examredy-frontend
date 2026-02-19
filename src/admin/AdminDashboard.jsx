@@ -449,10 +449,21 @@ const AdminDashboard = () => {
                                 <div
                                     key={b.id}
                                     onClick={() => setSelBoard(b)}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-indigo-500/50'}`}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-indigo-500/50'}`}
                                 >
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex flex-col truncate pr-2">
                                         <span className="text-xs font-black uppercase truncate">{b.name}</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`approve/boards/${b.id}`, { is_approved: !b.is_approved }); }}
+                                                className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter ${b.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
+                                            >
+                                                {b.is_approved ? 'APPROVED' : 'PENDING'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('boards', b.id); }} className="p-1 px-2 text-gray-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12} /></button>
                                         <ChevronRight size={14} className={selBoard?.id === b.id ? 'text-white' : 'text-gray-700'} />
                                     </div>
                                 </div>
@@ -521,7 +532,10 @@ const AdminDashboard = () => {
                                     className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
                                 >
                                     <span className="text-xs font-black uppercase truncate">{s.name}</span>
-                                    <ChevronRight size={14} className={selSubject?.id === s.id ? 'text-white' : 'text-gray-700'} />
+                                    <div className="flex gap-2 items-center">
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('subjects', s.id); }} className="p-1 px-2 text-gray-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12} /></button>
+                                        <ChevronRight size={14} className={selSubject?.id === s.id ? 'text-white' : 'text-gray-700'} />
+                                    </div>
                                 </div>
                             ))}
                             {(!selBoard || !selClass) && (
