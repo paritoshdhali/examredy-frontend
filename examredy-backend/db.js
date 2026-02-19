@@ -1,22 +1,21 @@
 const { Pool } = require('pg');
 require('dotenv').config();
+const bcrypt = require('bcrypt');
 
-// Production-ready configuration for Railway
-// STRICTLY use DATABASE_URL and SSL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false
-    },
-    max: 20, // Connection pool size
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    }
 });
 
-// Handle unexpected errors on idle clients to prevent crashing
-pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client (PostgreSQL):', err);
-    // Don't exit process, just log. Pool handles reconnection.
+pool.on('connect', () => {
+    console.log('PostgreSQL Connected');
+});
+
+pool.on('error', (err) => {
+    console.error('Database Error:', err);
+    process.exit(1);
 });
 
 // Helper for running queries
@@ -138,6 +137,11 @@ const initDB = async () => {
         await query(`CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), razorpay_order_id VARCHAR(100), razorpay_payment_id VARCHAR(100), amount DECIMAL(10, 2), status VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS referrals (id SERIAL PRIMARY KEY, referrer_id INTEGER REFERENCES users(id), referred_user_id INTEGER REFERENCES users(id), status VARCHAR(20) DEFAULT 'pending', reward_given BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS ai_providers (id SERIAL PRIMARY KEY, name VARCHAR(100), base_url TEXT, api_key TEXT, model_name TEXT, is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`
+            INSERT INTO ai_providers (name, base_url, api_key, model_name, is_active) 
+            VALUES ($1, $2, $3, $4, $5) 
+            ON CONFLICT DO NOTHING
+        `, ['Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/models', process.env.GEMINI_API_KEY || '', 'gemini-1.5-flash', true]);
         await query(`CREATE TABLE IF NOT EXISTS ai_fetch_logs (id SERIAL PRIMARY KEY, fetch_type VARCHAR(100), reference_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS ads_settings (id SERIAL PRIMARY KEY, location VARCHAR(50), script_content TEXT, is_active BOOLEAN DEFAULT TRUE);`);
 
@@ -193,10 +197,36 @@ const initDB = async () => {
         await query(`CREATE TABLE IF NOT EXISTS group_sessions (id VARCHAR(50) PRIMARY KEY, creator_id INTEGER REFERENCES users(id), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS group_participants (id SERIAL PRIMARY KEY, session_id VARCHAR(50) REFERENCES group_sessions(id), user_id INTEGER REFERENCES users(id), score INTEGER DEFAULT 0, joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
 
-        // Ensure Admin user exists (For testing - in production should be handled carefully)
-        const bcrypt = require('bcryptjs');
-        const adminPass = await bcrypt.hash('admin123', 10);
-        await query(`INSERT INTO users (username, email, password, role) VALUES ('admin', 'admin@examredy.in', $1, 'admin') ON CONFLICT (email) DO NOTHING;`, [adminPass]);
+        // Ensure Admin user exists
+        const adminEmail = 'admin@examredy.in';
+        const defaultAdminPass = 'Admin@123';
+        const adminCheck = await query('SELECT * FROM users WHERE email = $1', [adminEmail]);
+
+        console.log('Automating admin credentials...');
+        const hashedDefaultPass = await bcrypt.hash(defaultAdminPass, 10);
+
+        if (adminCheck.rows.length === 0) {
+            console.log('Seeding default admin user...');
+            await query(
+                `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)`,
+                ['admin', adminEmail, hashedDefaultPass, 'admin']
+            );
+            console.log('✅ Default Admin Created (admin@examredy.in / Admin@123)');
+        } else {
+            const existingAdmin = adminCheck.rows[0];
+            // If password is plain text (length < 60) or mismatches expected hash, update it
+            if (existingAdmin.password.length < 60) {
+                console.log('Plain text admin password detected. Hashing automatically...');
+                await query('UPDATE users SET password = $1, role = $2 WHERE email = $3', [hashedDefaultPass, 'admin', adminEmail]);
+                console.log('✅ Admin password hashed successfully');
+            } else {
+                console.log('ℹ️ Admin user verified and secure');
+            }
+        }
+
+        if (!process.env.JWT_SECRET) {
+            console.warn('⚠️ WARNING: JWT_SECRET is not defined in .env. Falling back to default.');
+        }
 
         // PERFORMANCE INDEXES
         await query(`CREATE INDEX IF NOT EXISTS idx_boards_state ON boards(state_id);`);

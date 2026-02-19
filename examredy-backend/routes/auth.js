@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { hashPassword, comparePassword, generateToken } = require('../utils/helpers');
-const { protect } = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/authMiddleware');
 
 // @route   GET /api/auth
 // @desc    Auth health check
@@ -56,8 +56,8 @@ router.post('/register', async (req, res) => {
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role,
-            token: generateToken(user.id, user.role),
+            role: user.role || 'user',
+            token: generateToken(user.id, user.role || 'user'),
         });
     } catch (error) {
         console.error(error);
@@ -72,20 +72,31 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        console.log(`Login attempt: ${email}`);
         // Check for user email
         const result = await query('SELECT * FROM users WHERE email = $1', [email]);
         const user = result.rows[0];
 
-        if (user && (await comparePassword(password, user.password))) {
+        if (!user) {
+            console.warn(`Login failed: User not found for ${email}`);
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+
+        let isMatch = await comparePassword(password, user.password);
+        console.log(`Bcrypt match for ${email}: ${isMatch}`);
+
+        if (isMatch) {
+            console.log(`Login successful for ${email}`);
             res.json({
                 id: user.id,
                 username: user.username,
                 email: user.email,
                 role: user.role,
                 is_premium: user.is_premium,
-                token: generateToken(user.id, user.role),
+                token: generateToken(user.id, user.role, user.email),
             });
         } else {
+            console.warn(`Login failed: Incorrect password for ${email}`);
             res.status(400).json({ message: 'Invalid credentials' });
         }
     } catch (error) {
@@ -97,7 +108,7 @@ router.post('/login', async (req, res) => {
 // @route   GET /api/auth/me
 // @desc    Get current user data
 // @access  Private
-router.get('/me', protect, async (req, res) => {
+router.get('/me', verifyToken, async (req, res) => {
     res.json(req.user);
 });
 
