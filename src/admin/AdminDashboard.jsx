@@ -47,6 +47,12 @@ const AdminDashboard = () => {
     const [aiLogs, setAiLogs] = useState([]);
     const [transactions, setTransactions] = useState([]);
 
+    // Schoolmgmt Selection States
+    const [selBoard, setSelBoard] = useState(null);
+    const [selClass, setSelClass] = useState(null);
+    const [selStream, setSelStream] = useState(null);
+    const [selSubject, setSelSubject] = useState(null);
+
     // --- FETCHERS ---
     useEffect(() => {
         fetchDashboardData();
@@ -78,16 +84,20 @@ const AdminDashboard = () => {
                     setLanguages(lnRes.data);
                     break;
                 case 'school-mgmt':
-                    const [br, cl, sm, st_s] = await Promise.all([
+                    const [br, cl, sm, st_s, sb, ch] = await Promise.all([
                         api.get('/admin/boards'),
                         api.get('/admin/classes'),
                         api.get('/admin/streams'),
-                        api.get('/admin/states')
+                        api.get('/admin/states'),
+                        api.get('/admin/subjects'),
+                        api.get('/admin/chapters')
                     ]);
                     setBoards(br.data);
                     setClasses(cl.data);
                     setStreams(sm.data);
                     setStates(st_s.data);
+                    setSubjects(sb.data);
+                    setChapters(ch.data);
                     break;
                 case 'univ-mgmt':
                     const [un, dg, se, allSt] = await Promise.all([
@@ -376,11 +386,6 @@ const AdminDashboard = () => {
     );
 
     const renderSchoolMgmt = () => {
-        const [selBoard, setSelBoard] = useState(null);
-        const [selClass, setSelClass] = useState(null);
-        const [selStream, setSelStream] = useState(null);
-        const [selSubject, setSelSubject] = useState(null);
-
         return (
             <div className="space-y-8 animate-fadeIn">
                 <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
