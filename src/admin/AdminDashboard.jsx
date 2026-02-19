@@ -44,11 +44,14 @@ const Admin = () => {
     const fetchStats = async () => {
         try {
             setLoading(true);
+            setError(null);
             const res = await api.get('/admin/stats');
             setStats(res.data);
             setLoading(false);
         } catch (err) {
-            setError('Failed to load dashboard statistics');
+            console.error('[STATS-ERROR]', err.response?.status, err.response?.data || err.message);
+            const msg = err.response?.data?.message || err.message || 'Failed to load dashboard statistics';
+            setError(`Stats Error: ${msg} (${err.response?.status || 'Network'})`);
             setLoading(false);
         }
     };
@@ -106,6 +109,7 @@ const Admin = () => {
     };
 
     useEffect(() => {
+        setError(null); // Clear previous errors when changing tabs
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'categories') fetchCategories();
         if (activeTab === 'mcqs') fetchMcqs();
