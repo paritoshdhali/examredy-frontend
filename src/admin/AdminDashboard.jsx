@@ -24,7 +24,7 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [categories, setCategories] = useState([]);
     const [mcqs, setMcqs] = useState([]);
-    const [settings, setSettings] = useState({ system: {}, legal: [], payment: [] });
+    const [settings, setSettings] = useState({ system: {}, legal: [], payment: [], freeLimit: {} });
     const [plans, setPlans] = useState([]);
     const [referrals, setReferrals] = useState([]);
     const [aiProviders, setAiProviders] = useState([]);
@@ -44,6 +44,8 @@ const AdminDashboard = () => {
 
     const [selectedState, setSelectedState] = useState({ id: 1, name: 'Andhra Pradesh' });
     const [searchQuery, setSearchQuery] = useState('');
+    const [aiLogs, setAiLogs] = useState([]);
+    const [transactions, setTransactions] = useState([]);
 
     // --- FETCHERS ---
     useEffect(() => {
@@ -76,14 +78,16 @@ const AdminDashboard = () => {
                     setLanguages(lnRes.data);
                     break;
                 case 'school-mgmt':
-                    const [br, cl, sm] = await Promise.all([
+                    const [br, cl, sm, st_s] = await Promise.all([
                         api.get('/admin/boards'),
                         api.get('/admin/classes'),
-                        api.get('/admin/streams')
+                        api.get('/admin/streams'),
+                        api.get('/admin/states')
                     ]);
                     setBoards(br.data);
                     setClasses(cl.data);
                     setStreams(sm.data);
+                    setStates(st_s.data);
                     break;
                 case 'univ-mgmt':
                     const [un, dg, se, allSt] = await Promise.all([
@@ -98,8 +102,12 @@ const AdminDashboard = () => {
                     setStates(allSt.data);
                     break;
                 case 'comp-mgmt':
-                    const paRes = await api.get('/admin/papers-stages');
+                    const [paRes, compCat] = await Promise.all([
+                        api.get('/admin/papers-stages'),
+                        api.get('/admin/categories')
+                    ]);
                     setPapers(paRes.data);
+                    setCategories(compCat.data);
                     break;
                 case 'ai-mgmt':
                     const [aiP, aiL] = await Promise.all([
@@ -107,7 +115,7 @@ const AdminDashboard = () => {
                         api.get('/admin/ai-fetch/logs')
                     ]);
                     setAiProviders(aiP.data);
-                    // setAiLogs(aiL.data);
+                    setAiLogs(aiL.data);
                     break;
                 case 'mcq-mgmt':
                     const mcqRes = await api.get('/admin/mcqs?status=pending');
@@ -122,16 +130,21 @@ const AdminDashboard = () => {
                     setReferrals(refRes.data);
                     break;
                 case 'pay-mgmt':
-                    const payRes = await api.get('/admin/payments/transactions');
-                    // setTransactions(payRes.data);
+                    const [payRes, setP] = await Promise.all([
+                        api.get('/admin/payments/transactions'),
+                        api.get('/admin/settings')
+                    ]);
+                    setTransactions(payRes.data);
+                    setSettings(setP.data);
                     break;
                 case 'settings':
                 case 'ads-mgmt':
                 case 'seo-mgmt':
                 case 'legal-mgmt':
                 case 'sys-settings':
-                    const setRes = await api.get('/admin/settings');
-                    setSettings(setRes.data);
+                case 'free-limit':
+                    const setAllRes = await api.get('/admin/settings');
+                    setSettings(setAllRes.data);
                     break;
                 default: break;
             }
@@ -157,19 +170,41 @@ const AdminDashboard = () => {
     };
 
     const handleUpdateUser = async (id, data) => {
-        await api.put(`/admin/users/${id}/status`, data);
-        fetchDashboardData();
+        try {
+            setLoading(true);
+            if (data.role) await api.put(`/admin/users/${id}/role`, { role: data.role });
+            if (data.is_active !== undefined) await api.put(`/admin/users/${id}/status`, { is_active: data.is_active });
+            if (data.action) await api.put(`/admin/users/${id}/subscription`, data);
+            alert('User updated successfully');
+            fetchDashboardData();
+        } catch (err) { alert(err.message); }
+        finally { setLoading(false); }
     };
 
     const handleUpdateSettings = async (type, data) => {
         try {
             setLoading(true);
-            await api.put(`/admin/settings/${type}`, data);
-            alert('Settings updated successfully');
+            let endpoint = `/admin/settings/${type}`;
+            if (type.startsWith('ai-providers/')) endpoint = `/admin/${type}`;
+            if (type.startsWith('approve/')) endpoint = `/admin/${type}`;
+
+            await api.put(endpoint, data);
+            alert('Operation successful');
             fetchDashboardData();
         } catch (err) {
-            alert(`Settings Update Error: ${err.message}`);
+            alert(`Update Error: ${err.message}`);
         } finally { setLoading(false); }
+    };
+
+    const handleDeleteItem = async (table, id) => {
+        if (!window.confirm('Are you sure you want to delete this item?')) return;
+        try {
+            setLoading(true);
+            await api.delete(`/admin/${table}/${id}`);
+            alert('Deleted successfully');
+            fetchDashboardData();
+        } catch (err) { alert(err.message); }
+        finally { setLoading(false); }
     };
 
     const checkDiagnostic = async () => {
@@ -342,39 +377,70 @@ const AdminDashboard = () => {
 
     const renderSchoolMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">School Category Management</h2>
-                <div className="flex gap-3">
-                    <button onClick={() => handleAIFetch('boards', { state_id: 1, state_name: 'CBSE' })} className="px-4 py-2 bg-indigo-600/10 text-indigo-400 border border-indigo-600/20 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all">
-                        <Cpu size={14} /> AI Fetch Boards (CBSE)
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">School Hierarchy</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Boards, Classes, Streams & AI Automation</p>
+                </div>
+                <div className="flex gap-4 items-center">
+                    <select
+                        className="bg-black border border-gray-800 text-xs text-gray-300 px-4 py-2 rounded-lg font-bold outline-none focus:border-indigo-500"
+                        onChange={(e) => {
+                            const st = states.find(s => s.id === parseInt(e.target.value));
+                            if (st) setSelectedState(st);
+                        }}
+                        value={selectedState.id}
+                    >
+                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <button
+                        onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                    >
+                        <Cpu size={14} /> AI Fetch Boards: {selectedState.name}
                     </button>
-                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">Manual Add Board</button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Boards List */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Boards (Requirement 2) */}
                 <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/20">
-                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><School size={16} className="text-indigo-500" /> Boards</h3>
+                    <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><School size={16} className="text-indigo-500" /> Boards / Councils</h3>
                     </div>
                     <div className="max-h-[500px] overflow-y-auto">
                         <table className="w-full text-left">
                             <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
                                 <tr>
                                     <th className="px-6 py-3">Board Name</th>
-                                    <th className="px-6 py-3">State</th>
+                                    <th className="px-6 py-3">Status</th>
                                     <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {boards.map(b => (
                                     <tr key={b.id} className="hover:bg-gray-800/30 transition-colors">
-                                        <td className="px-6 py-4 text-sm text-gray-300 font-bold">{b.name}</td>
-                                        <td className="px-6 py-4 text-xs text-gray-500">{b.state_name}</td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button className="text-indigo-400 hover:text-white text-[10px] uppercase font-bold" onClick={() => handleAIFetch('subjects', { board_id: b.id, context_name: b.name })}>AI Subjects</button>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-300 font-bold">{b.name}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">{b.state_name || 'National'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleUpdateSettings(`approve/boards/${b.id}`, { is_approved: !b.is_approved })}
+                                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${b.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
+                                            >
+                                                {b.is_approved ? 'APPROVED' : 'PENDING'}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
+                                            <button
+                                                onClick={() => handleAIFetch('subjects', { board_id: b.id, category_id: 1, context_name: `${b.name} School Board` })}
+                                                className="text-indigo-400 hover:text-white text-[10px] uppercase font-black flex items-center gap-1"
+                                            >
+                                                <Cpu size={12} /> AI Subjects
+                                            </button>
                                             <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
+                                            <button onClick={() => handleDeleteItem('boards', b.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14} /></button>
                                         </td>
                                     </tr>
                                 ))}
@@ -383,28 +449,54 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Classes & Streams Stats */}
-                <div className="space-y-6">
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                        <h4 className="text-white font-bold text-sm mb-4 border-b border-gray-800 pb-2">Classes (1-12)</h4>
+                {/* Vertical Structure (Classes/Streams) */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
+                            Classes 1-10
+                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
+                        </h4>
                         <div className="grid grid-cols-2 gap-2">
-                            {classes.map(c => (
-                                <div key={c.id} className="bg-gray-800/50 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50">
+                            {classes.filter(c => !c.name.includes('11') && !c.name.includes('12')).map(c => (
+                                <div key={c.id} className="bg-gray-800/50 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50 hover:border-indigo-500 transition-all cursor-pointer">
                                     {c.name}
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                        <h4 className="text-white font-bold text-sm mb-4 border-b border-gray-800 pb-2">Streams (11-12)</h4>
-                        <div className="space-y-2">
-                            {streams.map(s => (
-                                <div key={s.id} className="bg-indigo-500/10 p-2 rounded flex justify-between items-center text-xs text-indigo-400 border border-indigo-500/10">
-                                    <span>{s.name}</span>
-                                    <CheckCircle size={12} />
-                                </div>
-                            ))}
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
+                            Senior Sec (11-12)
+                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
+                        </h4>
+                        <div className="space-y-3">
+                            <div className="flex gap-2">
+                                <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-black">11</span>
+                                <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-black">12</span>
+                            </div>
+                            <div className="space-y-2">
+                                {streams.map(s => (
+                                    <div key={s.id} className="bg-indigo-500/5 p-2 rounded flex justify-between items-center text-[10px] font-bold text-indigo-400 border border-indigo-500/10 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer group">
+                                        <span>{s.name.toUpperCase()}</span>
+                                        <CheckCircle size={12} className="opacity-0 group-hover:opacity-100" />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Languages (Requirement 10) */}
+                <div className="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                    <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Translation Engine</h4>
+                    <div className="space-y-3">
+                        {languages.map(l => (
+                            <div key={l.id} className="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-gray-800/50 group">
+                                <span className="text-sm text-gray-400 group-hover:text-white font-bold transition-colors">{l.name}</span>
+                                <div className={`w-2 h-2 rounded-full ${l.is_active ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
+                            </div>
+                        ))}
+                        <button className="w-full mt-4 py-2 border border-dashed border-gray-700 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:border-indigo-500 hover:text-indigo-400 transition-all">Add Language Slot</button>
                     </div>
                 </div>
             </div>
@@ -415,8 +507,8 @@ const AdminDashboard = () => {
         <div className="space-y-8 animate-fadeIn">
             <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
                 <div>
-                    <h2 className="text-2xl font-black text-white">University Control</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Manage higher education hierarchy and AI automation</p>
+                    <h2 className="text-2xl font-black text-white">Higher Education Control</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Management of Universities, Degrees & Semesters</p>
                 </div>
                 <div className="flex gap-4 items-center">
                     <select
@@ -431,46 +523,104 @@ const AdminDashboard = () => {
                     </select>
                     <button
                         onClick={() => handleAIFetch('universities', { state_id: selectedState.id, state_name: selectedState.name })}
-                        className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-purple-900/40 flex items-center gap-2"
                     >
-                        <Cpu size={14} /> AI Fetch: {selectedState.name}
+                        <Cpu size={14} /> AI Fetch Universities: {selectedState.name}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                    <h3 className="text-white font-bold text-sm flex items-center gap-2"><GraduationCap size={16} className="text-purple-500" /> Universities List</h3>
-                    <span className="text-[10px] text-gray-500">Showing {universities.length} institutions</span>
-                </div>
-                <div className="max-h-[600px] overflow-y-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
-                            <tr>
-                                <th className="px-6 py-4">University Name</th>
-                                <th className="px-6 py-4">State</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800">
-                            {universities.map(u => (
-                                <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
-                                    <td className="px-6 py-4 text-sm text-gray-300 font-bold">{u.name}</td>
-                                    <td className="px-6 py-4 text-xs text-gray-500">{u.state_name}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                            {u.is_active ? 'PUBLISHED' : 'PENDING'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right flex justify-end gap-3">
-                                        <button onClick={() => handleAIFetch('subjects', { university_id: u.id, context_name: u.name })} className="text-purple-400 hover:text-white text-[10px] uppercase font-bold">AI Subjects</button>
-                                        <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
-                                    </td>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Universities (Requirement 3) */}
+                <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><GraduationCap size={16} className="text-purple-500" /> Institution Directory</h3>
+                    </div>
+                    <div className="max-h-[600px] overflow-y-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
+                                <tr>
+                                    <th className="px-6 py-3">Institution Name</th>
+                                    <th className="px-6 py-3">Status</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-800">
+                                {universities.map(u => (
+                                    <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-300 font-bold">{u.name}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">{u.state_name || 'India'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleUpdateSettings(`approve/universities/${u.id}`, { is_approved: !u.is_approved })}
+                                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${u.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
+                                            >
+                                                {u.is_approved ? 'APPROVED' : 'PENDING'}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
+                                            <button
+                                                onClick={() => handleAIFetch('subjects', { university_id: u.id, category_id: 2, context_name: `${u.name} University` })}
+                                                className="text-purple-400 hover:text-white text-[10px] uppercase font-black flex items-center gap-1"
+                                            >
+                                                <Cpu size={12} /> AI Subjects
+                                            </button>
+                                            <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
+                                            <button onClick={() => handleDeleteItem('universities', u.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Vertical Hierarchy (Course Types / Semesters) */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
+                            Course / Degree Types
+                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {degreeTypes.map(d => (
+                                <div key={d.id} className="bg-purple-500/5 p-3 rounded-xl flex flex-col items-center justify-center text-center border border-purple-500/10 hover:border-purple-500 transition-all cursor-pointer group">
+                                    <span className="text-[10px] font-black text-purple-400 group-hover:text-white">{d.name.toUpperCase()}</span>
+                                    <div className="mt-1 flex gap-1">
+                                        <button className="p-1 hover:bg-gray-800 rounded text-gray-600"><Edit size={10} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('degree_types', d.id); }} className="p-1 hover:bg-gray-800 rounded text-gray-600 hover:text-red-500"><Trash2 size={10} /></button>
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Academic Terms (Semesters/Years)</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {semesters.map(s => (
+                                <div key={s.id} className="bg-gray-800/40 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50 hover:bg-gray-800 transition-all cursor-pointer flex justify-between items-center px-3">
+                                    <span>{s.name}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('semesters', s.id); }} className="text-gray-600 hover:text-red-500"><X size={10} /></button>
+                                </div>
+                            ))}
+                            <button className="border border-dashed border-gray-800 p-2 rounded text-[10px] font-bold text-gray-600 hover:border-indigo-500 hover:text-white transition-all">+ Add New</button>
+                        </div>
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-indigo-600/10 border border-indigo-600/20 p-4 rounded-2xl">
+                            <h5 className="text-indigo-400 font-black text-[9px] uppercase tracking-widest">Total Univs</h5>
+                            <p className="text-2xl font-black text-white">{universities.length}</p>
+                        </div>
+                        <div className="bg-purple-600/10 border border-purple-600/20 p-4 rounded-2xl">
+                            <h5 className="text-purple-400 font-black text-[9px] uppercase tracking-widest">Pending Appr.</h5>
+                            <p className="text-2xl font-black text-white">{universities.filter(u => !u.is_approved).length}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -478,54 +628,97 @@ const AdminDashboard = () => {
 
     const renderUsers = () => (
         <div className="space-y-6 animate-fadeIn">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">User Management</h2>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <h2 className="text-2xl font-black text-white">Identity & Access</h2>
                 <div className="relative">
                     <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
                     <input
                         type="text"
-                        placeholder="Search email..."
-                        className="bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:border-indigo-500 outline-none w-72"
+                        placeholder="Search users..."
+                        className="bg-black border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:border-indigo-500 outline-none w-80 font-bold"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && fetchDashboardData()}
                     />
                 </div>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-widest">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase font-black tracking-widest">
                         <tr>
-                            <th className="px-6 py-4">User</th>
-                            <th className="px-6 py-4">Subscription</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4">Credits Today</th>
-                            <th className="px-6 py-4">Actions</th>
+                            <th className="px-6 py-4">User Identity</th>
+                            <th className="px-6 py-4">Role / Access</th>
+                            <th className="px-6 py-4">Subscription Status</th>
+                            <th className="px-6 py-4">Account Integrity</th>
+                            <th className="px-6 py-4 text-right">Administrative Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                         {users.map(u => (
                             <tr key={u.id} className="hover:bg-gray-800/30 transition-colors text-gray-300">
                                 <td className="px-6 py-4">
-                                    <div className="font-bold text-white">{u.username}</div>
-                                    <div className="text-[10px] text-gray-500">{u.email}</div>
+                                    <div className="font-black text-white">{u.username || 'Unnamed'}</div>
+                                    <div className="text-[10px] text-gray-500 font-bold tracking-tight">{u.email}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <select
+                                        className="bg-black border border-gray-800 text-[10px] text-gray-300 px-2 py-1 rounded font-bold uppercase outline-none focus:border-indigo-500"
+                                        value={u.role}
+                                        onChange={(e) => handleUpdateUser(u.id, { role: e.target.value })}
+                                    >
+                                        <option value="user">USER</option>
+                                        <option value="admin">ADMIN</option>
+                                    </select>
                                 </td>
                                 <td className="px-6 py-4">
                                     {u.is_premium ? (
-                                        <span className="flex items-center gap-1 text-green-500 text-xs font-bold"><CheckCircle size={14} /> Active</span>
+                                        <div className="space-y-1">
+                                            <span className="flex items-center gap-1 text-green-500 text-[10px] font-black uppercase tracking-widest"><UserCheck size={12} /> PRIME ACTIVE</span>
+                                            <p className="text-[9px] text-gray-500 font-bold">Expires: {u.premium_expiry ? new Date(u.premium_expiry).toLocaleDateString() : 'N/A'}</p>
+                                        </div>
                                     ) : (
-                                        <span className="text-gray-600 text-xs font-bold">Free Plan</span>
+                                        <span className="text-gray-600 text-[10px] font-black uppercase tracking-widest">FREE TIER</span>
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <button onClick={() => handleUpdateUser(u.id, { is_active: !u.is_active })} className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                    <button
+                                        onClick={() => handleUpdateUser(u.id, { is_active: !u.is_active })}
+                                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${u.is_active ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}
+                                    >
                                         {u.is_active ? 'ENABLED' : 'DISABLED'}
                                     </button>
                                 </td>
-                                <td className="px-6 py-4 text-xs font-mono">0/10</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex gap-2">
-                                        <button onClick={() => api.post(`/admin/users/${u.id}/reset-usage`).then(() => alert('Usage reset'))} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white" title="Reset Usage"><RefreshCw size={14} /></button>
-                                        <button className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white" title="Extend Subscription"><DollarSign size={14} /></button>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => handleUpdateUser(u.id, { action: 'extend', hours: 24 })}
+                                            className="p-2 bg-indigo-500/10 text-indigo-400 rounded hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
+                                            title="Add 24h Prime"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleUpdateUser(u.id, { action: 'reduce', hours: 24 })}
+                                            className="p-2 bg-orange-500/10 text-orange-400 rounded hover:bg-orange-500 hover:text-white transition-all shadow-lg"
+                                            title="Reduce 24h Prime"
+                                        >
+                                            <Clock size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleUpdateUser(u.id, { action: 'cancel' })}
+                                            className="p-2 bg-red-500/10 text-red-500 rounded hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                                            title="Cancel Prime"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => api.post(`/admin/users/${u.id}/reset-usage`).then(() => alert('Usage reset'))}
+                                            className="p-2 bg-gray-800 text-gray-400 rounded hover:bg-white hover:text-black transition-all shadow-lg"
+                                            title="Reset Daily Limit"
+                                        >
+                                            <RefreshCw size={14} />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -581,42 +774,61 @@ const AdminDashboard = () => {
 
     const renderFreeLimit = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">Free Usage Limits Control</h2>
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 max-w-2xl">
-                <div className="space-y-10">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="text-white font-black text-lg">Daily MCQ Limit</h4>
-                            <p className="text-gray-500 text-sm">How many free practice sessions per user every 24 hours.</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <input
-                                type="number"
-                                className="w-20 bg-black/50 border border-gray-800 p-3 rounded-xl text-center text-indigo-500 font-bold outline-none focus:border-indigo-500"
-                                defaultValue={settings.system['FREE_DAILY_LIMIT'] || 2}
-                                onBlur={(e) => handleUpdateSettings('free-limit', { limit: e.target.value, logic: settings.system['FREE_LIMIT_RESET_LOGIC'] })}
-                            />
-                            <span className="text-gray-500 font-bold uppercase text-xs">MCQs</span>
-                        </div>
-                    </div>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">Free Usage Guard</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Monetization Control & Usage Boundaries</p>
+                </div>
+                <button
+                    onClick={() => handleUpdateSettings('free-limit', { settings: settings.freeLimit })}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40"
+                >
+                    Save Boundaries
+                </button>
+            </div>
 
-                    <div className="pt-10 border-t border-gray-800">
-                        <h4 className="text-white font-black text-lg mb-4">Reset Logic Persistence</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                onClick={() => handleUpdateSettings('free-limit', { limit: settings.system['FREE_DAILY_LIMIT'], logic: 'rolling' })}
-                                className={`p-4 rounded-xl border transition-all text-left ${settings.system['FREE_LIMIT_RESET_LOGIC'] === 'rolling' ? 'bg-indigo-600/10 border-indigo-600 shadow-lg shadow-indigo-900/10' : 'bg-gray-800/20 border-gray-800 grayscale opacity-50'}`}
-                            >
-                                <p className="text-white font-bold text-sm">Rolling 24h Window</p>
-                                <p className="text-[10px] text-gray-500 mt-1">Reset happens exactly 24h after the first use.</p>
-                            </button>
-                            <button
-                                onClick={() => handleUpdateSettings('free-limit', { limit: settings.system['FREE_DAILY_LIMIT'], logic: 'midnight' })}
-                                className={`p-4 rounded-xl border transition-all text-left ${settings.system['FREE_LIMIT_RESET_LOGIC'] === 'midnight' ? 'bg-indigo-600/10 border-indigo-600 shadow-lg shadow-indigo-900/10' : 'bg-gray-800/20 border-gray-800 grayscale opacity-50'}`}
-                            >
-                                <p className="text-white font-bold text-sm">Fixed Midnight Reset</p>
-                                <p className="text-[10px] text-gray-500 mt-1">All usage counters reset at 00:00 server time.</p>
-                            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                    { key: 'FREE_SESSIONS_COUNT', label: 'Sessions per Window', icon: Activity, color: 'text-indigo-500' },
+                    { key: 'FREE_SESSION_MCQS', label: 'MCQs per Session', icon: CheckSquare, color: 'text-green-500' },
+                    { key: 'FREE_SESSION_MINUTES', label: 'Minutes per Session', icon: Clock, color: 'text-orange-500' },
+                    { key: 'RENEWAL_WINDOW_HOURS', label: 'Renewal Window (Hrs)', icon: RefreshCw, color: 'text-blue-500' }
+                ].map(item => (
+                    <div key={item.key} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{item.label}</h4>
+                            <item.icon size={16} className={item.color} />
+                        </div>
+                        <input
+                            type="number"
+                            className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xl font-black text-white outline-none focus:border-indigo-500"
+                            value={settings.freeLimit[item.key] || ''}
+                            onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, [item.key]: e.target.value } })}
+                        />
+                    </div>
+                ))}
+
+                <div className="md:col-span-2 lg:col-span-2 bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl flex flex-col">
+                    <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4 flex items-center gap-2">
+                        <ShieldAlert size={14} className="text-red-500" /> Exhaustion Messaging (Requirement 4)
+                    </h4>
+                    <div className="space-y-4 flex-1">
+                        <div>
+                            <label className="text-[9px] text-gray-400 font-bold">Popup Heading</label>
+                            <input
+                                type="text"
+                                className="w-full bg-black border border-gray-800 p-3 rounded-xl text-sm text-white font-bold outline-none mt-1"
+                                value={settings.freeLimit['POPUP_HEADING'] || ''}
+                                onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, POPUP_HEADING: e.target.value } })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[9px] text-gray-400 font-bold">Marketing Text</label>
+                            <textarea
+                                className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-gray-400 font-medium outline-none mt-1 h-20"
+                                value={settings.freeLimit['POPUP_TEXT'] || ''}
+                                onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, POPUP_TEXT: e.target.value } })}
+                            />
                         </div>
                     </div>
                 </div>
@@ -626,28 +838,73 @@ const AdminDashboard = () => {
 
     const renderPayMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">Payment Gateway Configuration</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {['razorpay', 'stripe'].map(prov => (
-                    <div key={prov} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h4 className="text-white font-black text-xl uppercase tracking-tighter">{prov} Integration</h4>
-                            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
-                                <ShieldAlert size={20} className="text-gray-600" />
-                            </div>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">Financial Rails</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Configure Razorpay & Stripe Integration (Requirement 6)</p>
+                </div>
+                <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-green-500" />
+                    <span className="text-[10px] text-green-500 font-black uppercase tracking-widest">PCI DSS Compliant Handlers</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {settings.payment.map(prov => (
+                    <div key={prov.provider} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4">
+                            {prov.is_active ? (
+                                <span className="flex items-center gap-1 text-[8px] bg-green-500 text-white px-2 py-0.5 rounded font-black uppercase">Live</span>
+                            ) : (
+                                <span className="flex items-center gap-1 text-[8px] bg-gray-800 text-gray-500 px-2 py-0.5 rounded font-black uppercase">Disabled</span>
+                            )}
                         </div>
-                        <div className="space-y-5">
+
+                        <h4 className="text-white font-black text-2xl uppercase tracking-tighter mb-8 flex items-center gap-3">
+                            {prov.provider === 'razorpay' ? <CreditCard className="text-indigo-500" /> : <DollarSign className="text-blue-500" />}
+                            {prov.provider}
+                        </h4>
+
+                        <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Live Key Path</label>
-                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none" placeholder={`pk_live_...`} />
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Public API Key</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono"
+                                    placeholder={`${prov.provider}_key_...`}
+                                    value={prov.api_key || ''}
+                                    onChange={(e) => {
+                                        const newPay = settings.payment.map(p => p.provider === prov.provider ? { ...p, api_key: e.target.value } : p);
+                                        setSettings({ ...settings, payment: newPay });
+                                    }}
+                                />
                             </div>
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Secret Vault Key</label>
-                                <input type="password" underline="true" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none" value="********" />
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Secret API Key</label>
+                                <input
+                                    type="password"
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
+                                    placeholder="••••••••••••••••"
+                                    value={prov.api_secret || ''}
+                                    onChange={(e) => {
+                                        const newPay = settings.payment.map(p => p.provider === prov.provider ? { ...p, api_secret: e.target.value } : p);
+                                        setSettings({ ...settings, payment: newPay });
+                                    }}
+                                />
                             </div>
-                            <div className="flex items-center gap-3 pt-2">
-                                <button className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:bg-indigo-700 transition-all">Enable Mode</button>
-                                <button className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:text-white transition-colors"><Edit size={16} /></button>
+                            <div className="flex items-center gap-3 pt-4">
+                                <button
+                                    onClick={() => handleUpdateSettings(`payments/${prov.provider}`, { is_active: !prov.is_active })}
+                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${prov.is_active ? 'bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white' : 'bg-green-600 text-white shadow-green-900/20 hover:bg-green-700'}`}
+                                >
+                                    {prov.is_active ? 'Deactivate Gateway' : 'Activate Gateway'}
+                                </button>
+                                <button
+                                    onClick={() => handleUpdateSettings(`payments/${prov.provider}`, { api_key: prov.api_key, api_secret: prov.api_secret })}
+                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:bg-white hover:text-black transition-all"
+                                >
+                                    <Save size={18} />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -707,126 +964,200 @@ const AdminDashboard = () => {
 
     const renderSEOMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">SEO & Google Integrations</h2>
-            <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                        <h4 className="text-indigo-400 font-black uppercase text-xs tracking-widest">Metadata Control</h4>
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black">Meta Title Template</label>
-                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white outline-none" defaultValue={settings.system['META_TITLE']} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black">Global Keywords</label>
-                            <textarea className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white h-24 outline-none" defaultValue={settings.system['META_KEYWORDS']} />
-                        </div>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">Search Engine Optimization</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Meta Control & Google Visibility (Requirement 8)</p>
+                </div>
+                <button
+                    onClick={() => handleUpdateSettings('system', { settings: settings.system })}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40"
+                >
+                    Deploy SEO Config
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl space-y-6">
+                    <h4 className="text-indigo-400 font-black uppercase text-xs tracking-widest flex items-center gap-2"><Globe size={16} /> Metadata Integrity</h4>
+                    <div className="space-y-4">
+                        {[
+                            { key: 'SITE_TITLE', label: 'Primary Site Title' },
+                            { key: 'META_DESCRIPTION', label: 'Global Meta Description' },
+                            { key: 'META_KEYWORDS', label: 'Target SEO Keywords' }
+                        ].map(f => (
+                            <div key={f.key}>
+                                <label className="text-[10px] text-gray-500 uppercase font-bold">{f.label}</label>
+                                {f.key === 'META_DESCRIPTION' ? (
+                                    <textarea
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white outline-none focus:border-indigo-500 h-24"
+                                        value={settings.system[f.key] || ''}
+                                        onChange={(e) => setSettings({ ...settings, system: { ...settings.system, [f.key]: e.target.value } })}
+                                    />
+                                ) : (
+                                    <input
+                                        type="text"
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-sm text-white outline-none focus:border-indigo-500"
+                                        value={settings.system[f.key] || ''}
+                                        onChange={(e) => setSettings({ ...settings, system: { ...settings.system, [f.key]: e.target.value } })}
+                                    />
+                                )}
+                            </div>
+                        ))}
                     </div>
-                    <div className="space-y-6">
-                        <h4 className="text-green-400 font-black uppercase text-xs tracking-widest">Google Connectivity</h4>
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black">Analytics ID (GA4)</label>
-                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-indigo-500 outline-none" defaultValue={settings.system['GOOGLE_ANALYTICS_ID']} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black">Search Console Verification</label>
-                            <input type="text" className="w-full bg-black/50 border border-gray-800 p-3 rounded-xl mt-1 text-sm text-gray-400 outline-none" defaultValue={settings.system['GOOGLE_SEARCH_CONSOLE_CODE']} />
-                        </div>
-                        <button className="w-full py-4 bg-gray-800 text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all">Verify All Deployments</button>
+                </div>
+
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl space-y-6">
+                    <h4 className="text-green-400 font-black uppercase text-xs tracking-widest flex items-center gap-2"><PieChart size={16} /> Analytics & Search Console</h4>
+                    <div className="space-y-4">
+                        {[
+                            { key: 'GOOGLE_ANALYTICS_ID', label: 'GA4 Tag / Measurement ID' },
+                            { key: 'GOOGLE_SEARCH_CONSOLE_CODE', label: 'Site Verification Code' },
+                            { key: 'SUPPORT_EMAIL', label: 'Administrative Support Email' },
+                            { key: 'WHATSAPP_NUMBER', label: 'WhatsApp Support Link' }
+                        ].map(f => (
+                            <div key={f.key}>
+                                <label className="text-[10px] text-gray-500 uppercase font-bold">{f.label}</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-sm text-indigo-400 outline-none focus:border-indigo-500 font-mono"
+                                    value={settings.system[f.key] || ''}
+                                    onChange={(e) => setSettings({ ...settings, system: { ...settings.system, [f.key]: e.target.value } })}
+                                />
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
         </div>
     );
 
-    const renderLegalMgmt = () => (
-        <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">Legal Document Editor</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <div className="lg:col-span-1 space-y-2">
-                    {settings.legal.map(page => (
-                        <button
-                            key={page.slug}
-                            className={`w-full p-4 rounded-xl text-left border transition-all ${activeTab === `legal-${page.slug}` ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}
-                            onClick={() => setActiveTab(`legal-${page.slug}`)}
-                        >
-                            <p className="text-white font-bold text-sm">{page.title}</p>
-                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-black">Slug: {page.slug}</p>
-                        </button>
-                    ))}
+    const renderLegalMgmt = () => {
+        const [activePage, setActivePage] = useState(settings.legal[0] || null);
+
+        return (
+            <div className="space-y-8 animate-fadeIn">
+                <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                    <div>
+                        <h2 className="text-2xl font-black text-white">Policy Framework</h2>
+                        <p className="text-xs text-gray-500 font-bold mt-1">AdSense Compliance & Legal Documentation (Requirement 9)</p>
+                    </div>
                 </div>
-                <div className="lg:col-span-3 bg-gray-900 border border-gray-800 p-8 rounded-2xl flex flex-col min-h-[600px]">
-                    <h3 className="text-white font-black text-xl mb-6 flex items-center justify-between">
-                        <span>Document Workspace</span>
-                        <div className="flex gap-2">
-                            <button className="px-4 py-1.5 bg-gray-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Preview</button>
-                            <button className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-900/20">Commit Changes</button>
-                        </div>
-                    </h3>
-                    <textarea
-                        className="flex-1 w-full bg-black/50 border border-gray-800 p-6 rounded-2xl text-sm text-gray-400 font-serif leading-relaxed outline-none focus:border-indigo-500"
-                        placeholder="Select a document from the left to start editing..."
-                    />
+
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <div className="lg:col-span-1 space-y-3">
+                        {settings.legal.map(page => (
+                            <button
+                                key={page.id}
+                                className={`w-full p-6 rounded-2xl text-left border transition-all shadow-lg ${activePage?.id === page.id ? 'bg-indigo-600 border-indigo-500 scale-[1.02] z-10' : 'bg-gray-900 border-gray-800 hover:border-indigo-500/50 grayscale opacity-60 hover:grayscale-0 hover:opacity-100'}`}
+                                onClick={() => setActivePage(page)}
+                            >
+                                <p className="text-white font-black text-sm tracking-tight">{page.title}</p>
+                                <div className="flex justify-between items-center mt-2">
+                                    <span className="text-[8px] text-indigo-200 font-bold uppercase tracking-widest">/{page.slug}</span>
+                                    <span className="text-[8px] text-gray-500 font-bold">{new Date(page.updated_at).toLocaleDateString()}</span>
+                                </div>
+                            </button>
+                        ))}
+                        <button className="w-full p-4 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500 hover:text-white transition-all">+ Add Legal Doc</button>
+                    </div>
+
+                    <div className="lg:col-span-3 bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl flex flex-col min-h-[700px]">
+                        {activePage ? (
+                            <>
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <FileText className="text-indigo-500" />
+                                        <h3 className="text-white font-black text-xl tracking-tighter">Editing: {activePage.title}</h3>
+                                    </div>
+                                    <button
+                                        onClick={() => handleUpdateSettings(`legal/${activePage.id}`, { content: activePage.content })}
+                                        className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-900/40 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                    >
+                                        <Save size={14} /> Commit Version
+                                    </button>
+                                </div>
+                                <textarea
+                                    className="flex-1 w-full bg-black border border-gray-800 p-8 rounded-2xl text-sm text-gray-400 font-serif leading-relaxed outline-none focus:border-indigo-500 shadow-inner"
+                                    value={activePage.content}
+                                    onChange={(e) => {
+                                        const newLegal = settings.legal.map(l => l.id === activePage.id ? { ...l, content: e.target.value } : l);
+                                        setSettings({ ...settings, legal: newLegal });
+                                        setActivePage({ ...activePage, content: e.target.value });
+                                    }}
+                                />
+                                <div className="mt-4 flex justify-between items-center">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest italic">HTML Supported - Use semantic tags for SEO optimization</p>
+                                    <span className="text-[9px] text-gray-600 font-mono">CHARS: {activePage.content?.length || 0}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center text-gray-700 group">
+                                <FileText size={64} className="mb-4 group-hover:scale-110 transition-transform opacity-20" />
+                                <p className="font-black uppercase tracking-widest text-lg opacity-20">Initialize Documentation Context</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
-    const renderSettings = () => (
+    const renderSysSettings = () => (
         <div className="space-y-8 animate-fadeIn">
             <h2 className="text-2xl font-bold text-white">System Configuration</h2>
+
+            {/* Quick Access Utility */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onClick={() => setActiveTab('states')} className="p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-indigo-500 transition-all text-left flex items-center gap-3 group">
+                    <div className="p-2 bg-indigo-500/10 rounded-lg group-hover:bg-indigo-500/20 text-indigo-400"><MapPin size={20} /></div>
+                    <div>
+                        <p className="text-sm font-bold text-white">Indian States Hierarchy</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black">Manage states & regions</p>
+                    </div>
+                </button>
+                <button onClick={() => setActiveTab('categories')} className="p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-indigo-500 transition-all text-left flex items-center gap-3 group">
+                    <div className="p-2 bg-purple-500/10 rounded-lg group-hover:bg-purple-500/20 text-purple-400"><Layers size={20} /></div>
+                    <div>
+                        <p className="text-sm font-bold text-white">Exam Category Metadata</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black">Top-level classification</p>
+                    </div>
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Global Settings */}
                 <div className="xl:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
                     <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Globe size={18} className="text-blue-500" /> Global SEO & Metadata</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {['SITE_NAME', 'SITE_TITLE', 'SITE_DESC', 'META_KEYWORDS', 'CONTACT_EMAIL', 'FREE_LIMIT'].map(key => (
+                        {['SITE_NAME', 'SITE_TITLE', 'SITE_DESC', 'META_KEYWORDS', 'CONTACT_EMAIL', 'SUPPORT_EMAIL', 'WHATSAPP_NUMBER'].map(key => (
                             <div key={key}>
                                 <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">{key.replace('_', ' ')}</label>
                                 <input
                                     type="text"
                                     className="w-full bg-black/50 border border-gray-800 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    defaultValue={settings.system[key] || ''}
-                                    onBlur={(e) => handleUpdateSettings('global', { settings: { [key]: e.target.value } })}
+                                    value={settings.system[key] || ''}
+                                    onChange={(e) => setSettings({ ...settings, system: { ...settings.system, [key]: e.target.value } })}
+                                    onBlur={() => handleUpdateSettings('system', { settings: settings.system })}
                                 />
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Ads Settings */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Layers size={18} className="text-orange-500" /> AdSense Control</h3>
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <span className="text-gray-400 text-sm">Ads Active</span>
-                            <button className={`w-12 h-6 rounded-full transition-colors relative ${settings.system['ADS_ENABLED'] === 'true' ? 'bg-indigo-600' : 'bg-gray-700'}`}>
-                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.system['ADS_ENABLED'] === 'true' ? 'right-1' : 'left-1'}`} />
-                            </button>
+                {/* Maintenance & Core */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-6">
+                    <div>
+                        <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Settings size={18} className="text-orange-500" /> Engine Control</h3>
+                        <div className="space-y-4">
+                            <button className="w-full py-4 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-900/20 hover:bg-red-700">Clear Runtime Cache</button>
+                            <button className="w-full py-4 bg-gray-800 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-700">Audit System Logs</button>
                         </div>
-                        <div>
-                            <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Publisher Script</label>
-                            <textarea
-                                className="w-full bg-black/50 border border-gray-800 rounded-lg p-2.5 text-[10px] font-mono text-gray-500 h-24 outline-none focus:border-indigo-500"
-                                defaultValue={settings.system['ADSENSE_SCRIPT']}
-                            />
-                        </div>
-                        <button className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20">Update Assets</button>
                     </div>
-                </div>
-            </div>
-
-            {/* Legal Pages */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-800">
-                    <h3 className="text-white font-bold flex items-center gap-2"><FileText size={18} className="text-indigo-500" /> Legal & Policy Pages</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-x divide-gray-800">
-                    {settings.legal.map(p => (
-                        <button key={p.id} className="p-4 hover:bg-gray-800 text-left transition-all">
-                            <p className="text-white font-bold text-sm truncate">{p.title}</p>
-                            <p className="text-[10px] text-gray-500 mt-1">Updated {new Date(p.updated_at).toLocaleDateString()}</p>
-                        </button>
-                    ))}
+                    <div className="mt-auto p-4 bg-black/30 rounded-xl border border-gray-800 uppercase">
+                        <p className="text-[10px] text-gray-500 font-bold mb-2">Build Identifier</p>
+                        <p className="text-xs text-indigo-400 font-mono">EX-V2.0-STABLE-2026</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -939,39 +1270,120 @@ const AdminDashboard = () => {
 
     const renderAIMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">AI Engine Management</h2>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">Neural Network Hub</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Provider Aggregation & LLM Configuration (Requirement 7)</p>
+                </div>
+                <button
+                    onClick={() => {
+                        const name = prompt('Provider Name:');
+                        if (name) api.post('/admin/ai-providers', { name, base_url: '', api_key: '', model_name: '' }).then(() => fetchDashboardData());
+                    }}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                >
+                    <Plus size={14} /> Integrate Provider
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {aiProviders.map(p => (
-                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-bold ${p.is_active ? 'bg-green-500 text-white' : 'bg-gray-800 text-gray-500'}`}>
-                            {p.is_active ? 'PRIMARY MODEL' : 'STANDBY'}
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl relative overflow-hidden group shadow-2xl">
+                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${p.is_active ? 'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]' : 'bg-gray-800 text-gray-500'}`}>
+                            {p.is_active ? 'Active Engine' : 'Standby Mode'}
                         </div>
-                        <h4 className="text-white font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={20} className="text-indigo-500" /> {p.name}</h4>
-                        <div className="space-y-4">
+
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                                <Cpu size={24} className="text-indigo-400" />
+                            </div>
+                            <h4 className="text-white font-black text-xl uppercase tracking-tighter">{p.name}</h4>
+                        </div>
+
+                        <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-bold">Base URL</label>
-                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500" value={p.base_url} readOnly />
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Base API Endpoint</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono"
+                                    value={p.base_url || ''}
+                                    onChange={(e) => {
+                                        const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, base_url: e.target.value } : api_p);
+                                        setAiProviders(newAI);
+                                    }}
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-bold">Model Name</label>
-                                    <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value={p.model_name} readOnly />
+                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Model Identifier</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        value={p.model_name || ''}
+                                        onChange={(e) => {
+                                            const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, model_name: e.target.value } : api_p);
+                                            setAiProviders(newAI);
+                                        }}
+                                    />
                                 </div>
-                                <div className="flex items-end">
-                                    <button className="w-full py-2 bg-indigo-600/10 text-indigo-500 border border-indigo-600/20 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all">Update Provider</button>
+                                <div>
+                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">API Authentication Key</label>
+                                    <input
+                                        type="password"
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        placeholder="••••••••••••••••"
+                                        value={p.api_key || ''}
+                                        onChange={(e) => {
+                                            const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, api_key: e.target.value } : api_p);
+                                            setAiProviders(newAI);
+                                        }}
+                                    />
                                 </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-4">
+                                <button
+                                    onClick={() => handleUpdateSettings(`ai-providers/${p.id}/status`, { is_active: !p.is_active })}
+                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${p.is_active ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white' : 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/20'}`}
+                                >
+                                    {p.is_active ? 'Suspend Engine' : 'Activate Engine'}
+                                </button>
+                                <button
+                                    onClick={() => handleUpdateSettings(`ai-providers/${p.id}`, { name: p.name, base_url: p.base_url, api_key: p.api_key, model_name: p.model_name })}
+                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:bg-white hover:text-black transition-all"
+                                >
+                                    <Save size={18} />
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteItem('ai-providers', p.id)}
+                                    className="w-12 h-12 flex items-center justify-center bg-red-500/5 text-red-500 border border-red-500/10 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6">
-                <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2"><Activity size={16} className="text-green-500" /> Recent AI Fetch Logs</h3>
-                <div className="bg-black/50 rounded-xl border border-gray-800 p-4 font-mono text-[10px] text-gray-500 max-h-40 overflow-y-auto">
-                    <p className="text-indigo-400">[2026-02-19 18:41] INFO: Triggered fetch for "Education Boards" in "CBSE"</p>
-                    <p className="text-green-400">[2026-02-19 18:41] SUCCESS: 10 boards saved successfully.</p>
-                    <p className="text-gray-600">[2026-02-19 18:40] DEBUG: Initializing Google Gemini service...</p>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                    <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Activity size={16} className="text-green-500" /> Neural Processing Logs</h3>
+                    <button onClick={() => fetchDashboardData()} className="text-[10px] text-indigo-400 hover:text-white font-black uppercase tracking-widest">Refresh Logs</button>
+                </div>
+                <div className="p-6 h-64 overflow-y-auto bg-black/40 font-mono text-[10px] space-y-2 scrollbar-thin scrollbar-thumb-gray-800">
+                    {aiLogs.length > 0 ? aiLogs.map((log, i) => (
+                        <div key={i} className={`flex gap-3 border-b border-gray-800/30 pb-2 ${log.status === 'error' ? 'text-red-400' : 'text-gray-500'}`}>
+                            <span className="text-indigo-500 font-bold">[{new Date(log.created_at).toLocaleTimeString()}]</span>
+                            <span className="uppercase font-black text-[9px]">{log.module || 'SYS'}:</span>
+                            <span className="flex-1">{log.message || log.error}</span>
+                        </div>
+                    )) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-700 animate-pulse">
+                            <Activity size={32} className="mb-2" />
+                            <p className="font-black uppercase tracking-widest">No active telemetry signal detected</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -1022,27 +1434,60 @@ const AdminDashboard = () => {
 
     const renderSubMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">Subscription Plans</h2>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-900/20">
-                    <Plus size={16} /> Add New Plan
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">Prime Architecture</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Tiered subscription plans & Monetization Logic (Requirement 5)</p>
+                </div>
+                <button
+                    onClick={() => {
+                        const name = prompt('Plan Name:');
+                        if (name) api.post('/admin/plans', { name, price: 99, duration_hours: 24, features: [] }).then(() => fetchDashboardData());
+                    }}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                >
+                    <Plus size={14} /> Design New Plan
                 </button>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {plans.map(p => (
-                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl group relative overflow-hidden">
-                        <div className="flex justify-between items-start mb-4">
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl group relative overflow-hidden shadow-2xl hover:border-indigo-500/50 transition-all">
+                        <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h4 className="text-white font-black text-xl">{p.name}</h4>
-                                <p className="text-indigo-500 font-bold">₹{p.price} <span className="text-gray-500 text-xs text-normal">/ {p.duration_hours}h</span></p>
+                                <h4 className="text-white font-black text-xl tracking-tight leading-none mb-1">{p.name.toUpperCase()}</h4>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-indigo-400 font-black text-2xl tracking-tighter">₹{p.price}</span>
+                                    <span className="text-gray-500 text-[10px] font-bold">/ {p.duration_hours} HOURS</span>
+                                </div>
                             </div>
-                            <div className={`px-2 py-0.5 rounded text-[8px] font-bold ${p.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                {p.is_active ? 'ACTIVE' : 'DISABLED'}
+                            <button
+                                onClick={() => handleUpdateSettings(`plans/${p.id}/status`, { is_active: !p.is_active })}
+                                className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border transition-all ${p.is_active ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}
+                            >
+                                {p.is_active ? 'LIVE' : 'ARCHIVED'}
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 mb-6">
+                            <div className="flex flex-wrap gap-2">
+                                {(p.features || []).map((f, i) => (
+                                    <span key={i} className="px-2 py-0.5 bg-gray-800 text-gray-400 text-[8px] font-black uppercase tracking-widest rounded border border-gray-700">{f}</span>
+                                ))}
+                                <button className="px-2 py-0.5 bg-indigo-500/5 text-indigo-400 text-[8px] font-black uppercase tracking-widest rounded border border-indigo-500/10 hover:bg-indigo-500 hover:text-white transition-all">+ Add Feature</button>
                             </div>
                         </div>
-                        <div className="flex gap-2 pt-4 border-t border-gray-800">
-                            <button className="flex-1 py-1.5 bg-gray-800 text-white text-[10px] font-bold rounded uppercase hover:bg-indigo-600 transition-all">Edit Plan</button>
-                            <button className="px-3 py-1.5 bg-gray-800 text-red-500 text-[10px] font-bold rounded uppercase hover:bg-red-500 hover:text-white transition-all"><Trash2 size={12} /></button>
+
+                        <div className="grid grid-cols-2 gap-3 pt-6 border-t border-gray-800">
+                            <button className="py-2 bg-gray-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2">
+                                <Edit size={12} /> Edit Plan
+                            </button>
+                            <button
+                                onClick={() => handleDeleteItem('plans', p.id)}
+                                className="py-2 bg-red-500/5 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl border border-red-500/10 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={12} /> Purge
+                            </button>
                         </div>
                     </div>
                 ))}
@@ -1062,40 +1507,38 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-thin scrollbar-thumb-gray-800">
-                    <SidebarGroup label="Executive">
-                        <SidebarItem id="overview" label="Dashboard Overview" icon={LayoutDashboard} />
-                        <SidebarItem id="users" label="User Management" icon={Users} />
+                    <SidebarGroup label="CORE MONITORING">
+                        <SidebarItem id="overview" label="Logic Diagnostics" icon={LayoutDashboard} />
+                        <SidebarItem id="users" label="Identity & Access" icon={Users} />
                     </SidebarGroup>
 
-                    <SidebarGroup label="Content Control">
-                        <SidebarItem id="states" label="Indian States" icon={MapPin} />
-                        <SidebarItem id="languages" label="Official Languages" icon={Globe} />
-                        <SidebarItem id="categories" label="Exam Categories" icon={Layers} />
-                    </SidebarGroup>
-
-                    <SidebarGroup label="Education Hierarchy">
-                        <SidebarItem id="school-mgmt" label="School Category" icon={School} />
-                        <SidebarItem id="univ-mgmt" label="University Category" icon={GraduationCap} />
-                        <SidebarItem id="comp-mgmt" label="Competitive Exams" icon={Briefcase} />
+                    <SidebarGroup label="EDUCATION HIERARCHY">
+                        <SidebarItem id="school-mgmt" label="School Central" icon={School} />
+                        <SidebarItem id="univ-mgmt" label="University Hub" icon={GraduationCap} />
+                        <SidebarItem id="comp-mgmt" label="Competitive Arena" icon={Briefcase} />
                         <SidebarItem id="mcq-mgmt" label="MCQ Moderation" icon={CheckSquare} />
                     </SidebarGroup>
 
-                    <SidebarGroup label="AI & System">
-                        <SidebarItem id="ai-mgmt" label="AI Management" icon={Cpu} />
-                        <SidebarItem id="free-limit" label="Free Limit Control" icon={Clock} />
-                        <SidebarItem id="settings" label="Global Settings" icon={Settings} />
+                    <SidebarGroup label="AI & AUTOMATION">
+                        <SidebarItem id="ai-mgmt" label="Neural Hub (AI)" icon={Cpu} />
+                        <SidebarItem id="free-limit" label="Free Usage Guard" icon={Clock} />
                     </SidebarGroup>
 
-                    <SidebarGroup label="Revenue & Ads">
-                        <SidebarItem id="sub-mgmt" label="Subscriptions" icon={CreditCard} />
-                        <SidebarItem id="ref-mgmt" label="Referral System" icon={Share2} />
-                        <SidebarItem id="pay-mgmt" label="Payment Gateway" icon={DollarSign} />
-                        <SidebarItem id="ads-mgmt" label="Ads Management" icon={PieChart} />
+                    <SidebarGroup label="ECONOMICS">
+                        <SidebarItem id="sub-mgmt" label="Prime Architecture" icon={CreditCard} />
+                        <SidebarItem id="pay-mgmt" label="Revenue Analytics" icon={DollarSign} />
+                        <SidebarItem id="ref-mgmt" label="Referral Engine" icon={Share2} />
                     </SidebarGroup>
 
-                    <SidebarGroup label="Marketing & Legal">
-                        <SidebarItem id="seo-mgmt" label="SEO & Analytics" icon={TrendingUp} />
-                        <SidebarItem id="legal-mgmt" label="Legal Page Editor" icon={FileText} />
+                    <SidebarGroup label="MARKETING & POLICY">
+                        <SidebarItem id="ads-mgmt" label="AdSense Core" icon={PieChart} />
+                        <SidebarItem id="seo-mgmt" label="Search Optimization" icon={TrendingUp} />
+                        <SidebarItem id="legal-mgmt" label="Legal Compliance" icon={FileText} />
+                    </SidebarGroup>
+
+                    <SidebarGroup label="SYSTEM">
+                        <SidebarItem id="languages" label="Language Translation" icon={Globe} />
+                        <SidebarItem id="sys-settings" label="System Settings" icon={Settings} />
                     </SidebarGroup>
                 </div>
 
@@ -1154,7 +1597,7 @@ const AdminDashboard = () => {
                         {activeTab === 'ads-mgmt' && renderAdsMgmt()}
                         {activeTab === 'seo-mgmt' && renderSEOMgmt()}
                         {activeTab === 'legal-mgmt' && renderLegalMgmt()}
-                        {activeTab === 'settings' && renderSettings()}
+                        {activeTab === 'sys-settings' && renderSysSettings()}
                     </div>
                 )}
             </main>
