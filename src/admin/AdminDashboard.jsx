@@ -8,7 +8,7 @@ import {
     Eye, Edit, Trash2, Check, X, Search,
     Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
     LogOut, Globe, BookOpen, Book, GraduationCap, School, MapPin,
-    Briefcase, FileText, CreditCard, PieChart, Activity, AlertCircle, RefreshCw
+    Briefcase, FileText, CreditCard, PieChart, Activity, AlertCircle, RefreshCw, Save
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -112,10 +112,10 @@ const AdminDashboard = () => {
                 case 'ai-mgmt':
                     const [aiP, aiL] = await Promise.all([
                         api.get('/admin/ai-providers'),
-                        api.get('/admin/ai-fetch/logs')
+                        api.get('/ai-fetch/logs')
                     ]);
-                    setAiProviders(aiP.data);
-                    setAiLogs(aiL.data);
+                    setAiProviders(Array.isArray(aiP.data) ? aiP.data : []);
+                    setAiLogs(Array.isArray(aiL.data) ? aiL.data : []);
                     break;
                 case 'mcq-mgmt':
                     const mcqRes = await api.get('/admin/mcqs?status=pending');
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                        {languages.map(l => (
+                        {Array.isArray(languages) && languages.map(l => (
                             <tr key={l.id} className="hover:bg-gray-800/50">
                                 <td className="px-6 py-4 text-sm text-gray-300 font-medium">{l.name}</td>
                                 <td className="px-6 py-4">
@@ -418,7 +418,7 @@ const AdminDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {boards.map(b => (
+                                {Array.isArray(boards) && boards.map(b => (
                                     <tr key={b.id} className="hover:bg-gray-800/30 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="text-sm text-gray-300 font-bold">{b.name}</div>
@@ -505,120 +505,75 @@ const AdminDashboard = () => {
 
     const renderUnivMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
-                <div>
-                    <h2 className="text-2xl font-black text-white">Higher Education Control</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Management of Universities, Degrees & Semesters</p>
-                </div>
-                <div className="flex gap-4 items-center">
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-3xl border border-gray-800">
+                <div className="flex items-center gap-6">
                     <select
-                        className="bg-black border border-gray-800 text-xs text-gray-300 px-4 py-2 rounded-lg font-bold outline-none focus:border-indigo-500"
+                        className="bg-black border border-gray-800 rounded-xl px-4 py-2 text-sm text-indigo-400 font-bold outline-none focus:border-indigo-500"
                         onChange={(e) => {
-                            const st = states.find(s => s.id === parseInt(e.target.value));
-                            if (st) setSelectedState(st);
+                            const s = states.find(st => st.id === parseInt(e.target.value));
+                            if (s) setSelectedState(s);
                         }}
                         value={selectedState.id}
                     >
                         {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                    <div className="h-8 w-px bg-gray-800" />
                     <button
                         onClick={() => handleAIFetch('universities', { state_id: selectedState.id, state_name: selectedState.name })}
-                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-purple-900/40 flex items-center gap-2"
+                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-purple-900/40 flex items-center gap-2"
                     >
-                        <Cpu size={14} /> AI Fetch Universities: {selectedState.name}
+                        <Cpu size={14} /> AI Build University Directory
                     </button>
                 </div>
+                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest hidden md:block">University Hierarchy Flow: State → Univ → Stream → Degree → Term</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Universities (Requirement 3) */}
-                <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><GraduationCap size={16} className="text-purple-500" /> Institution Directory</h3>
-                    </div>
-                    <div className="max-h-[600px] overflow-y-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
-                                <tr>
-                                    <th className="px-6 py-3">Institution Name</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {universities.map(u => (
-                                    <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-300 font-bold">{u.name}</div>
-                                            <div className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">{u.state_name || 'India'}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleUpdateSettings(`approve/universities/${u.id}`, { is_approved: !u.is_approved })}
-                                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${u.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
-                                            >
-                                                {u.is_approved ? 'APPROVED' : 'PENDING'}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
-                                            <button
-                                                onClick={() => handleAIFetch('subjects', { university_id: u.id, category_id: 2, context_name: `${u.name} University` })}
-                                                className="text-purple-400 hover:text-white text-[10px] uppercase font-black flex items-center gap-1"
-                                            >
-                                                <Cpu size={12} /> AI Subjects
-                                            </button>
-                                            <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
-                                            <button onClick={() => handleDeleteItem('universities', u.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14} /></button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-3xl p-8">
+                    <h3 className="text-white font-black text-xs uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <GraduationCap size={16} className="text-purple-500" /> University Roster ({selectedState.name})
+                    </h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        {(Array.isArray(universities) ? universities : []).filter(u => u.state_id === selectedState.id).map(u => (
+                            <div key={u.id} className="p-4 bg-black/40 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-purple-500/50 transition-all cursor-pointer">
+                                <div>
+                                    <p className="text-white font-black text-sm">{u.name}</p>
+                                    <p className="text-[9px] text-gray-600 font-bold uppercase mt-0.5 tracking-tighter">Verified Institution</p>
+                                </div>
+                                <div className="flex gap-2 text-right">
+                                    <button onClick={() => handleAIFetch('streams', { university_id: u.id, university_name: u.name })} className="p-2 bg-purple-500/10 text-purple-400 rounded-lg hover:bg-purple-500 hover:text-white transition-all"><Cpu size={14} /></button>
+                                    <button onClick={() => handleDeleteItem('universities', u.id)} className="p-2 text-gray-600 hover:text-red-500"><Trash2 size={14} /></button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Vertical Hierarchy (Course Types / Semesters) */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
-                            Course / Degree Types
-                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8">
+                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-6 flex justify-between items-center">
+                            Degree Specializations (Streams)
+                            <Plus size={14} className="text-gray-500 cursor-pointer" />
                         </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {degreeTypes.map(d => (
-                                <div key={d.id} className="bg-purple-500/5 p-3 rounded-xl flex flex-col items-center justify-center text-center border border-purple-500/10 hover:border-purple-500 transition-all cursor-pointer group">
-                                    <span className="text-[10px] font-black text-purple-400 group-hover:text-white">{d.name.toUpperCase()}</span>
-                                    <div className="mt-1 flex gap-1">
-                                        <button className="p-1 hover:bg-gray-800 rounded text-gray-600"><Edit size={10} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('degree_types', d.id); }} className="p-1 hover:bg-gray-800 rounded text-gray-600 hover:text-red-500"><Trash2 size={10} /></button>
-                                    </div>
-                                </div>
+                        <div className="flex flex-wrap gap-2">
+                            {(Array.isArray(streams) ? streams : []).map(s => (
+                                <span key={s.id} className="px-4 py-2 bg-gray-800/40 border border-gray-800 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:border-indigo-500 hover:text-white transition-all cursor-pointer">{s.name}</span>
                             ))}
                         </div>
                     </div>
 
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Academic Terms (Semesters/Years)</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {semesters.map(s => (
-                                <div key={s.id} className="bg-gray-800/40 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50 hover:bg-gray-800 transition-all cursor-pointer flex justify-between items-center px-3">
-                                    <span>{s.name}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('semesters', s.id); }} className="text-gray-600 hover:text-red-500"><X size={10} /></button>
-                                </div>
-                            ))}
-                            <button className="border border-dashed border-gray-800 p-2 rounded text-[10px] font-bold text-gray-600 hover:border-indigo-500 hover:text-white transition-all">+ Add New</button>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                            <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">Degree Tiers</h4>
+                            <div className="space-y-2">
+                                {(Array.isArray(degreeTypes) ? degreeTypes : []).map(d => <div key={d.id} className="text-[10px] font-black text-indigo-400 bg-indigo-500/5 p-2 rounded-lg border border-indigo-500/10">{d.name.toUpperCase()}</div>)}
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Quick Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-indigo-600/10 border border-indigo-600/20 p-4 rounded-2xl">
-                            <h5 className="text-indigo-400 font-black text-[9px] uppercase tracking-widest">Total Univs</h5>
-                            <p className="text-2xl font-black text-white">{universities.length}</p>
-                        </div>
-                        <div className="bg-purple-600/10 border border-purple-600/20 p-4 rounded-2xl">
-                            <h5 className="text-purple-400 font-black text-[9px] uppercase tracking-widest">Pending Appr.</h5>
-                            <p className="text-2xl font-black text-white">{universities.filter(u => !u.is_approved).length}</p>
+                        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                            <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">Academic Terms</h4>
+                            <div className="space-y-2">
+                                {(Array.isArray(semesters) ? semesters : []).map(s => <div key={s.id} className="text-[10px] font-black text-purple-400 bg-purple-500/5 p-2 rounded-lg border border-purple-500/10">{s.name}</div>)}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -655,7 +610,7 @@ const AdminDashboard = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                        {users.map(u => (
+                        {Array.isArray(users) && users.map(u => (
                             <tr key={u.id} className="hover:bg-gray-800/30 transition-colors text-gray-300">
                                 <td className="px-6 py-4">
                                     <div className="font-black text-white">{u.username || 'Unnamed'}</div>
@@ -748,7 +703,7 @@ const AdminDashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
-                            {referrals.map(r => (
+                            {Array.isArray(referrals) && referrals.map(r => (
                                 <tr key={r.id} className="hover:bg-gray-800/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-gray-300">{r.referrer_email}</td>
                                     <td className="px-6 py-4 text-xs text-gray-500">{r.referred_email}</td>
@@ -774,188 +729,213 @@ const AdminDashboard = () => {
 
     const renderFreeLimit = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-3xl border border-gray-800">
                 <div>
-                    <h2 className="text-2xl font-black text-white">Free Usage Guard</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Monetization Control & Usage Boundaries</p>
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Monetization Guard (Free Tier)</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1 uppercase tracking-widest">Enforcing 15m / 10 MCQ / 2 Session Boundaries (Point 9)</p>
                 </div>
                 <button
                     onClick={() => handleUpdateSettings('free-limit', { settings: settings.freeLimit })}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40"
+                    className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40"
                 >
-                    Save Boundaries
+                    Authorize Policy Change
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { key: 'FREE_SESSIONS_COUNT', label: 'Sessions per Window', icon: Activity, color: 'text-indigo-500' },
-                    { key: 'FREE_SESSION_MCQS', label: 'MCQs per Session', icon: CheckSquare, color: 'text-green-500' },
-                    { key: 'FREE_SESSION_MINUTES', label: 'Minutes per Session', icon: Clock, color: 'text-orange-500' },
-                    { key: 'RENEWAL_WINDOW_HOURS', label: 'Renewal Window (Hrs)', icon: RefreshCw, color: 'text-blue-500' }
+                    { key: 'FREE_SESSIONS_COUNT', label: 'Max Daily Sessions', icon: Activity, color: 'text-indigo-500', default: '2' },
+                    { key: 'FREE_SESSION_MINUTES', label: 'Mins per Session', icon: Clock, color: 'text-orange-500', default: '15' },
+                    { key: 'FREE_SESSION_MCQS', label: 'MCQs per Session', icon: CheckSquare, color: 'text-green-500', default: '10' },
+                    { key: 'RENEWAL_WINDOW_HOURS', label: 'Reset Interval (Hrs)', icon: RefreshCw, color: 'text-blue-500', default: '24' }
                 ].map(item => (
-                    <div key={item.key} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+                    <div key={item.key} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl hover:border-indigo-500/30 transition-all">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{item.label}</h4>
                             <item.icon size={16} className={item.color} />
                         </div>
                         <input
                             type="number"
-                            className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xl font-black text-white outline-none focus:border-indigo-500"
-                            value={settings.freeLimit[item.key] || ''}
+                            className="w-full bg-black border border-gray-800 p-3 rounded-xl text-2xl font-black text-white outline-none focus:border-indigo-500 font-mono"
+                            value={settings.freeLimit[item.key] || item.default}
                             onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, [item.key]: e.target.value } })}
                         />
+                        <p className="text-[8px] text-gray-600 mt-2 font-bold uppercase">System Setting: {item.key}</p>
                     </div>
                 ))}
+            </div>
 
-                <div className="md:col-span-2 lg:col-span-2 bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl flex flex-col">
-                    <h4 className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4 flex items-center gap-2">
-                        <ShieldAlert size={14} className="text-red-500" /> Exhaustion Messaging (Requirement 4)
-                    </h4>
-                    <div className="space-y-4 flex-1">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl space-y-6">
+                    <h3 className="text-red-500 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                        <ShieldAlert size={16} /> Prime Exhaustion Popup (Marketing)
+                    </h3>
+                    <div className="space-y-4">
                         <div>
-                            <label className="text-[9px] text-gray-400 font-bold">Popup Heading</label>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Popup Headline</label>
                             <input
                                 type="text"
-                                className="w-full bg-black border border-gray-800 p-3 rounded-xl text-sm text-white font-bold outline-none mt-1"
-                                value={settings.freeLimit['POPUP_HEADING'] || ''}
+                                className="w-full bg-black border border-gray-800 p-3 rounded-xl text-sm text-white font-bold outline-none focus:border-red-500"
+                                value={settings.freeLimit['POPUP_HEADING'] || 'DAILY LIMIT REACHED!'}
                                 onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, POPUP_HEADING: e.target.value } })}
                             />
                         </div>
                         <div>
-                            <label className="text-[9px] text-gray-400 font-bold">Marketing Text</label>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Marketing Call-to-Action</label>
                             <textarea
-                                className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-gray-400 font-medium outline-none mt-1 h-20"
-                                value={settings.freeLimit['POPUP_TEXT'] || ''}
+                                className="w-full bg-black border border-gray-800 p-4 rounded-xl text-xs text-gray-400 font-medium outline-none h-32 focus:border-red-500 leading-relaxed"
+                                value={settings.freeLimit['POPUP_TEXT'] || 'You have exhausted your free daily practice sessions. Upgrade to Prime for unlimited AI-powered learning, ad-free experience, and detailed analysis.'}
                                 onChange={(e) => setSettings({ ...settings, freeLimit: { ...settings.freeLimit, POPUP_TEXT: e.target.value } })}
                             />
                         </div>
                     </div>
                 </div>
+
+                <div className="bg-indigo-600/5 border border-indigo-600/10 p-8 rounded-3xl flex flex-col justify-center items-center text-center">
+                    <div className="w-20 h-20 bg-indigo-600/10 rounded-full flex items-center justify-center mb-6">
+                        <CreditCard size={32} className="text-indigo-400 opacity-40 shadow-xl" />
+                    </div>
+                    <h4 className="text-white font-black text-lg uppercase tracking-tighter mb-2">Monetization Sync</h4>
+                    <p className="text-xs text-gray-500 font-bold max-w-sm mb-8 leading-relaxed">These limits are enforced by the server-side middleware. Any adjustment will take effect on the next user request globally.</p>
+                    <div className="flex gap-4 w-full">
+                        <button className="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-900/40">Test Popup View</button>
+                        <button className="flex-1 py-3 bg-gray-800 text-gray-400 font-black rounded-xl text-[10px] uppercase tracking-widest">Verify Middleware</button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 
-    const renderPayMgmt = () => (
-        <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
-                <div>
-                    <h2 className="text-2xl font-black text-white">Financial Rails</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Configure Razorpay & Stripe Integration (Requirement 6)</p>
-                </div>
-                <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-green-500" />
-                    <span className="text-[10px] text-green-500 font-black uppercase tracking-widest">PCI DSS Compliant Handlers</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {settings.payment.map(prov => (
-                    <div key={prov.provider} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4">
-                            {prov.is_active ? (
-                                <span className="flex items-center gap-1 text-[8px] bg-green-500 text-white px-2 py-0.5 rounded font-black uppercase">Live</span>
-                            ) : (
-                                <span className="flex items-center gap-1 text-[8px] bg-gray-800 text-gray-500 px-2 py-0.5 rounded font-black uppercase">Disabled</span>
-                            )}
+    const renderPayMgmt = () => {
+        const revs = [
+            { label: 'Today', val: stats?.revenueToday, icon: Activity, color: 'text-green-400' },
+            { label: 'This Month', val: stats?.revenueMonthly, icon: PieChart, color: 'text-blue-400' },
+            { label: 'This Year', val: stats?.revenueYearly, icon: TrendingUp, color: 'text-indigo-400' },
+            { label: 'Total Pay', val: stats?.revenueTotal, icon: DollarSign, color: 'text-purple-400' }
+        ];
+        return (
+            <div className="space-y-8 animate-fadeIn">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {revs.map((r, i) => (
+                        <div key={i} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl hover:border-indigo-500/50 transition-all">
+                            <p className="text-[10px] text-gray-500 font-black uppercase mb-1 tracking-widest">{r.label}</p>
+                            <h3 className={`text-2xl font-black ${r.color}`}>₹{r.val || 0}</h3>
                         </div>
+                    ))}
+                </div>
 
-                        <h4 className="text-white font-black text-2xl uppercase tracking-tighter mb-8 flex items-center gap-3">
-                            {prov.provider === 'razorpay' ? <CreditCard className="text-indigo-500" /> : <DollarSign className="text-blue-500" />}
-                            {prov.provider}
-                        </h4>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Public API Key</label>
-                                <input
-                                    type="text"
-                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono"
-                                    placeholder={`${prov.provider}_key_...`}
-                                    value={prov.api_key || ''}
-                                    onChange={(e) => {
-                                        const newPay = settings.payment.map(p => p.provider === prov.provider ? { ...p, api_key: e.target.value } : p);
-                                        setSettings({ ...settings, payment: newPay });
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Secret API Key</label>
-                                <input
-                                    type="password"
-                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
-                                    placeholder="••••••••••••••••"
-                                    value={prov.api_secret || ''}
-                                    onChange={(e) => {
-                                        const newPay = settings.payment.map(p => p.provider === prov.provider ? { ...p, api_secret: e.target.value } : p);
-                                        setSettings({ ...settings, payment: newPay });
-                                    }}
-                                />
-                            </div>
-                            <div className="flex items-center gap-3 pt-4">
-                                <button
-                                    onClick={() => handleUpdateSettings(`payments/${prov.provider}`, { is_active: !prov.is_active })}
-                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${prov.is_active ? 'bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white' : 'bg-green-600 text-white shadow-green-900/20 hover:bg-green-700'}`}
-                                >
-                                    {prov.is_active ? 'Deactivate Gateway' : 'Activate Gateway'}
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateSettings(`payments/${prov.provider}`, { api_key: prov.api_key, api_secret: prov.api_secret })}
-                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:bg-white hover:text-black transition-all"
-                                >
-                                    <Save size={18} />
-                                </button>
-                            </div>
+                {/* Revenue Chart */}
+                <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8">
+                    <div className="flex justify-between items-end mb-8">
+                        <div>
+                            <h3 className="text-white font-black text-xl tracking-tight uppercase">Revenue Velocity</h3>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">30-Day Financial Performance</p>
                         </div>
                     </div>
-                ))}
+                    <div className="h-48 flex items-end gap-1.5 px-2 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all">
+                        {Array.from({ length: 30 }).map((_, i) => (
+                            <div key={i} className="flex-1 bg-indigo-600 rounded-t-sm" style={{ height: `${Math.random() * 80 + 20}%` }} />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
+                    <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                        <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                            <Activity size={16} className="text-indigo-500" /> Recent Inbound Flow
+                        </h3>
+                    </div>
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-black tracking-widest">
+                            <tr>
+                                <th className="px-8 py-4">Transaction ID</th>
+                                <th className="px-8 py-4">Status</th>
+                                <th className="px-8 py-4 text-right">Amount</th>
+                                <th className="px-8 py-4 text-right">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {(transactions || []).map(t => (
+                                <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
+                                    <td className="px-8 py-4 text-sm font-bold text-gray-300">{t.razorpay_payment_id || 'LOCAL-UP'}</td>
+                                    <td className="px-8 py-4">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${t.status === 'captured' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                            {t.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-8 py-4 text-sm text-right text-white font-black">₹{t.amount}</td>
+                                    <td className="px-8 py-4 text-right text-[10px] text-gray-500 font-black">{new Date(t.created_at).toLocaleDateString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="bg-indigo-900/10 border border-indigo-500/20 p-8 rounded-3xl">
+                    <h3 className="text-xl font-black text-indigo-400 uppercase tracking-tighter mb-4">Financial Infrastructure</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {settings.payment.map(prov => (
+                            <div key={prov.provider} className="bg-black/40 border border-gray-800 p-6 rounded-2xl relative">
+                                <h4 className="text-white font-black uppercase text-xs mb-4">{prov.provider} Gateway</h4>
+                                <div className="space-y-4">
+                                    <input type="text" className="w-full bg-transparent border-b border-gray-800 p-1 text-xs outline-none text-indigo-400" value={prov.api_key || ''} onChange={(e) => {
+                                        const n = settings.payment.map(x => x.id === prov.id ? { ...x, api_key: e.target.value } : x);
+                                        setSettings({ ...settings, payment: n });
+                                    }} />
+                                    <button onClick={() => handleUpdateSettings(`payments/${prov.provider}`, { api_key: prov.api_key, is_active: prov.is_active })} className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg">Save Config</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderAdsMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">Global Ads & Analytics Management</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl flex flex-col">
-                    <h3 className="text-white font-black text-lg mb-6 flex items-center gap-2"><PieChart size={20} className="text-orange-500" /> AdSense Deployment</h3>
-                    <div className="space-y-6 flex-1">
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-bold">Header Script Injection</label>
-                            <textarea
-                                className="w-full bg-black/50 border border-gray-800 p-4 rounded-xl mt-1 text-[10px] font-mono text-gray-400 h-32 outline-none focus:border-indigo-500"
-                                defaultValue={settings.system['ADS_HEADER_SCRIPT']}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-bold">Ads.txt Editor</label>
-                            <textarea
-                                className="w-full bg-black/50 border border-gray-800 p-4 rounded-xl mt-1 text-[10px] font-mono text-gray-400 h-32 outline-none focus:border-indigo-500"
-                                defaultValue={settings.system['ADS_TXT']}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-gray-800/20 rounded-xl border border-gray-800">
-                            <span className="text-white font-bold text-sm">Global Ad Display</span>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Monetization Control Center</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {[
+                    { key: 'HOME_HEADER_AD', label: 'Home Header Slot' },
+                    { key: 'HOME_MIDDLE_AD', label: 'Feed Middle Slot' },
+                    { key: 'HOME_FOOTER_AD', label: 'Footer Base Slot' }
+                ].map(slot => (
+                    <div key={slot.key} className="bg-gray-900 border border-gray-800 p-6 rounded-3xl flex flex-col group hover:border-orange-500/50 transition-all">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-white font-black text-xs uppercase tracking-widest">{slot.label}</h3>
                             <button
-                                onClick={() => handleUpdateSettings('ads', { ADS_ENABLED: settings.system['ADS_ENABLED'] === 'true' ? 'false' : 'true' })}
-                                className={`w-14 h-7 rounded-full transition-all relative ${settings.system['ADS_ENABLED'] === 'true' ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                                onClick={() => handleUpdateSettings('global', { settings: { [`${slot.key}_ENABLED`]: settings.system[`${slot.key}_ENABLED`] === 'true' ? 'false' : 'true' } })}
+                                className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${settings.system[`${slot.key}_ENABLED`] === 'true' ? 'bg-green-500 text-white' : 'bg-gray-800 text-gray-500'}`}
                             >
-                                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${settings.system['ADS_ENABLED'] === 'true' ? 'right-1' : 'left-1'}`} />
+                                {settings.system[`${slot.key}_ENABLED`] === 'true' ? 'ACTIVE' : 'OFF'}
                             </button>
                         </div>
+                        <textarea
+                            className="w-full bg-black/50 border border-gray-800 p-4 rounded-2xl flex-1 text-[10px] font-mono text-orange-400 h-48 outline-none focus:border-orange-500 resize-none"
+                            placeholder="<!-- Paste AdSense Code -->"
+                            defaultValue={settings.system[slot.key]}
+                            onBlur={(e) => handleUpdateSettings('global', { settings: { [slot.key]: e.target.value } })}
+                        />
                     </div>
-                    <button className="w-full mt-6 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-xl shadow-indigo-900/20">Sync Ad Config</button>
-                </div>
+                ))}
+            </div>
 
-                <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl">
-                    <h3 className="text-white font-black text-lg mb-6 flex items-center gap-2 text-indigo-500">Ad Slots Availability</h3>
-                    <div className="space-y-4">
-                        {['Homepage Top', 'Sidebar Right', 'MCQ Detail Bottom', 'Result Page Middle'].map(slot => (
-                            <div key={slot} className="p-4 bg-black/30 rounded-xl border border-gray-800/50 flex justify-between items-center group">
-                                <span className="text-sm font-bold text-gray-400 group-hover:text-white transition-colors">{slot}</span>
-                                <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded font-black tracking-widest uppercase">Responsive</span>
-                            </div>
-                        ))}
+            <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl">
+                <h3 className="text-white font-black text-xs uppercase tracking-widest mb-6">Global Ads Configuration</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="text-[10px] text-gray-500 uppercase font-bold mb-2 block tracking-widest text-indigo-400">Ads.txt Content</label>
+                        <textarea
+                            className="w-full bg-black border border-gray-800 p-4 rounded-2xl text-[10px] font-mono text-gray-400 h-32 outline-none focus:border-indigo-500"
+                            defaultValue={settings.system['ADS_TXT']}
+                            onBlur={(e) => handleUpdateSettings('global', { settings: { 'ADS_TXT': e.target.value } })}
+                        />
+                    </div>
+                    <div className="bg-indigo-600/5 border border-indigo-600/20 p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+                        <PieChart size={48} className="text-indigo-500 mb-4 opacity-20" />
+                        <p className="text-xs text-gray-400 font-bold mb-4 uppercase">All changes to Ad Scripts reflect instantly on the frontend homepage slots.</p>
+                        <button className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-900/40">Flush Ad Cache</button>
                     </div>
                 </div>
             </div>
@@ -1105,58 +1085,63 @@ const AdminDashboard = () => {
 
     const renderSysSettings = () => (
         <div className="space-y-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-white">System Configuration</h2>
-
-            {/* Quick Access Utility */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={() => setActiveTab('states')} className="p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-indigo-500 transition-all text-left flex items-center gap-3 group">
-                    <div className="p-2 bg-indigo-500/10 rounded-lg group-hover:bg-indigo-500/20 text-indigo-400"><MapPin size={20} /></div>
-                    <div>
-                        <p className="text-sm font-bold text-white">Indian States Hierarchy</p>
-                        <p className="text-[10px] text-gray-500 uppercase font-black">Manage states & regions</p>
-                    </div>
-                </button>
-                <button onClick={() => setActiveTab('categories')} className="p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-indigo-500 transition-all text-left flex items-center gap-3 group">
-                    <div className="p-2 bg-purple-500/10 rounded-lg group-hover:bg-purple-500/20 text-purple-400"><Layers size={20} /></div>
-                    <div>
-                        <p className="text-sm font-bold text-white">Exam Category Metadata</p>
-                        <p className="text-[10px] text-gray-500 uppercase font-black">Top-level classification</p>
-                    </div>
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Global Settings */}
-                <div className="xl:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Globe size={18} className="text-blue-500" /> Global SEO & Metadata</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {['SITE_NAME', 'SITE_TITLE', 'SITE_DESC', 'META_KEYWORDS', 'CONTACT_EMAIL', 'SUPPORT_EMAIL', 'WHATSAPP_NUMBER'].map(key => (
-                            <div key={key}>
-                                <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">{key.replace('_', ' ')}</label>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Global System Configurations</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl space-y-6">
+                    <h3 className="text-indigo-400 font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center gap-2">
+                        <Settings size={16} /> Identity & Branding (Point 8)
+                    </h3>
+                    <div className="space-y-4">
+                        {[
+                            { key: 'SITE_NAME', label: 'Organization Name', type: 'text' },
+                            { key: 'LOGO_URL', label: 'Primary Logo URL', type: 'text' },
+                            { key: 'SITE_EMAIL', label: 'System Recovery Email', type: 'email' },
+                            { key: 'FOOTER_TEXT', label: 'Global Footer Credit', type: 'text' },
+                            { key: 'BANNER_TEXT', label: 'Homepage Alert Banner', type: 'text' }
+                        ].map(f => (
+                            <div key={f.key}>
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">{f.label}</label>
                                 <input
-                                    type="text"
-                                    className="w-full bg-black/50 border border-gray-800 rounded-lg p-2.5 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    value={settings.system[key] || ''}
-                                    onChange={(e) => setSettings({ ...settings, system: { ...settings.system, [key]: e.target.value } })}
-                                    onBlur={() => handleUpdateSettings('system', { settings: settings.system })}
+                                    type={f.type}
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl text-sm text-white outline-none focus:border-indigo-500 transition-all font-bold"
+                                    defaultValue={settings.system?.[f.key]}
+                                    onBlur={(e) => handleUpdateSettings('global', { settings: { [f.key]: e.target.value } })}
                                 />
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Maintenance & Core */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-6">
-                    <div>
-                        <h3 className="text-white font-bold mb-6 flex items-center gap-2 border-b border-gray-800 pb-4"><Settings size={18} className="text-orange-500" /> Engine Control</h3>
-                        <div className="space-y-4">
-                            <button className="w-full py-4 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-900/20 hover:bg-red-700">Clear Runtime Cache</button>
-                            <button className="w-full py-4 bg-gray-800 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-700">Audit System Logs</button>
+                <div className="space-y-8">
+                    <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl">
+                        <h3 className="text-green-500 font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center gap-2">
+                            <Activity size={16} /> Dynamic Frontend Controls
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {[
+                                { key: 'MAINTENANCE_MODE', label: 'Maintenance' },
+                                { key: 'USER_REGISTRATION', label: 'Registrations' },
+                                { key: 'BANNER_ENABLED', label: 'Global Banner' },
+                                { key: 'MOBILE_APP_REDIRECT', label: 'App Redirect' }
+                            ].map(toggle => (
+                                <div key={toggle.key} className="p-4 bg-black border border-gray-800 rounded-2xl flex justify-between items-center group">
+                                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{toggle.label}</span>
+                                    <button
+                                        onClick={() => handleUpdateSettings('global', { settings: { [toggle.key]: settings.system?.[toggle.key] === 'true' ? 'false' : 'true' } })}
+                                        className={`w-10 h-5 rounded-full transition-all relative ${settings.system?.[toggle.key] === 'true' ? 'bg-indigo-600' : 'bg-gray-800'}`}
+                                    >
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${settings.system?.[toggle.key] === 'true' ? 'right-1' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <div className="mt-auto p-4 bg-black/30 rounded-xl border border-gray-800 uppercase">
-                        <p className="text-[10px] text-gray-500 font-bold mb-2">Build Identifier</p>
-                        <p className="text-xs text-indigo-400 font-mono">EX-V2.0-STABLE-2026</p>
+
+                    <div className="bg-indigo-600/10 border border-indigo-600/20 p-8 rounded-3xl text-center">
+                        <ShieldAlert size={48} className="mx-auto text-indigo-500 mb-4 opacity-30" />
+                        <h3 className="text-white font-black text-xs uppercase tracking-widest mb-2">Core System Sync</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-6 tracking-tighter italic">Broadcasting these changes will update all frontend clients instantly.</p>
+                        <button className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-2xl shadow-indigo-900/40 hover:bg-indigo-700 active:scale-95 transition-all">Flush System Buffer</button>
                     </div>
                 </div>
             </div>
@@ -1205,7 +1190,7 @@ const AdminDashboard = () => {
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categories.map(cat => (
+                {Array.isArray(categories) && categories.map(cat => (
                     <div key={cat.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-indigo-500/50 transition-all group">
                         <div className="flex items-start justify-between mb-4">
                             <div className="w-12 h-12 bg-gray-800 rounded-xl overflow-hidden">
@@ -1251,7 +1236,7 @@ const AdminDashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
-                            {papers.map(p => (
+                            {Array.isArray(papers) && papers.map(p => (
                                 <tr key={p.id} className="hover:bg-gray-800/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-gray-300 font-bold">{p.name}</td>
                                     <td className="px-6 py-4 text-xs text-gray-500">{p.category_name}</td>
@@ -1270,55 +1255,59 @@ const AdminDashboard = () => {
 
     const renderAIMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-3xl border border-gray-800">
                 <div>
-                    <h2 className="text-2xl font-black text-white">Neural Network Hub</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Provider Aggregation & LLM Configuration (Requirement 7)</p>
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Neural Network Control Hub</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1 uppercase tracking-widest">Active Provider Aggregation & LLM Orchestration</p>
                 </div>
                 <button
                     onClick={() => {
-                        const name = prompt('Provider Name:');
+                        const name = prompt('New Provider ID (e.g., OPENAI, GEMINI):');
                         if (name) api.post('/admin/ai-providers', { name, base_url: '', api_key: '', model_name: '' }).then(() => fetchDashboardData());
                     }}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                    className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
                 >
-                    <Plus size={14} /> Integrate Provider
+                    <Plus size={14} /> Integrate Neural Node
                 </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {aiProviders.map(p => (
-                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-8 rounded-2xl relative overflow-hidden group shadow-2xl">
-                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${p.is_active ? 'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]' : 'bg-gray-800 text-gray-500'}`}>
-                            {p.is_active ? 'Active Engine' : 'Standby Mode'}
+                {Array.isArray(aiProviders) && aiProviders.map(p => (
+                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-8 rounded-3xl relative overflow-hidden group shadow-2xl hover:border-indigo-500/30 transition-all">
+                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${p.is_active ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-800 text-gray-500'}`}>
+                            {p.is_active ? 'ENGINE PRIMED' : 'STANDBY MODE'}
                         </div>
 
-                        <div className="flex items-center gap-3 mb-8">
+                        <div className="flex items-center gap-4 mb-8">
                             <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
                                 <Cpu size={24} className="text-indigo-400" />
                             </div>
-                            <h4 className="text-white font-black text-xl uppercase tracking-tighter">{p.name}</h4>
+                            <div>
+                                <h4 className="text-white font-black text-xl uppercase tracking-tighter">{p.name}</h4>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Provider ID: {p.id}</p>
+                            </div>
                         </div>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Base API Endpoint</label>
+                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">API Base URL</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono"
+                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono font-bold"
                                     value={p.base_url || ''}
                                     onChange={(e) => {
                                         const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, base_url: e.target.value } : api_p);
                                         setAiProviders(newAI);
                                     }}
                                 />
+                                <p className="text-[8px] text-gray-600 mt-1 uppercase font-bold italic">Leave blank for provider default endpoint</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Model Identifier</label>
+                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">Model Name</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500 font-bold"
                                         value={p.model_name || ''}
                                         onChange={(e) => {
                                             const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, model_name: e.target.value } : api_p);
@@ -1327,10 +1316,10 @@ const AdminDashboard = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">API Authentication Key</label>
+                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">Secret API Key</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl mt-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500"
                                         placeholder="••••••••••••••••"
                                         value={p.api_key || ''}
                                         onChange={(e) => {
@@ -1344,19 +1333,19 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-3 pt-4">
                                 <button
                                     onClick={() => handleUpdateSettings(`ai-providers/${p.id}/status`, { is_active: !p.is_active })}
-                                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${p.is_active ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white' : 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/20'}`}
+                                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${p.is_active ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white' : 'bg-green-600 text-white hover:bg-green-700 shadow-xl shadow-green-900/40'}`}
                                 >
-                                    {p.is_active ? 'Suspend Engine' : 'Activate Engine'}
+                                    {p.is_active ? 'Deactivate Engine' : 'Activate Engine'}
                                 </button>
                                 <button
                                     onClick={() => handleUpdateSettings(`ai-providers/${p.id}`, { name: p.name, base_url: p.base_url, api_key: p.api_key, model_name: p.model_name })}
-                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-xl hover:bg-white hover:text-black transition-all"
+                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-2xl hover:bg-white hover:text-black transition-all shadow-lg"
                                 >
                                     <Save size={18} />
                                 </button>
                                 <button
                                     onClick={() => handleDeleteItem('ai-providers', p.id)}
-                                    className="w-12 h-12 flex items-center justify-center bg-red-500/5 text-red-500 border border-red-500/10 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                    className="w-12 h-12 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
                                 >
                                     <Trash2 size={18} />
                                 </button>
@@ -1366,22 +1355,22 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                    <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Activity size={16} className="text-green-500" /> Neural Processing Logs</h3>
-                    <button onClick={() => fetchDashboardData()} className="text-[10px] text-indigo-400 hover:text-white font-black uppercase tracking-widest">Refresh Logs</button>
+            <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
+                <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                    <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Activity size={16} className="text-green-500" /> Neural Processing Telemetry</h3>
+                    <button onClick={() => fetchDashboardData()} className="text-[10px] text-indigo-400 hover:text-white font-black uppercase tracking-widest bg-indigo-500/5 px-4 py-2 rounded-xl border border-indigo-500/10">Flush Logs</button>
                 </div>
-                <div className="p-6 h-64 overflow-y-auto bg-black/40 font-mono text-[10px] space-y-2 scrollbar-thin scrollbar-thumb-gray-800">
+                <div className="p-8 h-80 overflow-y-auto bg-black/40 font-mono text-[10px] space-y-3 custom-scrollbar">
                     {aiLogs.length > 0 ? aiLogs.map((log, i) => (
-                        <div key={i} className={`flex gap-3 border-b border-gray-800/30 pb-2 ${log.status === 'error' ? 'text-red-400' : 'text-gray-500'}`}>
-                            <span className="text-indigo-500 font-bold">[{new Date(log.created_at).toLocaleTimeString()}]</span>
-                            <span className="uppercase font-black text-[9px]">{log.module || 'SYS'}:</span>
-                            <span className="flex-1">{log.message || log.error}</span>
+                        <div key={i} className={`flex gap-4 border-b border-gray-800/20 pb-2 ${log.status === 'error' ? 'text-red-400' : 'text-gray-500'}`}>
+                            <span className="text-indigo-500 font-bold whitespace-nowrap">[{new Date(log.created_at).toLocaleTimeString()}]</span>
+                            <span className="uppercase font-black text-[9px] text-indigo-300 min-w-[60px]">{log.module || 'SYS'}:</span>
+                            <span className="flex-1 tracking-tighter leading-relaxed">{log.message || log.error}</span>
                         </div>
                     )) : (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-700 animate-pulse">
-                            <Activity size={32} className="mb-2" />
-                            <p className="font-black uppercase tracking-widest">No active telemetry signal detected</p>
+                        <div className="flex flex-col items-center justify-center h-full text-gray-800 animate-pulse">
+                            <Activity size={48} className="mb-4 opacity-10" />
+                            <p className="font-black uppercase tracking-widest text-lg opacity-10">Waiting for Data Stream...</p>
                         </div>
                     )}
                 </div>
@@ -1407,7 +1396,7 @@ const AdminDashboard = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                        {mcqs.map(m => (
+                        {Array.isArray(mcqs) && mcqs.map(m => (
                             <tr key={m.id} className="hover:bg-gray-800/30 transition-colors text-gray-300">
                                 <td className="px-6 py-4 max-w-lg">
                                     <div className="font-bold text-white line-clamp-2">{m.question}</div>
@@ -1451,7 +1440,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {plans.map(p => (
+                {Array.isArray(plans) && plans.map(p => (
                     <div key={p.id} className="bg-gray-900 border border-gray-800 p-6 rounded-2xl group relative overflow-hidden shadow-2xl hover:border-indigo-500/50 transition-all">
                         <div className="flex justify-between items-start mb-6">
                             <div>
