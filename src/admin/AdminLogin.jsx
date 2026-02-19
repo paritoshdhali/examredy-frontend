@@ -17,7 +17,10 @@ const AdminLogin = () => {
         setError('');
         setLoading(true);
         try {
+            console.log(`[DEBUG] Attempting admin login to: ${api.defaults.baseURL}/admin/login`);
             const res = await api.post('/admin/login', { email, password });
+            console.log('[DEBUG] Login response status:', res.status);
+
             if (res.data.token) {
                 localStorage.setItem('adminToken', res.data.token);
                 // Store user info if desired
@@ -27,6 +30,11 @@ const AdminLogin = () => {
                 setError('Login failed. No token received.');
             }
         } catch (err) {
+            console.error('[DEBUG] Login Error Details:', {
+                status: err.response?.status,
+                data: err.response?.data,
+                message: err.message
+            });
             setError(err.response?.data?.message || 'Invalid admin credentials');
         } finally {
             setLoading(false);
