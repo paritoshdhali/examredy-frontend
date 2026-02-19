@@ -43,7 +43,7 @@ const AdminDashboard = () => {
     const [degreeTypes, setDegreeTypes] = useState([]);
     const [semesters, setSemesters] = useState([]);
 
-    const [selectedState, setSelectedState] = useState({ id: 1, name: 'Andhra Pradesh' });
+    const [selectedState, setSelectedState] = useState({ id: 0, name: '' });
     const [searchQuery, setSearchQuery] = useState('');
     const [aiLogs, setAiLogs] = useState([]);
     const [transactions, setTransactions] = useState([]);
@@ -93,12 +93,18 @@ const AdminDashboard = () => {
                         api.get('/admin/subjects'),
                         api.get('/admin/chapters')
                     ]);
-                    setBoards(br.data);
-                    setClasses(cl.data);
-                    setStreams(sm.data);
-                    setStates(st_s.data);
-                    setSubjects(sb.data);
-                    setChapters(ch.data);
+                    setBoards(br.data.sort((a, b) => a.name.localeCompare(b.name)));
+                    setClasses(cl.data.sort((a, b) => {
+                        const n1 = parseInt(a.name.match(/\d+/)) || 0;
+                        const n2 = parseInt(b.name.match(/\d+/)) || 0;
+                        return n1 - n2;
+                    }));
+                    setStreams(sm.data.sort((a, b) => a.name.localeCompare(b.name)));
+                    const sortedStates = st_s.data.sort((a, b) => a.name.localeCompare(b.name));
+                    setStates(sortedStates);
+                    if (selectedState.id === 0 && sortedStates.length > 0) setSelectedState(sortedStates[0]);
+                    setSubjects(sb.data.sort((a, b) => a.name.localeCompare(b.name)));
+                    setChapters(ch.data.sort((a, b) => a.name.localeCompare(b.name)));
                     break;
                 case 'univ-mgmt':
                     const [un, dg, se, allSt] = await Promise.all([
@@ -420,9 +426,10 @@ const AdminDashboard = () => {
                             </select>
                             <button
                                 onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
-                                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-2xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-2xl shadow-indigo-900/40 flex items-center gap-2"
+                                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-2xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-2xl shadow-indigo-900/40 flex items-center gap-2 disabled:opacity-50"
+                                disabled={!selectedState.name}
                             >
-                                <Cpu size={16} /> AI Discover Boards in {selectedState.name}
+                                <Cpu size={16} /> AI Discover Boards in {selectedState.name || 'Selected State'}
                             </button>
                         </div>
                     </div>
