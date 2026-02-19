@@ -127,13 +127,13 @@ const initDB = async () => {
         // Auto-create Classes
         const defaultClasses = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
         for (const cls of defaultClasses) {
-            await query(`INSERT INTO classes (name) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM classes WHERE name = $1);`, [cls]);
+            await query(`INSERT INTO classes (name) SELECT $1::varchar WHERE NOT EXISTS (SELECT 1 FROM classes WHERE name = $1::varchar);`, [cls]);
         }
 
         // Auto-create Streams
         const defaultStreams = ['Science', 'Arts', 'Commerce'];
         for (const stm of defaultStreams) {
-            await query(`INSERT INTO streams (name) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM streams WHERE name = $1);`, [stm]);
+            await query(`INSERT INTO streams (name) SELECT $1::varchar WHERE NOT EXISTS (SELECT 1 FROM streams WHERE name = $1::varchar);`, [stm]);
         }
 
         await query(`CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, board_id INTEGER REFERENCES boards(id), class_id INTEGER REFERENCES classes(id), stream_id INTEGER REFERENCES streams(id), semester_id INTEGER REFERENCES semesters(id), is_active BOOLEAN DEFAULT TRUE);`);

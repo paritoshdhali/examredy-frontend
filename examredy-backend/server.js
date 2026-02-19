@@ -10,6 +10,9 @@ const { pool, initDB } = require('./db');
 
 const app = express();
 
+// Required for Railway/Reverse Proxy Rate Limiting
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 
