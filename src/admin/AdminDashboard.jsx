@@ -39,7 +39,10 @@ const AdminDashboard = () => {
     const [chapters, setChapters] = useState([]);
     const [universities, setUniversities] = useState([]);
     const [papers, setPapers] = useState([]);
+    const [degreeTypes, setDegreeTypes] = useState([]);
+    const [semesters, setSemesters] = useState([]);
 
+    const [selectedState, setSelectedState] = useState({ id: 1, name: 'Andhra Pradesh' });
     const [searchQuery, setSearchQuery] = useState('');
 
     // --- FETCHERS ---
@@ -83,14 +86,16 @@ const AdminDashboard = () => {
                     setStreams(sm.data);
                     break;
                 case 'univ-mgmt':
-                    const [un, dg, se] = await Promise.all([
+                    const [un, dg, se, allSt] = await Promise.all([
                         api.get('/admin/universities'),
                         api.get('/admin/degree-types'),
-                        api.get('/admin/semesters')
+                        api.get('/admin/semesters'),
+                        api.get('/admin/states')
                     ]);
                     setUniversities(un.data);
-                    // Assuming setDegreeTypes and setSemesters exist or will be added
-                    // setDegreeTypes(dg.data); setSemesters(se.data);
+                    setDegreeTypes(dg.data);
+                    setSemesters(se.data);
+                    setStates(allSt.data);
                     break;
                 case 'comp-mgmt':
                     const paRes = await api.get('/admin/papers-stages');
@@ -408,11 +413,29 @@ const AdminDashboard = () => {
 
     const renderUnivMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">University Category Management</h2>
-                <button onClick={() => handleAIFetch('universities', { state_id: 1, state_name: 'India' })} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-900/20">
-                    <Cpu size={16} /> AI Fetch Universities
-                </button>
+            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                <div>
+                    <h2 className="text-2xl font-black text-white">University Control</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Manage higher education hierarchy and AI automation</p>
+                </div>
+                <div className="flex gap-4 items-center">
+                    <select
+                        className="bg-black border border-gray-800 text-xs text-gray-300 px-4 py-2 rounded-lg font-bold outline-none focus:border-indigo-500"
+                        onChange={(e) => {
+                            const st = states.find(s => s.id === parseInt(e.target.value));
+                            if (st) setSelectedState(st);
+                        }}
+                        value={selectedState.id}
+                    >
+                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <button
+                        onClick={() => handleAIFetch('universities', { state_id: selectedState.id, state_name: selectedState.name })}
+                        className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
+                    >
+                        <Cpu size={14} /> AI Fetch: {selectedState.name}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -927,19 +950,17 @@ const AdminDashboard = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="text-[10px] text-gray-500 uppercase font-bold">Base URL</label>
-                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500" value={p.base_url} />
+                                <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-indigo-400 outline-none focus:border-indigo-500" value={p.base_url} readOnly />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-[10px] text-gray-500 uppercase font-bold">Model Name</label>
-                                    <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value={p.model_name} />
+                                    <input type="text" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value={p.model_name} readOnly />
                                 </div>
-                                <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-bold">API Key (Encrypted)</label>
-                                    <input type="password" underline="true" className="w-full bg-black/50 border border-gray-800 p-2.5 rounded mt-1 text-xs text-white outline-none focus:border-indigo-500" value="********" />
+                                <div className="flex items-end">
+                                    <button className="w-full py-2 bg-indigo-600/10 text-indigo-500 border border-indigo-600/20 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all">Update Provider</button>
                                 </div>
                             </div>
-                            <button className="w-full py-2 bg-indigo-600/10 text-indigo-500 border border-indigo-600/20 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all">Update Provider Configuration</button>
                         </div>
                     </div>
                 ))}
