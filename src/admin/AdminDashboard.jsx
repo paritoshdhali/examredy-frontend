@@ -375,133 +375,175 @@ const AdminDashboard = () => {
         </div>
     );
 
-    const renderSchoolMgmt = () => (
-        <div className="space-y-8 animate-fadeIn">
-            <div className="flex justify-between items-center bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
-                <div>
-                    <h2 className="text-2xl font-black text-white">School Hierarchy</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Boards, Classes, Streams & AI Automation</p>
-                </div>
-                <div className="flex gap-4 items-center">
-                    <select
-                        className="bg-black border border-gray-800 text-xs text-gray-300 px-4 py-2 rounded-lg font-bold outline-none focus:border-indigo-500"
-                        onChange={(e) => {
-                            const st = states.find(s => s.id === parseInt(e.target.value));
-                            if (st) setSelectedState(st);
-                        }}
-                        value={selectedState.id}
-                    >
-                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <button
-                        onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
-                    >
-                        <Cpu size={14} /> AI Fetch Boards: {selectedState.name}
-                    </button>
-                </div>
-            </div>
+    const renderSchoolMgmt = () => {
+        const [selBoard, setSelBoard] = useState(null);
+        const [selClass, setSelClass] = useState(null);
+        const [selStream, setSelStream] = useState(null);
+        const [selSubject, setSelSubject] = useState(null);
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Boards (Requirement 2) */}
-                <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                        <h3 className="text-white font-bold text-sm flex items-center gap-2"><School size={16} className="text-indigo-500" /> Boards / Councils</h3>
+        return (
+            <div className="space-y-8 animate-fadeIn">
+                <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <School size={120} />
                     </div>
-                    <div className="max-h-[500px] overflow-y-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-800/30 text-[10px] uppercase text-gray-500 font-bold">
-                                <tr>
-                                    <th className="px-6 py-3">Board Name</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {Array.isArray(boards) && boards.map(b => (
-                                    <tr key={b.id} className="hover:bg-gray-800/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-300 font-bold">{b.name}</div>
-                                            <div className="text-[10px] text-gray-500 uppercase font-black tracking-tighter">{b.state_name || 'National'}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleUpdateSettings(`approve/boards/${b.id}`, { is_approved: !b.is_approved })}
-                                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${b.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
-                                            >
-                                                {b.is_approved ? 'APPROVED' : 'PENDING'}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
-                                            <button
-                                                onClick={() => handleAIFetch('subjects', { board_id: b.id, category_id: 1, context_name: `${b.name} School Board` })}
-                                                className="text-indigo-400 hover:text-white text-[10px] uppercase font-black flex items-center gap-1"
-                                            >
-                                                <Cpu size={12} /> AI Subjects
-                                            </button>
-                                            <button className="text-gray-500 hover:text-white"><Edit size={14} /></button>
-                                            <button onClick={() => handleDeleteItem('boards', b.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14} /></button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="relative z-10 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+                        <div>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">School Central Overhaul</h2>
+                            <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-widest flex items-center gap-2">
+                                <Activity size={14} className="text-green-500 animate-pulse" /> Dynamic 5-Tier Education Hierarchy
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-4">
+                            <select
+                                className="bg-black border border-gray-800 text-xs text-white px-6 py-3 rounded-2xl font-black outline-none focus:border-indigo-500 transition-all shadow-xl"
+                                onChange={(e) => {
+                                    const st = states.find(s => s.id === parseInt(e.target.value));
+                                    if (st) setSelectedState(st);
+                                }}
+                                value={selectedState.id}
+                            >
+                                {states.map(s => <option key={s.id} value={s.id}>{s.name.toUpperCase()}</option>)}
+                            </select>
+                            <button
+                                onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
+                                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-2xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-2xl shadow-indigo-900/40 flex items-center gap-2"
+                            >
+                                <Cpu size={16} /> AI Discover Boards in {selectedState.name}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Vertical Structure (Classes/Streams) */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
-                            Classes 1-10
-                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                            {classes.filter(c => !c.name.includes('11') && !c.name.includes('12')).map(c => (
-                                <div key={c.id} className="bg-gray-800/50 p-2 rounded text-center text-[10px] font-bold text-gray-400 border border-gray-700/50 hover:border-indigo-500 transition-all cursor-pointer">
-                                    {c.name}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* Tier 2: Boards */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                <School size={16} className="text-indigo-500" /> Regional Boards
+                            </h3>
+                            <Plus size={16} className="text-gray-500 cursor-pointer hover:text-white" />
+                        </div>
+                        <div className="p-4 space-y-2 overflow-y-auto max-h-[400px] custom-scrollbar">
+                            {boards.filter(b => b.state_id === selectedState.id).map(b => (
+                                <div
+                                    key={b.id}
+                                    onClick={() => setSelBoard(b)}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-indigo-500/50'}`}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-black uppercase truncate">{b.name}</span>
+                                        <ChevronRight size={14} className={selBoard?.id === b.id ? 'text-white' : 'text-gray-700'} />
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                        <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2 flex items-center justify-between">
-                            Senior Sec (11-12)
-                            <Plus size={14} className="text-gray-500 cursor-pointer hover:text-white" />
-                        </h4>
-                        <div className="space-y-3">
-                            <div className="flex gap-2">
-                                <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-black">11</span>
-                                <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-black">12</span>
-                            </div>
-                            <div className="space-y-2">
-                                {streams.map(s => (
-                                    <div key={s.id} className="bg-indigo-500/5 p-2 rounded flex justify-between items-center text-[10px] font-bold text-indigo-400 border border-indigo-500/10 hover:bg-indigo-500 hover:text-white transition-all cursor-pointer group">
-                                        <span>{s.name.toUpperCase()}</span>
-                                        <CheckCircle size={12} className="opacity-0 group-hover:opacity-100" />
-                                    </div>
+
+                    {/* Tier 3: Class & Stream */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col opacity-100">
+                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20">
+                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                <Layers size={16} className="text-green-500" /> Academic Classes
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-6 overflow-y-auto max-h-[400px]">
+                            <div className="grid grid-cols-3 gap-3">
+                                {classes.map(c => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => { setSelClass(c); if (!c.name.includes('11') && !c.name.includes('12')) setSelStream(null); }}
+                                        className={`p-3 rounded-xl border text-[10px] font-black transition-all ${selClass?.id === c.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-green-500/30'}`}
+                                    >
+                                        {c.name.split(' ')[1] || c.name}
+                                    </button>
                                 ))}
                             </div>
+                            {(selClass?.name.includes('11') || selClass?.name.includes('12')) && (
+                                <div className="space-y-3 pt-4 border-t border-gray-800">
+                                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-2">Select Specialization Stream</p>
+                                    {streams.map(s => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => setSelStream(s)}
+                                            className={`w-full p-4 rounded-2xl border text-[10px] font-black uppercase text-left transition-all flex justify-between items-center ${selStream?.id === s.id ? 'bg-indigo-600 text-white' : 'bg-black border-gray-800 text-gray-400 hover:border-indigo-500/30'}`}
+                                        >
+                                            {s.name}
+                                            {selStream?.id === s.id && <CheckCircle size={14} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tier 4: Subjects */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                <Book size={16} className="text-purple-500" /> Syllabus Subjects
+                            </h3>
+                            {selBoard && selClass && (
+                                <button
+                                    onClick={() => handleAIFetch('subjects', { board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id, board_name: selBoard.name, class_name: selClass.name, stream_name: selStream?.name })}
+                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
+                                    title="AI Fetch Subjects"
+                                >
+                                    <Cpu size={14} />
+                                </button>
+                            )}
+                        </div>
+                        <div className="p-4 space-y-2 overflow-y-auto max-h-[400px] custom-scrollbar">
+                            {subjects.filter(s => s.board_id === selBoard?.id && s.class_id === selClass?.id && (s.stream_id === selStream?.id || !s.stream_id)).map(s => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => setSelSubject(s)}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
+                                >
+                                    <span className="text-xs font-black uppercase truncate">{s.name}</span>
+                                    <ChevronRight size={14} className={selSubject?.id === s.id ? 'text-white' : 'text-gray-700'} />
+                                </div>
+                            ))}
+                            {(!selBoard || !selClass) && (
+                                <div className="p-8 text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-20 mt-10">Select Board & Class</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tier 5: Chapters */}
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
+                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                <FileText size={16} className="text-orange-500" /> Chapter Nodes
+                            </h3>
+                            {selSubject && (
+                                <button
+                                    onClick={() => handleAIFetch('chapters', { subject_id: selSubject.id, subject_name: selSubject.name, board_name: selBoard.name, class_name: selClass.name })}
+                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
+                                    title="AI Fetch Chapters"
+                                >
+                                    <Cpu size={14} />
+                                </button>
+                            )}
+                        </div>
+                        <div className="p-8 space-y-3 overflow-y-auto max-h-[400px] custom-scrollbar">
+                            {chapters.filter(c => c.subject_id === selSubject?.id).map(c => (
+                                <div key={c.id} className="p-4 bg-black/60 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-orange-500/30 transition-all">
+                                    <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{c.name}</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleDeleteItem('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                                    </div>
+                                </div>
+                            ))}
+                            {!selSubject && (
+                                <div className="p-8 text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-20 mt-10">Select Subject to View Chapters</div>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                {/* Languages (Requirement 10) */}
-                <div className="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
-                    <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Translation Engine</h4>
-                    <div className="space-y-3">
-                        {languages.map(l => (
-                            <div key={l.id} className="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-gray-800/50 group">
-                                <span className="text-sm text-gray-400 group-hover:text-white font-bold transition-colors">{l.name}</span>
-                                <div className={`w-2 h-2 rounded-full ${l.is_active ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
-                            </div>
-                        ))}
-                        <button className="w-full mt-4 py-2 border border-dashed border-gray-700 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:border-indigo-500 hover:text-indigo-400 transition-all">Add Language Slot</button>
-                    </div>
-                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderUnivMgmt = () => (
         <div className="space-y-8 animate-fadeIn">
