@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, Lock, Mail, ArrowRight } from 'lucide-react';
+import api from '../services/api';
 
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
