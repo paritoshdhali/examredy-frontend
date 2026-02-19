@@ -8,7 +8,8 @@ import {
     Eye, Edit, Trash2, Check, X, Search,
     Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
     LogOut, Globe, BookOpen, Book, GraduationCap, School, MapPin,
-    Briefcase, FileText, CreditCard, PieChart, Activity, AlertCircle, RefreshCw, Save
+    Briefcase, FileText, CreditCard, PieChart, Activity, AlertCircle, RefreshCw, Save,
+    ChevronRight, ChevronLeft
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -404,11 +405,18 @@ const AdminDashboard = () => {
                                 className="bg-black border border-gray-800 text-xs text-white px-6 py-3 rounded-2xl font-black outline-none focus:border-indigo-500 transition-all shadow-xl"
                                 onChange={(e) => {
                                     const st = states.find(s => s.id === parseInt(e.target.value));
-                                    if (st) setSelectedState(st);
+                                    if (st) {
+                                        setSelectedState(st);
+                                        // Reset sub-selections to prevent crashes/inconsistency
+                                        setSelBoard(null);
+                                        setSelClass(null);
+                                        setSelStream(null);
+                                        setSelSubject(null);
+                                    }
                                 }}
                                 value={selectedState.id}
                             >
-                                {states.map(s => <option key={s.id} value={s.id}>{s.name.toUpperCase()}</option>)}
+                                {states.map(s => <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>)}
                             </select>
                             <button
                                 onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
