@@ -17,9 +17,15 @@ const AdminLogin = () => {
         setError('');
         setLoading(true);
         try {
-            console.log(`[DEBUG] Attempting admin login to: ${api.defaults.baseURL}/admin/login`);
+            console.log(`[DEBUG] Login Process Started`);
+            console.log(`[DEBUG] Email: ${email}, Password Length: ${password.length}`);
+            console.log(`[DEBUG] API Config:`, {
+                baseURL: api.defaults.baseURL,
+                headers: api.defaults.headers
+            });
+
             const res = await api.post('/admin/login', { email, password });
-            console.log('[DEBUG] Login response status:', res.status);
+            console.log('[DEBUG] Login Success! Response:', res.data);
 
             if (res.data.token) {
                 localStorage.setItem('adminToken', res.data.token);
