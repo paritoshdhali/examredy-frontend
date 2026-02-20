@@ -19,6 +19,14 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [diagInfo, setDiagInfo] = useState(null);
+    const [toasts, setToasts] = useState([]);
+
+    // Toast helper — shows auto-dismissing notification
+    const showToast = (message, type = 'success') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+    };
 
     // --- STATES ---
     const [stats, setStats] = useState(null);
@@ -179,11 +187,21 @@ const AdminDashboard = () => {
         try {
             setLoading(true);
             const res = await api.post(`/ai-fetch/${type}`, payload);
-            alert(res.data.message || 'AI Fetch triggered successfully!');
-            fetchDashboardData();
+            const count = res.data.count ?? 0;
+            showToast(`✅ AI fetched ${count} ${type} successfully`);
+            // Update local state directly from updatedData
+            if (type === 'boards' && res.data.updatedData) {
+                setBoards(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else if (type === 'subjects' && res.data.updatedData) {
+                setSubjects(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else if (type === 'chapters' && res.data.updatedData) {
+                setChapters(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                fetchDashboardData();
+            }
         } catch (err) {
-            const serverMsg = err.response?.data?.message || err.message;
-            alert(`AI Error: ${serverMsg}`);
+            const serverMsg = err.response?.data?.error || err.response?.data?.message || err.message;
+            showToast(`❌ AI Error: ${serverMsg}`, 'error');
         } finally { setLoading(false); }
     };
 
@@ -192,10 +210,16 @@ const AdminDashboard = () => {
         if (!name) return;
         try {
             setLoading(true);
-            await api.post(`/admin/${table}`, { ...initialData, name });
-            alert('Added successfully!');
-            fetchDashboardData();
-        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+            const res = await api.post(`/admin/${table}`, { ...initialData, name });
+            if (res.data.updatedData) {
+                if (table === 'boards') setBoards(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'subjects') setSubjects(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'chapters') setChapters(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                fetchDashboardData();
+            }
+            showToast(`✅ ${table.charAt(0).toUpperCase() + table.slice(1, -1)} added successfully`);
+        } catch (err) { showToast(`❌ Error: ${err.response?.data?.error || err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
@@ -204,10 +228,16 @@ const AdminDashboard = () => {
         if (!name || name === item.name) return;
         try {
             setLoading(true);
-            await api.put(`/admin/${table}/${item.id}`, { ...item, name });
-            alert('Updated successfully!');
-            fetchDashboardData();
-        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+            const res = await api.put(`/admin/${table}/${item.id}`, { ...item, name });
+            if (res.data.updatedData) {
+                if (table === 'boards') setBoards(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'subjects') setSubjects(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'chapters') setChapters(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                fetchDashboardData();
+            }
+            showToast(`✅ Updated successfully`);
+        } catch (err) { showToast(`❌ Error: ${err.response?.data?.error || err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
@@ -216,18 +246,26 @@ const AdminDashboard = () => {
         try {
             setLoading(true);
             await api.delete(`/admin/${table}/${id}`);
-            alert('Deleted successfully!');
+            showToast(`🗑️ Deleted successfully`);
             fetchDashboardData();
-        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        } catch (err) { showToast(`❌ Error: ${err.response?.data?.error || err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
     const handleToggleActive = async (table, item) => {
         try {
             setLoading(true);
-            await api.put(`/admin/${table}/${item.id}`, { ...item, is_active: !item.is_active });
-            fetchDashboardData();
-        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+            const res = await api.put(`/admin/${table}/${item.id}`, { ...item, is_active: !item.is_active });
+            if (res.data.updatedData) {
+                if (table === 'boards') setBoards(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'subjects') setSubjects(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+                if (table === 'chapters') setChapters(res.data.updatedData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                fetchDashboardData();
+            }
+            const newStatus = !item.is_active ? 'Enabled' : 'Disabled';
+            showToast(`${!item.is_active ? '🟢' : '🔴'} ${item.name} ${newStatus}`);
+        } catch (err) { showToast(`❌ Error: ${err.response?.data?.error || err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
@@ -237,9 +275,9 @@ const AdminDashboard = () => {
             if (data.role) await api.put(`/admin/users/${id}/role`, { role: data.role });
             if (data.is_active !== undefined) await api.put(`/admin/users/${id}/status`, { is_active: data.is_active });
             if (data.action) await api.put(`/admin/users/${id}/subscription`, data);
-            alert('User updated successfully');
+            showToast('✅ User updated successfully');
             fetchDashboardData();
-        } catch (err) { alert(err.message); }
+        } catch (err) { showToast(`❌ ${err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
@@ -249,12 +287,13 @@ const AdminDashboard = () => {
             let endpoint = `/admin/settings/${type}`;
             if (type.startsWith('ai-providers/')) endpoint = `/admin/${type}`;
             if (type.startsWith('approve/')) endpoint = `/admin/${type}`;
+            if (type.startsWith('states/')) endpoint = `/admin/${type}`;
 
             await api.put(endpoint, data);
-            alert('Operation successful');
+            showToast('✅ Operation successful');
             fetchDashboardData();
         } catch (err) {
-            alert(`Update Error: ${err.message}`);
+            showToast(`❌ Update Error: ${err.message}`, 'error');
         } finally { setLoading(false); }
     };
 
@@ -263,9 +302,9 @@ const AdminDashboard = () => {
         try {
             setLoading(true);
             await api.delete(`/admin/${table}/${id}`);
-            alert('Deleted successfully');
+            showToast('🗑️ Deleted successfully');
             fetchDashboardData();
-        } catch (err) { alert(err.message); }
+        } catch (err) { showToast(`❌ ${err.message}`, 'error'); }
         finally { setLoading(false); }
     };
 
@@ -1685,6 +1724,21 @@ const AdminDashboard = () => {
 
     return (
         <div className="flex min-h-screen bg-black font-sans text-gray-300">
+            {/* Toast Notification Overlay */}
+            <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+                {toasts.map(t => (
+                    <div
+                        key={t.id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-bold max-w-xs animate-fadeIn pointer-events-auto
+                            ${t.type === 'error'
+                                ? 'bg-red-950 border-red-500/30 text-red-300'
+                                : 'bg-gray-900 border-green-500/30 text-green-300'
+                            }`}
+                    >
+                        <span>{t.message}</span>
+                    </div>
+                ))}
+            </div>
             {/* Sidebar */}
             <div className="w-64 bg-gray-950 border-r border-gray-900 flex flex-col fixed h-full z-30">
                 <div className="p-6 flex items-center gap-3">
