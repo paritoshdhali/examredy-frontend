@@ -187,6 +187,50 @@ const AdminDashboard = () => {
         } finally { setLoading(false); }
     };
 
+    const handleManualAdd = async (table, initialData) => {
+        const name = prompt(`Enter Name for ${table}:`);
+        if (!name) return;
+        try {
+            setLoading(true);
+            await api.post(`/admin/${table}`, { ...initialData, name });
+            alert('Added successfully!');
+            fetchDashboardData();
+        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        finally { setLoading(false); }
+    };
+
+    const handleManualEdit = async (table, item) => {
+        const name = prompt(`Edit Name for ${item.name}:`, item.name);
+        if (!name || name === item.name) return;
+        try {
+            setLoading(true);
+            await api.put(`/admin/${table}/${item.id}`, { ...item, name });
+            alert('Updated successfully!');
+            fetchDashboardData();
+        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        finally { setLoading(false); }
+    };
+
+    const handleDeleteHierarchy = async (table, id) => {
+        if (!window.confirm(`Are you sure you want to delete this ${table} item?`)) return;
+        try {
+            setLoading(true);
+            await api.delete(`/admin/${table}/${id}`);
+            alert('Deleted successfully!');
+            fetchDashboardData();
+        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        finally { setLoading(false); }
+    };
+
+    const handleToggleActive = async (table, item) => {
+        try {
+            setLoading(true);
+            await api.put(`/admin/${table}/${item.id}`, { ...item, is_active: !item.is_active });
+            fetchDashboardData();
+        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        finally { setLoading(false); }
+    };
+
     const handleUpdateUser = async (id, data) => {
         try {
             setLoading(true);
@@ -486,16 +530,19 @@ const AdminDashboard = () => {
                                             <span className={`text-[8px] font-bold ${b.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
                                         </div>
                                         <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={(e) => { e.stopPropagation(); /* Edit logic */ alert('Edit Board: ' + b.name); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`boards/${b.id}`, { ...b, is_active: !b.is_active }); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('boards', b.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleManualEdit('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleToggleActive('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('boards', b.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
                                         </div>
                                     </div>
                                 ))
                             )}
                             {selectedState.id !== 0 && (
                                 <div className="space-y-1 mt-4">
-                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={() => handleManualAdd('boards', { state_id: selectedState.id })}
+                                        className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
+                                    >
                                         <Plus size={12} /> Manual Add
                                     </button>
                                     <div className="flex gap-2">
@@ -548,10 +595,14 @@ const AdminDashboard = () => {
                                         onClick={() => { setSelStream(s); setSelSubject(null); }}
                                         className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selStream?.id === s.id ? 'bg-yellow-600 border-yellow-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-yellow-500/50'}`}
                                     >
-                                        <span className="text-[10px] font-black uppercase">{s.name}</span>
-                                        <div className="flex gap-2 items-center">
-                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`streams/${s.id}`, { ...s, is_active: !s.is_active }); }} className="p-1 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-white"><RefreshCw size={10} /></button>
-                                            {selStream?.id === s.id && <CheckCircle size={14} />}
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase">{s.name}</span>
+                                            <span className={`text-[8px] font-bold ${s.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{s.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                                        </div>
+                                        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => { e.stopPropagation(); handleManualEdit('streams', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleToggleActive('streams', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('streams', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
                                         </div>
                                     </div>
                                 ))
@@ -597,16 +648,19 @@ const AdminDashboard = () => {
                                             <span className={`text-[8px] font-bold ${s.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{s.is_active ? 'ENABLED' : 'DISABLED'}</span>
                                         </div>
                                         <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={(e) => { e.stopPropagation(); /* Edit */ }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`subjects/${s.id}`, { ...s, is_active: !s.is_active }); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('subjects', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleManualEdit('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleToggleActive('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('subjects', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
                                         </div>
                                     </div>
                                 ))
                             )}
                             {selClass && (
                                 <div className="space-y-1 mt-2">
-                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={() => handleManualAdd('subjects', { board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id, category_id: 1 })}
+                                        className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all flex items-center justify-center gap-2"
+                                    >
                                         <Plus size={12} /> Manual Add
                                     </button>
                                     <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all">Bulk Add</button>
@@ -641,16 +695,19 @@ const AdminDashboard = () => {
                                             <span className={`text-[8px] font-bold ${c.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{c.is_active ? 'PUBLISHED' : 'UNPUBLISHED'}</span>
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { /* Edit */ }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={() => handleUpdateSettings(`chapters/${c.id}`, { ...c, is_active: !c.is_active })} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
-                                            <button onClick={() => handleDeleteItem('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={10} /></button>
+                                            <button onClick={() => handleManualEdit('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={() => handleToggleActive('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
+                                            <button onClick={() => handleDeleteHierarchy('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={10} /></button>
                                         </div>
                                     </div>
                                 ))
                             )}
                             {selSubject && (
                                 <div className="space-y-2 mt-4">
-                                    <button className="w-full p-3 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-orange-500/50 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-center leading-tight">
+                                    <button
+                                        onClick={() => handleManualAdd('chapters', { subject_id: selSubject.id })}
+                                        className="w-full p-3 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-orange-500/50 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-center leading-tight"
+                                    >
                                         <Plus size={14} /> Manual Add
                                     </button>
                                     <button
@@ -696,8 +753,11 @@ const AdminDashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-3xl p-8">
-                    <h3 className="text-white font-black text-xs uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <GraduationCap size={16} className="text-purple-500" /> University Roster ({selectedState.name})
+                    <h3 className="text-white font-black text-xs uppercase tracking-widest mb-6 flex justify-between items-center group">
+                        <div className="flex items-center gap-2">
+                            <GraduationCap size={16} className="text-purple-500" /> University Roster ({selectedState.name})
+                        </div>
+                        <button onClick={() => handleManualAdd('universities', { state_id: selectedState.id })} className="p-2 border border-dashed border-gray-700 rounded-lg text-[9px] text-gray-400 hover:text-white hover:border-purple-500 transition-all">+ Add Univ</button>
                     </h3>
                     <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                         {(Array.isArray(universities) ? universities : []).filter(u => u.state_id === selectedState.id).map(u => (
@@ -708,7 +768,8 @@ const AdminDashboard = () => {
                                 </div>
                                 <div className="flex gap-2 text-right">
                                     <button onClick={() => handleAIFetch('streams', { university_id: u.id, university_name: u.name })} className="p-2 bg-purple-500/10 text-purple-400 rounded-lg hover:bg-purple-500 hover:text-white transition-all"><Cpu size={14} /></button>
-                                    <button onClick={() => handleDeleteItem('universities', u.id)} className="p-2 text-gray-600 hover:text-red-500"><Trash2 size={14} /></button>
+                                    <button onClick={() => handleManualEdit('universities', u)} className="p-2 text-gray-600 hover:text-white"><Edit size={14} /></button>
+                                    <button onClick={() => handleDeleteHierarchy('universities', u.id)} className="p-2 text-gray-600 hover:text-red-500"><Trash2 size={14} /></button>
                                 </div>
                             </div>
                         ))}
