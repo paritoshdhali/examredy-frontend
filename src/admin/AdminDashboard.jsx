@@ -507,6 +507,11 @@ const AdminDashboard = () => {
                                             setSelClass(null);
                                             setSelStream(null);
                                             setSelSubject(null);
+                                            // Auto-fetch boards if none exist for this state
+                                            const existingBoards = boards.filter(b => b.state_id === st.id);
+                                            if (existingBoards.length === 0) {
+                                                setTimeout(() => handleAIFetch('boards', { state_id: st.id, state_name: st.name }), 300);
+                                            }
                                         }
                                     }}
                                     value={selectedState.id}
@@ -552,6 +557,24 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                         <div className="p-3 space-y-2 flex-grow overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {boards.filter(b => b.state_id === selectedState.id).length === 0 && selectedState.id !== 0 && !loading && (
+                                <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                                    <Cpu size={28} className="text-indigo-400 animate-pulse" />
+                                    <p className="text-[10px] font-black uppercase text-gray-500">No boards yet</p>
+                                    <button
+                                        onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
+                                        className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-indigo-500 transition-all flex items-center gap-2"
+                                    >
+                                        <Cpu size={12} /> Fetch from Internet
+                                    </button>
+                                </div>
+                            )}
+                            {loading && boards.filter(b => b.state_id === selectedState.id).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                    <RefreshCw size={20} className="text-indigo-400 animate-spin" />
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Fetching boards...</p>
+                                </div>
+                            )}
                             {boards.filter(b => b.state_id === selectedState.id).map(b => (
                                 <div
                                     key={b.id}
