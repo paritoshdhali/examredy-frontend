@@ -182,7 +182,8 @@ const AdminDashboard = () => {
             alert(res.data.message || 'AI Fetch triggered successfully!');
             fetchDashboardData();
         } catch (err) {
-            alert(`AI Error: ${err.message}`);
+            const serverMsg = err.response?.data?.message || err.message;
+            alert(`AI Error: ${serverMsg}`);
         } finally { setLoading(false); }
     };
 
