@@ -393,187 +393,276 @@ const AdminDashboard = () => {
     );
 
     const renderSchoolMgmt = () => {
+        const is11or12 = selClass?.name.includes('11') || selClass?.name.includes('12');
+
         return (
             <div className="space-y-8 animate-fadeIn">
+                {/* [ STATE SELECTION ] - TOP LEVEL */}
                 <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
-                        <School size={120} />
+                        <MapPin size={120} />
                     </div>
                     <div className="relative z-10 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
                         <div>
-                            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">School Central Overhaul</h2>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">School Central Hierarchical Control</h2>
                             <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-widest flex items-center gap-2">
-                                <Activity size={14} className="text-green-500 animate-pulse" /> Dynamic 5-Tier Education Hierarchy
+                                <Activity size={14} className="text-green-500 animate-pulse" /> Strict Column Flow: State → Board → Class → Stream → Subject → Chapter
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-4">
-                            <select
-                                className="bg-black border border-gray-800 text-xs text-white px-6 py-3 rounded-2xl font-black outline-none focus:border-indigo-500 transition-all shadow-xl"
-                                onChange={(e) => {
-                                    const st = states.find(s => s.id === parseInt(e.target.value));
-                                    if (st) {
-                                        setSelectedState(st);
-                                        // Reset sub-selections to prevent crashes/inconsistency
-                                        setSelBoard(null);
-                                        setSelClass(null);
-                                        setSelStream(null);
-                                        setSelSubject(null);
-                                    }
-                                }}
-                                value={selectedState.id}
-                            >
-                                {states.map(s => <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>)}
-                            </select>
-                            <button
-                                onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
-                                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-2xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-2xl shadow-indigo-900/40 flex items-center gap-2 disabled:opacity-50"
-                                disabled={!selectedState.name}
-                            >
-                                <Cpu size={16} /> AI Discover Boards in {selectedState.name || 'Selected State'}
-                            </button>
+                        <div className="flex flex-wrap gap-4 items-center">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase ml-1">Select State (Master Filter)</span>
+                                <select
+                                    className="bg-black border border-gray-800 text-sm text-indigo-400 px-6 py-3 rounded-2xl font-black outline-none focus:border-indigo-500 transition-all shadow-xl min-w-[250px]"
+                                    onChange={(e) => {
+                                        const st = states.find(s => s.id === parseInt(e.target.value));
+                                        if (st) {
+                                            setSelectedState(st);
+                                            // Reset all sub-selections strictly
+                                            setSelBoard(null);
+                                            setSelClass(null);
+                                            setSelStream(null);
+                                            setSelSubject(null);
+                                        }
+                                    }}
+                                    value={selectedState.id}
+                                >
+                                    <option value="0">SELECT AN INDIAN STATE</option>
+                                    {states.map(s => <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>)}
+                                </select>
+                            </div>
+                            {selectedState.id !== 0 && (
+                                <div className="flex items-center gap-2 mt-5">
+                                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${selectedState.is_active ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                        {selectedState.is_active ? 'ENABLED' : 'DISABLED'}
+                                    </span>
+                                    <button
+                                        onClick={() => handleUpdateSettings(`states/${selectedState.id}`, { name: selectedState.name, is_active: !selectedState.is_active })}
+                                        className="p-2 bg-gray-800 text-gray-400 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg"
+                                        title="Toggle State Status"
+                                    >
+                                        <RefreshCw size={14} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Tier 2: Boards */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                <School size={16} className="text-indigo-500" /> Regional Boards
+                {/* 5-COLUMN GRID LAYOUT */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4 items-start">
+
+                    {/* [ BOARD ] */}
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 group">
+                        <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
+                            <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                <ShieldAlert size={14} className="text-indigo-500" /> [ BOARD ]
                             </h3>
-                            <Plus size={16} className="text-gray-500 cursor-pointer hover:text-white" />
+                            <button
+                                onClick={() => handleAIFetch('boards', { state_id: selectedState.id, state_name: selectedState.name })}
+                                className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all disabled:opacity-20"
+                                disabled={selectedState.id === 0}
+                                title="AI Fetch Boards"
+                            >
+                                <Cpu size={12} />
+                            </button>
                         </div>
-                        <div className="p-4 space-y-2 overflow-y-auto max-h-[400px] custom-scrollbar">
-                            {boards.filter(b => b.state_id === selectedState.id).map(b => (
-                                <div
-                                    key={b.id}
-                                    onClick={() => setSelBoard(b)}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-indigo-500/50'}`}
-                                >
-                                    <div className="flex flex-col truncate pr-2">
-                                        <span className="text-xs font-black uppercase truncate">{b.name}</span>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`approve/boards/${b.id}`, { is_approved: !b.is_approved }); }}
-                                                className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter ${b.is_approved ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
-                                            >
-                                                {b.is_approved ? 'APPROVED' : 'PENDING'}
-                                            </button>
+                        <div className="p-3 space-y-2 flex-grow overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {selectedState.id === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center opacity-20 text-center p-8">
+                                    <AlertCircle size={40} className="mb-2" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Select State First</p>
+                                </div>
+                            ) : (
+                                boards.filter(b => b.state_id === selectedState.id).map(b => (
+                                    <div
+                                        key={b.id}
+                                        onClick={() => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}
+                                        className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-indigo-500/50'}`}
+                                    >
+                                        <div className="flex flex-col truncate flex-grow">
+                                            <span className="text-[10px] font-black uppercase truncate">{b.name}</span>
+                                            <span className={`text-[8px] font-bold ${b.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                                        </div>
+                                        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => { e.stopPropagation(); /* Edit logic */ alert('Edit Board: ' + b.name); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`boards/${b.id}`, { ...b, is_active: !b.is_active }); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('boards', b.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 items-center">
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('boards', b.id); }} className="p-1 px-2 text-gray-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12} /></button>
-                                        <ChevronRight size={14} className={selBoard?.id === b.id ? 'text-white' : 'text-gray-700'} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tier 3: Class & Stream */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col opacity-100">
-                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20">
-                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                <Layers size={16} className="text-green-500" /> Academic Classes
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-6 overflow-y-auto max-h-[400px]">
-                            <div className="grid grid-cols-3 gap-3">
-                                {classes.map(c => (
-                                    <button
-                                        key={c.id}
-                                        onClick={() => { setSelClass(c); if (!c.name.includes('11') && !c.name.includes('12')) setSelStream(null); }}
-                                        className={`p-3 rounded-xl border text-[10px] font-black transition-all ${selClass?.id === c.id ? 'bg-green-600 border-green-500 text-white shadow-lg' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-green-500/30'}`}
-                                    >
-                                        {c.name.split(' ')[1] || c.name}
+                                ))
+                            )}
+                            {selectedState.id !== 0 && (
+                                <div className="space-y-1 mt-4">
+                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2">
+                                        <Plus size={12} /> Manual Add
                                     </button>
-                                ))}
-                            </div>
-                            {(selClass?.name.includes('11') || selClass?.name.includes('12')) && (
-                                <div className="space-y-3 pt-4 border-t border-gray-800">
-                                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-2">Select Specialization Stream</p>
-                                    {streams.map(s => (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => setSelStream(s)}
-                                            className={`w-full p-4 rounded-2xl border text-[10px] font-black uppercase text-left transition-all flex justify-between items-center ${selStream?.id === s.id ? 'bg-indigo-600 text-white' : 'bg-black border-gray-800 text-gray-400 hover:border-indigo-500/30'}`}
-                                        >
-                                            {s.name}
-                                            {selStream?.id === s.id && <CheckCircle size={14} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Tier 4: Subjects */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                <Book size={16} className="text-purple-500" /> Syllabus Subjects
-                            </h3>
-                            {selBoard && selClass && (
-                                <button
-                                    onClick={() => handleAIFetch('subjects', { board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id, board_name: selBoard.name, class_name: selClass.name, stream_name: selStream?.name })}
-                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
-                                    title="AI Fetch Subjects"
-                                >
-                                    <Cpu size={14} />
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-4 space-y-2 overflow-y-auto max-h-[400px] custom-scrollbar">
-                            {subjects.filter(s => s.board_id === selBoard?.id && s.class_id === selClass?.id && (s.stream_id === selStream?.id || !s.stream_id)).map(s => (
-                                <div
-                                    key={s.id}
-                                    onClick={() => setSelSubject(s)}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
-                                >
-                                    <span className="text-xs font-black uppercase truncate">{s.name}</span>
-                                    <div className="flex gap-2 items-center">
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('subjects', s.id); }} className="p-1 px-2 text-gray-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12} /></button>
-                                        <ChevronRight size={14} className={selSubject?.id === s.id ? 'text-white' : 'text-gray-700'} />
-                                    </div>
-                                </div>
-                            ))}
-                            {(!selBoard || !selClass) && (
-                                <div className="p-8 text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-20 mt-10">Select Board & Class</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Tier 5: Chapters */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-                        <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
-                            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                <FileText size={16} className="text-orange-500" /> Chapter Nodes
-                            </h3>
-                            {selSubject && (
-                                <button
-                                    onClick={() => handleAIFetch('chapters', { subject_id: selSubject.id, subject_name: selSubject.name, board_name: selBoard.name, class_name: selClass.name })}
-                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all shadow-lg"
-                                    title="AI Fetch Chapters"
-                                >
-                                    <Cpu size={14} />
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-8 space-y-3 overflow-y-auto max-h-[400px] custom-scrollbar">
-                            {chapters.filter(c => c.subject_id === selSubject?.id).map(c => (
-                                <div key={c.id} className="p-4 bg-black/60 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-orange-500/30 transition-all">
-                                    <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{c.name}</span>
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleDeleteItem('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                                        <button className="flex-1 p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all">Bulk Add</button>
+                                        <button className="flex-1 p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all">Multi Select</button>
                                     </div>
                                 </div>
-                            ))}
-                            {!selSubject && (
-                                <div className="p-8 text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-20 mt-10">Select Subject to View Chapters</div>
                             )}
                         </div>
                     </div>
+
+                    {/* [ CLASS ] */}
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!selBoard ? 'opacity-30' : 'opacity-100'}`}>
+                        <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 rounded-t-3xl">
+                            <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                <Layers size={14} className="text-green-500" /> [ CLASS ]
+                            </h3>
+                        </div>
+                        <div className="p-3 grid grid-cols-2 gap-2 overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {classes.map(c => (
+                                <button
+                                    key={c.id}
+                                    disabled={!selBoard}
+                                    onClick={() => { setSelClass(c); setSelStream(null); setSelSubject(null); }}
+                                    className={`p-4 rounded-2xl border text-[10px] font-black transition-all ${selClass?.id === c.id ? 'bg-green-600 border-green-500 text-white shadow-xl scale-[1.05]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-green-500/30'}`}
+                                >
+                                    {c.name.replace('Class ', '')}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* [ STREAM ] - Conditional */}
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!is11or12 ? 'opacity-20 select-none grayscale' : 'opacity-100'}`}>
+                        <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 rounded-t-3xl">
+                            <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                <TrendingUp size={14} className="text-yellow-500" /> [ STREAM ]
+                            </h3>
+                        </div>
+                        <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {!is11or12 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-10 pt-20">
+                                    <AlertCircle size={30} className="mb-2" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Only for 11 & 12</p>
+                                </div>
+                            ) : (
+                                streams.map(s => (
+                                    <div
+                                        key={s.id}
+                                        onClick={() => { setSelStream(s); setSelSubject(null); }}
+                                        className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selStream?.id === s.id ? 'bg-yellow-600 border-yellow-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-yellow-500/50'}`}
+                                    >
+                                        <span className="text-[10px] font-black uppercase">{s.name}</span>
+                                        <div className="flex gap-2 items-center">
+                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`streams/${s.id}`, { ...s, is_active: !s.is_active }); }} className="p-1 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-white"><RefreshCw size={10} /></button>
+                                            {selStream?.id === s.id && <CheckCircle size={14} />}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* [ SUBJECT ] */}
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${(!selBoard || !selClass || (is11or12 && !selStream)) ? 'opacity-30' : 'opacity-100'}`}>
+                        <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
+                            <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                <BookOpen size={14} className="text-purple-500" /> [ SUBJECT ]
+                            </h3>
+                            <button
+                                onClick={() => handleAIFetch('subjects', {
+                                    board_id: selBoard.id,
+                                    class_id: selClass.id,
+                                    stream_id: selStream?.id,
+                                    board_name: selBoard.name,
+                                    class_name: selClass.name,
+                                    stream_name: selStream?.name,
+                                    context_name: `${selBoard.name} ${selClass.name} ${selStream?.name || ''}`
+                                })}
+                                className="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg hover:bg-purple-500 hover:text-white transition-all disabled:opacity-20"
+                                disabled={!selBoard || !selClass || (is11or12 && !selStream)}
+                                title="AI Fetch Subjects"
+                            >
+                                <Cpu size={12} />
+                            </button>
+                        </div>
+                        <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {!selClass ? (
+                                <div className="p-8 text-center text-[10px] opacity-20 font-black uppercase mt-20">Select Class First</div>
+                            ) : (
+                                subjects.filter(s => s.board_id === selBoard?.id && s.class_id === selClass?.id && (s.stream_id === selStream?.id || !s.stream_id)).map(s => (
+                                    <div
+                                        key={s.id}
+                                        onClick={() => setSelSubject(s)}
+                                        className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
+                                    >
+                                        <div className="flex flex-col truncate flex-grow">
+                                            <span className="text-[10px] font-black uppercase truncate">{s.name}</span>
+                                            <span className={`text-[8px] font-bold ${s.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{s.is_active ? 'ENABLED' : 'DISABLED'}</span>
+                                        </div>
+                                        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => { e.stopPropagation(); /* Edit */ }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleUpdateSettings(`subjects/${s.id}`, { ...s, is_active: !s.is_active }); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteItem('subjects', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            {selClass && (
+                                <div className="space-y-1 mt-2">
+                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
+                                        <Plus size={12} /> Manual Add
+                                    </button>
+                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all">Bulk Add</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* [ CHAPTER ] */}
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!selSubject ? 'opacity-30' : 'opacity-100'}`}>
+                        <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
+                            <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                <CheckCircle size={14} className="text-orange-500" /> [ CHAPTER ]
+                            </h3>
+                            <button
+                                onClick={() => handleAIFetch('chapters', { subject_id: selSubject.id, subject_name: selSubject.name, board_name: selBoard.name, class_name: selClass.name })}
+                                className="p-1.5 bg-orange-500/10 text-orange-400 rounded-lg hover:bg-orange-500 hover:text-white transition-all disabled:opacity-20"
+                                disabled={!selSubject}
+                                title="AI Fetch Chapters"
+                            >
+                                <Cpu size={12} />
+                            </button>
+                        </div>
+                        <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
+                            {!selSubject ? (
+                                <div className="p-8 text-center text-[10px] opacity-20 font-black uppercase mt-20">Select Subject First</div>
+                            ) : (
+                                chapters.filter(c => c.subject_id === selSubject?.id).map(c => (
+                                    <div key={c.id} className="p-3 bg-black/60 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-orange-500/30 transition-all">
+                                        <div className="flex flex-col truncate flex-grow">
+                                            <span className="text-[10px] font-black text-gray-300 group-hover:text-white transition-colors truncate">{c.name}</span>
+                                            <span className={`text-[8px] font-bold ${c.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{c.is_active ? 'PUBLISHED' : 'UNPUBLISHED'}</span>
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => { /* Edit */ }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                            <button onClick={() => handleUpdateSettings(`chapters/${c.id}`, { ...c, is_active: !c.is_active })} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
+                                            <button onClick={() => handleDeleteItem('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={10} /></button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            {selSubject && (
+                                <div className="space-y-2 mt-4">
+                                    <button className="w-full p-3 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-orange-500/50 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-center leading-tight">
+                                        <Plus size={14} /> Manual Add
+                                    </button>
+                                    <button
+                                        onClick={() => alert(`Starting MCQ for ${selSubject.name}`)}
+                                        className="w-full p-4 bg-orange-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-orange-900/40"
+                                    >
+                                        START MCQ PRACTICE
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         );
