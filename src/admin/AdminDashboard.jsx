@@ -498,7 +498,7 @@ const AdminDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4 items-start">
 
                     {/* [ BOARD ] */}
-                    <div className="bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 group">
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 group ${selectedState.id === 0 ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
                             <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <ShieldAlert size={14} className="text-indigo-500" /> [ BOARD ]
@@ -513,49 +513,36 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                         <div className="p-3 space-y-2 flex-grow overflow-y-auto max-h-[500px] custom-scrollbar">
-                            {selectedState.id === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center opacity-20 text-center p-8">
-                                    <AlertCircle size={40} className="mb-2" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Select State First</p>
-                                </div>
-                            ) : (
-                                boards.filter(b => b.state_id === selectedState.id).map(b => (
-                                    <div
-                                        key={b.id}
-                                        onClick={() => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}
-                                        className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-indigo-500/50'}`}
-                                    >
-                                        <div className="flex flex-col truncate flex-grow">
-                                            <span className="text-[10px] font-black uppercase truncate">{b.name}</span>
-                                            <span className={`text-[8px] font-bold ${b.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
-                                        </div>
-                                        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={(e) => { e.stopPropagation(); handleManualEdit('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleToggleActive('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('boards', b.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
-                                        </div>
+                            {boards.filter(b => b.state_id === selectedState.id).map(b => (
+                                <div
+                                    key={b.id}
+                                    onClick={() => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}
+                                    className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selBoard?.id === b.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-indigo-500/50'}`}
+                                >
+                                    <div className="flex flex-col truncate flex-grow">
+                                        <span className="text-[10px] font-black uppercase truncate">{b.name}</span>
+                                        <span className={`text-[8px] font-bold ${b.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
                                     </div>
-                                ))
-                            )}
-                            {selectedState.id !== 0 && (
-                                <div className="space-y-1 mt-4">
-                                    <button
-                                        onClick={() => handleManualAdd('boards', { state_id: selectedState.id })}
-                                        className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Plus size={12} /> Manual Add
-                                    </button>
-                                    <div className="flex gap-2">
-                                        <button className="flex-1 p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all">Bulk Add</button>
-                                        <button className="flex-1 p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all">Multi Select</button>
+                                    <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={(e) => { e.stopPropagation(); handleManualEdit('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleToggleActive('boards', b); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('boards', b.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
                                     </div>
                                 </div>
-                            )}
+                            ))}
+                            <div className="space-y-1 mt-4">
+                                <button
+                                    onClick={() => handleManualAdd('boards', { state_id: selectedState.id })}
+                                    className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Plus size={12} /> Manual Add
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     {/* [ CLASS ] */}
-                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!selBoard ? 'opacity-30' : 'opacity-100'}`}>
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!selBoard ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 rounded-t-3xl">
                             <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <Layers size={14} className="text-green-500" /> [ CLASS ]
@@ -565,7 +552,6 @@ const AdminDashboard = () => {
                             {classes.map(c => (
                                 <button
                                     key={c.id}
-                                    disabled={!selBoard}
                                     onClick={() => { setSelClass(c); setSelStream(null); setSelSubject(null); }}
                                     className={`p-4 rounded-2xl border text-[10px] font-black transition-all ${selClass?.id === c.id ? 'bg-green-600 border-green-500 text-white shadow-xl scale-[1.05]' : 'bg-black/40 border-gray-800 text-gray-500 hover:border-green-500/30'}`}
                                 >
@@ -575,20 +561,15 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    {/* [ STREAM ] - Conditional */}
-                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!is11or12 ? 'opacity-20 select-none grayscale' : 'opacity-100'}`}>
+                    {/* [ STREAM ] - Conditional for 11 & 12 only */}
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${(!is11or12 || !selClass) ? 'opacity-20 select-none grayscale pointer-events-none' : 'opacity-100'}`}>
                         <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 rounded-t-3xl">
                             <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <TrendingUp size={14} className="text-yellow-500" /> [ STREAM ]
                             </h3>
                         </div>
                         <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
-                            {!is11or12 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-10 pt-20">
-                                    <AlertCircle size={30} className="mb-2" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Only for 11 & 12</p>
-                                </div>
-                            ) : (
+                            {is11or12 ? (
                                 streams.map(s => (
                                     <div
                                         key={s.id}
@@ -606,12 +587,17 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                 ))
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-10 pt-20">
+                                    <AlertCircle size={30} className="mb-2" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Only for 11 & 12</p>
+                                </div>
                             )}
                         </div>
                     </div>
 
                     {/* [ SUBJECT ] */}
-                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${(!selBoard || !selClass || (is11or12 && !selStream)) ? 'opacity-30' : 'opacity-100'}`}>
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${(!selBoard || !selClass || (is11or12 && !selStream)) ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
                             <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <BookOpen size={14} className="text-purple-500" /> [ SUBJECT ]
@@ -634,43 +620,36 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                         <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
-                            {!selClass ? (
-                                <div className="p-8 text-center text-[10px] opacity-20 font-black uppercase mt-20">Select Class First</div>
-                            ) : (
-                                subjects.filter(s => s.board_id === selBoard?.id && s.class_id === selClass?.id && (s.stream_id === selStream?.id || !s.stream_id)).map(s => (
-                                    <div
-                                        key={s.id}
-                                        onClick={() => setSelSubject(s)}
-                                        className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
-                                    >
-                                        <div className="flex flex-col truncate flex-grow">
-                                            <span className="text-[10px] font-black uppercase truncate">{s.name}</span>
-                                            <span className={`text-[8px] font-bold ${s.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{s.is_active ? 'ENABLED' : 'DISABLED'}</span>
-                                        </div>
-                                        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={(e) => { e.stopPropagation(); handleManualEdit('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleToggleActive('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('subjects', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
-                                        </div>
+                            {subjects.filter(s => s.board_id === selBoard?.id && s.class_id === selClass?.id && (s.stream_id === selStream?.id || !s.stream_id)).map(s => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => setSelSubject(s)}
+                                    className={`p-3 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${selSubject?.id === s.id ? 'bg-purple-600 border-purple-500 text-white shadow-xl scale-[1.02]' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-purple-500/50'}`}
+                                >
+                                    <div className="flex flex-col truncate flex-grow">
+                                        <span className="text-[10px] font-black uppercase truncate">{s.name}</span>
+                                        <span className={`text-[8px] font-bold ${s.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{s.is_active ? 'ENABLED' : 'DISABLED'}</span>
                                     </div>
-                                ))
-                            )}
-                            {selClass && (
-                                <div className="space-y-1 mt-2">
-                                    <button
-                                        onClick={() => handleManualAdd('subjects', { board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id, category_id: 1 })}
-                                        className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Plus size={12} /> Manual Add
-                                    </button>
-                                    <button className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[9px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all">Bulk Add</button>
+                                    <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={(e) => { e.stopPropagation(); handleManualEdit('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleToggleActive('subjects', s); }} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Check size={10} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteHierarchy('subjects', s.id); }} className="p-1 text-gray-300 hover:text-red-500 cursor-pointer"><Trash2 size={10} /></button>
+                                    </div>
                                 </div>
-                            )}
+                            ))}
+                            <div className="space-y-1 mt-2">
+                                <button
+                                    onClick={() => handleManualAdd('subjects', { board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id, category_id: 1 })}
+                                    className="w-full p-2 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-purple-500/50 hover:text-purple-400 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Plus size={12} /> Manual Add
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     {/* [ CHAPTER ] */}
-                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${!selSubject ? 'opacity-30' : 'opacity-100'}`}>
+                    <div className={`bg-gray-900/50 border border-gray-800 rounded-3xl flex flex-col min-h-[500px] h-full transition-all hover:bg-gray-900 ${(!selSubject) ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                         <div className="px-6 py-5 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center rounded-t-3xl">
                             <h3 className="text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                                 <CheckCircle size={14} className="text-orange-500" /> [ CHAPTER ]
@@ -685,42 +664,35 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                         <div className="p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
-                            {!selSubject ? (
-                                <div className="p-8 text-center text-[10px] opacity-20 font-black uppercase mt-20">Select Subject First</div>
-                            ) : (
-                                chapters.filter(c => c.subject_id === selSubject?.id).map(c => (
-                                    <div key={c.id} className="p-3 bg-black/60 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-orange-500/30 transition-all">
-                                        <div className="flex flex-col truncate flex-grow">
-                                            <span className="text-[10px] font-black text-gray-300 group-hover:text-white transition-colors truncate">{c.name}</span>
-                                            <span className={`text-[8px] font-bold ${c.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{c.is_active ? 'PUBLISHED' : 'UNPUBLISHED'}</span>
-                                        </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleManualEdit('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
-                                            <button onClick={() => handleToggleActive('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
-                                            <button onClick={() => handleDeleteHierarchy('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={10} /></button>
-                                        </div>
+                            {chapters.filter(c => c.subject_id === selSubject?.id).map(c => (
+                                <div key={c.id} className="p-3 bg-black/60 border border-gray-800 rounded-2xl flex justify-between items-center group hover:border-orange-500/30 transition-all">
+                                    <div className="flex flex-col truncate flex-grow">
+                                        <span className="text-[10px] font-black text-gray-300 group-hover:text-white transition-colors truncate">{c.name}</span>
+                                        <span className={`text-[8px] font-bold ${c.is_active ? 'text-green-500/70' : 'text-red-500/70'}`}>{c.is_active ? 'PUBLISHED' : 'UNPUBLISHED'}</span>
                                     </div>
-                                ))
-                            )}
-                            {selSubject && (
-                                <div className="space-y-2 mt-4">
-                                    <button
-                                        onClick={() => handleManualAdd('chapters', { subject_id: selSubject.id })}
-                                        className="w-full p-3 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-orange-500/50 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-center leading-tight"
-                                    >
-                                        <Plus size={14} /> Manual Add
-                                    </button>
-                                    <button
-                                        onClick={() => alert(`Starting MCQ for ${selSubject.name}`)}
-                                        className="w-full p-4 bg-orange-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-orange-900/40"
-                                    >
-                                        START MCQ PRACTICE
-                                    </button>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => handleManualEdit('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><Edit size={10} /></button>
+                                        <button onClick={() => handleToggleActive('chapters', c)} className="p-1 text-gray-300 hover:text-white cursor-pointer"><RefreshCw size={10} /></button>
+                                        <button onClick={() => handleDeleteHierarchy('chapters', c.id)} className="p-1 text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={10} /></button>
+                                    </div>
                                 </div>
-                            )}
+                            ))}
+                            <div className="space-y-2 mt-4">
+                                <button
+                                    onClick={() => handleManualAdd('chapters', { subject_id: selSubject.id })}
+                                    className="w-full p-3 border border-dashed border-gray-800 rounded-2xl text-[10px] font-black uppercase text-gray-600 hover:border-orange-500/50 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-center leading-tight"
+                                >
+                                    <Plus size={14} /> Manual Add
+                                </button>
+                                <button
+                                    onClick={() => alert(`Starting MCQ for ${selSubject.name}`)}
+                                    className="w-full p-4 bg-orange-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-orange-900/40"
+                                >
+                                    START MCQ PRACTICE
+                                </button>
+                            </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         );
