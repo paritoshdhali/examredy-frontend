@@ -55,6 +55,9 @@ const AdminDashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [aiLogs, setAiLogs] = useState([]);
     const [transactions, setTransactions] = useState([]);
+    const [providerModelsMap, setProviderModelsMap] = useState({});
+    const [fetchingModelsId, setFetchingModelsId] = useState(null);
+    const [providerTypeMap, setProviderTypeMap] = useState({});
 
     // Schoolmgmt Selection States
     const [selBoard, setSelBoard] = useState(null);
@@ -306,6 +309,29 @@ const AdminDashboard = () => {
             fetchDashboardData();
         } catch (err) { showToast(`❌ ${err.message}`, 'error'); }
         finally { setLoading(false); }
+    };
+
+    const PROVIDER_PRESETS = [
+        { id: 'openrouter', label: 'OpenRouter (All Models)', base_url: 'https://openrouter.ai/api/v1' },
+        { id: 'gemini', label: 'Google Gemini', base_url: 'https://generativelanguage.googleapis.com/v1beta' },
+        { id: 'openai', label: 'OpenAI GPT', base_url: 'https://api.openai.com/v1' },
+        { id: 'groq', label: 'Groq (Fast Inference)', base_url: 'https://api.groq.com/openai/v1' },
+        { id: 'together', label: 'Together AI', base_url: 'https://api.together.xyz/v1' },
+        { id: 'anthropic', label: 'Anthropic Claude', base_url: 'https://api.anthropic.com/v1' },
+        { id: 'custom', label: '🔧 Custom / Self-Hosted', base_url: '' }
+    ];
+
+    const handleFetchModels = async (providerId, baseUrl, apiKey) => {
+        setFetchingModelsId(providerId);
+        try {
+            const res = await api.post('/admin/ai-providers/fetch-models', { base_url: baseUrl, api_key: apiKey });
+            setProviderModelsMap(prev => ({ ...prev, [providerId]: res.data.models }));
+            showToast(`✅ Loaded ${res.data.models.length} available models`);
+        } catch (err) {
+            showToast(`❌ ${err.response?.data?.error || err.message}`, 'error');
+        } finally {
+            setFetchingModelsId(null);
+        }
     };
 
     const checkDiagnostic = async () => {
@@ -1523,7 +1549,7 @@ const AdminDashboard = () => {
                 </div>
                 <button
                     onClick={() => {
-                        const name = prompt('New Provider ID (e.g., OPENAI, GEMINI):');
+                        const name = prompt('New Provider Name (e.g., My OpenRouter):');
                         if (name) api.post('/admin/ai-providers', { name, base_url: '', api_key: '', model_name: '' }).then(() => fetchDashboardData());
                     }}
                     className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-[10px] uppercase font-black tracking-widest hover:scale-105 transition-all shadow-xl shadow-indigo-900/40 flex items-center gap-2"
@@ -1533,93 +1559,166 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {Array.isArray(aiProviders) && aiProviders.map(p => (
-                    <div key={p.id} className="bg-gray-900 border border-gray-800 p-8 rounded-3xl relative overflow-hidden group shadow-2xl hover:border-indigo-500/30 transition-all">
-                        <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${p.is_active ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-800 text-gray-500'}`}>
-                            {p.is_active ? 'ENGINE PRIMED' : 'STANDBY MODE'}
-                        </div>
+                {Array.isArray(aiProviders) && aiProviders.map(p => {
+                    const fetchedModels = providerModelsMap[p.id] || [];
+                    const isFetching = fetchingModelsId === p.id;
+                    const currentPT = providerTypeMap[p.id] ||
+                        (p.base_url?.includes('openrouter') ? 'openrouter' :
+                            p.base_url?.includes('googleapis') ? 'gemini' :
+                                p.base_url?.includes('openai.com') ? 'openai' :
+                                    p.base_url?.includes('groq') ? 'groq' :
+                                        p.base_url?.includes('together') ? 'together' : 'custom');
 
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
-                                <Cpu size={24} className="text-indigo-400" />
+                    return (
+                        <div key={p.id} className="bg-gray-900 border border-gray-800 p-8 rounded-3xl relative overflow-hidden shadow-2xl hover:border-indigo-500/30 transition-all">
+                            <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${p.is_active ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-800 text-gray-500'}`}>
+                                {p.is_active ? 'ENGINE PRIMED' : 'STANDBY MODE'}
                             </div>
-                            <div>
-                                <h4 className="text-white font-black text-xl uppercase tracking-tighter">{p.name}</h4>
-                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Provider ID: {p.id}</p>
-                            </div>
-                        </div>
 
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">API Base URL</label>
-                                <input
-                                    type="text"
-                                    className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono font-bold"
-                                    value={p.base_url || ''}
-                                    onChange={(e) => {
-                                        const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, base_url: e.target.value } : api_p);
-                                        setAiProviders(newAI);
-                                    }}
-                                />
-                                <p className="text-[8px] text-gray-600 mt-1 uppercase font-bold italic">Leave blank for provider default endpoint</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                                    <Cpu size={24} className="text-indigo-400" />
+                                </div>
                                 <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">Model Name</label>
+                                    <h4 className="text-white font-black text-xl uppercase tracking-tighter">{p.name}</h4>
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Provider ID: {p.id}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-5">
+                                {/* STEP 1: Provider Type */}
+                                <div>
+                                    <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest mb-1 block flex items-center gap-1">
+                                        <span className="w-4 h-4 bg-indigo-600 text-white rounded text-[8px] flex items-center justify-center font-black">1</span>
+                                        Select Provider / Operator
+                                    </label>
+                                    <select
+                                        className="w-full bg-black border border-gray-700 p-3 rounded-xl text-sm text-indigo-300 outline-none focus:border-indigo-500 font-bold cursor-pointer"
+                                        value={currentPT}
+                                        onChange={(e) => {
+                                            const preset = PROVIDER_PRESETS.find(pr => pr.id === e.target.value);
+                                            setProviderTypeMap(prev => ({ ...prev, [p.id]: e.target.value }));
+                                            const newAI = aiProviders.map(ap => ap.id === p.id ? { ...ap, base_url: preset?.base_url ?? ap.base_url } : ap);
+                                            setAiProviders(newAI);
+                                            // Clear fetched models on provider change
+                                            setProviderModelsMap(prev => ({ ...prev, [p.id]: [] }));
+                                        }}
+                                    >
+                                        {PROVIDER_PRESETS.map(pr => <option key={pr.id} value={pr.id}>{pr.label}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* STEP 2: Base URL */}
+                                <div>
+                                    <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest mb-1 block flex items-center gap-1">
+                                        <span className="w-4 h-4 bg-indigo-600 text-white rounded text-[8px] flex items-center justify-center font-black">2</span>
+                                        API Base URL <span className="text-gray-600 normal-case font-normal ml-1">(auto-filled, editable)</span>
+                                    </label>
                                     <input
                                         type="text"
-                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500 font-bold"
-                                        value={p.model_name || ''}
+                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-indigo-400 outline-none focus:border-indigo-500 font-mono"
+                                        value={p.base_url || ''}
                                         onChange={(e) => {
-                                            const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, model_name: e.target.value } : api_p);
+                                            const newAI = aiProviders.map(ap => ap.id === p.id ? { ...ap, base_url: e.target.value } : ap);
                                             setAiProviders(newAI);
                                         }}
                                     />
                                 </div>
-                                <div>
-                                    <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 block">Secret API Key</label>
-                                    <input
-                                        type="password"
-                                        className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500"
-                                        placeholder="••••••••••••••••"
-                                        value={p.api_key || ''}
-                                        onChange={(e) => {
-                                            const newAI = aiProviders.map(api_p => api_p.id === p.id ? { ...api_p, api_key: e.target.value } : api_p);
-                                            setAiProviders(newAI);
-                                        }}
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-3 pt-4">
-                                <button
-                                    onClick={() => handleUpdateSettings(`ai-providers/${p.id}/status`, { is_active: !p.is_active })}
-                                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl ${p.is_active ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white' : 'bg-green-600 text-white hover:bg-green-700 shadow-xl shadow-green-900/40'}`}
-                                >
-                                    {p.is_active ? 'Deactivate Engine' : 'Activate Engine'}
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateSettings(`ai-providers/${p.id}`, { name: p.name, base_url: p.base_url, api_key: p.api_key, model_name: p.model_name })}
-                                    className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-2xl hover:bg-white hover:text-black transition-all shadow-lg"
-                                >
-                                    <Save size={18} />
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteItem('ai-providers', p.id)}
-                                    className="w-12 h-12 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                {/* STEP 3: API Key + Fetch Models */}
+                                <div>
+                                    <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest mb-1 block flex items-center gap-1">
+                                        <span className="w-4 h-4 bg-indigo-600 text-white rounded text-[8px] flex items-center justify-center font-black">3</span>
+                                        Secret API Key → then Fetch Models
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="password"
+                                            className="flex-1 bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500"
+                                            placeholder="sk-••••••••••••"
+                                            value={p.api_key || ''}
+                                            onChange={(e) => {
+                                                const newAI = aiProviders.map(ap => ap.id === p.id ? { ...ap, api_key: e.target.value } : ap);
+                                                setAiProviders(newAI);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={() => handleFetchModels(p.id, p.base_url, p.api_key)}
+                                            disabled={isFetching || !p.base_url}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase whitespace-nowrap hover:bg-indigo-500 disabled:opacity-40 transition-all flex items-center gap-2 min-w-[110px] justify-center"
+                                        >
+                                            {isFetching ? <RefreshCw size={12} className="animate-spin" /> : <Globe size={12} />}
+                                            {isFetching ? 'Fetching...' : 'Fetch Models'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* STEP 4: Model Selection */}
+                                <div>
+                                    <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest mb-1 block flex items-center gap-1">
+                                        <span className={`w-4 h-4 ${fetchedModels.length > 0 ? 'bg-green-600' : 'bg-indigo-600'} text-white rounded text-[8px] flex items-center justify-center font-black`}>4</span>
+                                        {fetchedModels.length > 0 ? `Select Model (${fetchedModels.length} available)` : 'Active Model'}
+                                    </label>
+                                    {fetchedModels.length > 0 ? (
+                                        <select
+                                            className="w-full bg-black border border-green-500/40 p-3 rounded-xl text-sm text-green-400 outline-none focus:border-green-500 font-bold cursor-pointer"
+                                            value={p.model_name || ''}
+                                            onChange={(e) => {
+                                                const newAI = aiProviders.map(ap => ap.id === p.id ? { ...ap, model_name: e.target.value } : ap);
+                                                setAiProviders(newAI);
+                                            }}
+                                        >
+                                            <option value="">— Select a Model —</option>
+                                            {fetchedModels.map(m => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            className="w-full bg-black border border-gray-800 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500 font-bold"
+                                            placeholder="e.g. gemini-1.5-flash  ← or click Fetch Models above"
+                                            value={p.model_name || ''}
+                                            onChange={(e) => {
+                                                const newAI = aiProviders.map(ap => ap.id === p.id ? { ...ap, model_name: e.target.value } : ap);
+                                                setAiProviders(newAI);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* ACTION BUTTONS */}
+                                <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
+                                    <button
+                                        onClick={() => handleUpdateSettings(`ai-providers/${p.id}/status`, { is_active: !p.is_active })}
+                                        className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${p.is_active ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white' : 'bg-green-600 text-white hover:bg-green-700 shadow-xl shadow-green-900/40'}`}
+                                    >
+                                        {p.is_active ? 'Deactivate Engine' : '⚡ Activate Engine'}
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateSettings(`ai-providers/${p.id}`, { name: p.name, base_url: p.base_url, api_key: p.api_key, model_name: p.model_name })}
+                                        className="w-12 h-12 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-2xl hover:bg-white hover:text-black transition-all shadow-lg"
+                                        title="Save Configuration"
+                                    >
+                                        <Save size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteItem('ai-providers', p.id)}
+                                        className="w-12 h-12 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                                        title="Delete Provider"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
+            {/* AI Processing Logs */}
             <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
                 <div className="px-8 py-6 border-b border-gray-800 bg-gray-800/20 flex justify-between items-center">
                     <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Activity size={16} className="text-green-500" /> Neural Processing Telemetry</h3>
-                    <button onClick={() => fetchDashboardData()} className="text-[10px] text-indigo-400 hover:text-white font-black uppercase tracking-widest bg-indigo-500/5 px-4 py-2 rounded-xl border border-indigo-500/10">Flush Logs</button>
+                    <button onClick={() => fetchDashboardData()} className="text-[10px] text-indigo-400 hover:text-white font-black uppercase tracking-widest bg-indigo-500/5 px-4 py-2 rounded-xl border border-indigo-500/10">Refresh Logs</button>
                 </div>
                 <div className="p-8 h-80 overflow-y-auto bg-black/40 font-mono text-[10px] space-y-3 custom-scrollbar">
                     {aiLogs.length > 0 ? aiLogs.map((log, i) => (
