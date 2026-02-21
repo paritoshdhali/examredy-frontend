@@ -3,7 +3,7 @@ import api from '../../services/api';
 import {
     PieChart, Power, PowerOff, Save, Code, FileText,
     Monitor, Smartphone, Layout, ChevronDown, ChevronUp,
-    CheckCircle2, AlertCircle, Eye, EyeOff
+    CheckCircle2, AlertCircle, Eye, EyeOff, ShieldCheck
 } from 'lucide-react';
 
 const Toast = ({ msg, type }) => {
@@ -19,14 +19,14 @@ const Toast = ({ msg, type }) => {
 const SlotEditor = ({ label, icon: Icon, color, value, onChange, description }) => {
     const [expanded, setExpanded] = useState(false);
     return (
-        <div className={`bg-gray-900/60 border border-gray-800 rounded-[2.5rem] overflow-hidden transition-all duration-300 ${expanded ? 'ring-1 ring-' + color + '/30' : ''}`}>
+        <div className={`bg-gray-900/60 border border-gray-800 rounded-[2.5rem] overflow-hidden transition-all duration-300 ${expanded ? 'ring-1 ring-offset-0 ring-red-500/30' : ''}`}>
             <button
                 onClick={() => setExpanded(!expanded)}
                 className="w-full p-8 flex items-center justify-between text-left hover:bg-gray-800/20 transition-all"
             >
                 <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl bg-${color}/10 border border-${color}/20 flex items-center justify-center`}>
-                        <Icon size={22} className={`text-${color}`} />
+                    <div className="w-12 h-12 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center">
+                        <Icon size={22} className="text-gray-400" />
                     </div>
                     <div>
                         <h4 className="text-white text-base font-black uppercase tracking-tight">{label}</h4>
@@ -62,8 +62,6 @@ export const AdSenseCore = () => {
         ADS_HEADER_SCRIPT: '',
         ADS_BODY_SCRIPT: '',
         ADS_TXT: '',
-        ADS_TOP_BANNER: '',
-        ADS_MID_CONTENT: '',
         ADS_TOP_BANNER: '',
         ADS_MID_CONTENT: '',
         ADS_BOTTOM_BANNER: '',
@@ -175,7 +173,7 @@ export const AdSenseCore = () => {
                 }`}>
                 <div className="flex items-center gap-6">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${config.ADS_FOR_PREMIUM === 'true' ? 'bg-orange-500/10' : 'bg-indigo-500/10'}`}>
-                        <Shield className={config.ADS_FOR_PREMIUM === 'true' ? 'text-orange-400' : 'text-indigo-400'} size={28} />
+                        <ShieldCheck className={config.ADS_FOR_PREMIUM === 'true' ? 'text-orange-400' : 'text-indigo-400'} size={28} />
                     </div>
                     <div>
                         <h3 className={`text-xl font-black uppercase tracking-tight ${config.ADS_FOR_PREMIUM === 'true' ? 'text-orange-400' : 'text-indigo-400'}`}>
