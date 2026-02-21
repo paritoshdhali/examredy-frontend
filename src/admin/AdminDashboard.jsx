@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -53,6 +54,11 @@ const BADGE_COLORS = {
 };
 
 function ModulePlaceholder({ id }) {
+    // Real modules
+    if (id === 'school') return <SchoolCentral />;
+    if (id === 'university') return <UniversityHub />;
+    if (id === 'competitive') return <CompetitiveArena />;
+
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
     const Icon = menuItem.icon;
@@ -139,8 +145,8 @@ const AdminDashboard = () => {
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
                                 className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-left group ${isActive
-                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                     }`}
                             >
                                 <Icon size={16} className={isActive ? 'text-white' : item.color} />
