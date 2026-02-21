@@ -82,8 +82,8 @@ export function NeuralHub() {
         setForm(f => ({ ...f, name: preset.name, base_url: preset.base_url, model_name: preset.model_name }));
     };
 
-    const fetchModels = async (provider) => {
-        const id = provider.id || 'new';
+    const fetchModels = async (provider, isFromForm = false) => {
+        const id = isFromForm ? 'form' : (provider.id || 'form');
         setFetchingModels(id);
         try {
             const r = await api.post('/admin/ai-providers/fetch-models', {
@@ -258,23 +258,35 @@ export function NeuralHub() {
                                     onChange={e => setForm(f => ({ ...f, model_name: e.target.value }))}
                                     placeholder="e.g. meta-llama/llama-3.1-8b-instruct:free"
                                     className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-cyan-500/50"
-                                    list="model-suggestions-new"
                                 />
-                                {availableModels['new'] && (
-                                    <datalist id="model-suggestions-new">
-                                        {availableModels['new'].map(m => <option key={m} value={m} />)}
-                                    </datalist>
-                                )}
                                 <button
-                                    onClick={() => fetchModels({ base_url: form.base_url, api_key: form.api_key })}
-                                    disabled={fetchingModels === 'new' || !form.api_key}
-                                    title="Fetch available models"
-                                    className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1"
+                                    onClick={() => fetchModels({ base_url: form.base_url, api_key: form.api_key }, true)}
+                                    disabled={fetchingModels === 'form' || !form.api_key}
+                                    title="Fetch available models from provider"
+                                    className="px-3 py-2 bg-gray-700 hover:bg-cyan-600 hover:text-white text-gray-300 rounded-xl text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 whitespace-nowrap"
                                 >
-                                    {fetchingModels === 'new' ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
-                                    Models
+                                    {fetchingModels === 'form' ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
+                                    Load Models
                                 </button>
                             </div>
+                            {/* Proper dropdown when models fetched */}
+                            {availableModels['form'] && availableModels['form'].length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-[10px] text-cyan-400 font-bold mb-1">
+                                        ↓ {availableModels['form'].length} models — select one:
+                                    </p>
+                                    <select
+                                        value={form.model_name}
+                                        onChange={e => setForm(f => ({ ...f, model_name: e.target.value }))}
+                                        className="w-full bg-gray-800 border border-cyan-500/40 text-white text-xs font-mono rounded-xl px-3 py-2 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                                        size={Math.min(8, availableModels['form'].length)}
+                                    >
+                                        {availableModels['form'].map(m => (
+                                            <option key={m} value={m} className="py-1">{m}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </div>
 
