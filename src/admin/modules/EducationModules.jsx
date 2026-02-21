@@ -139,15 +139,53 @@ export function SchoolCentral() {
         finally { setFetchingKey(''); }
     };
 
+    // ── Auto-cascade helpers ───────────────────────────────────────────────
+    const autoFetchSubjects = async (board, cls, stream) => {
+        if (!board || !cls) return;
+        const classNum = parseInt(cls.name.replace(/\D/g, ''));
+        if (classNum >= 11 && !stream) return; // needs stream first
+        // Skip if data already exists
+        const existing = subjects.filter(s =>
+            s.board_id === board.id && s.class_id === cls.id &&
+            (stream ? s.stream_id === stream.id : !s.stream_id)
+        );
+        if (existing.length > 0) return; // already loaded, no AI needed
+        setFetchingKey('subjects');
+        try {
+            const context = `${board.name}, Class ${cls.name}${stream ? ', ' + stream.name + ' stream' : ''}`;
+            const r = await api.post('/ai-fetch/subjects', {
+                category_id: 1,
+                board_id: board.id,
+                class_id: cls.id,
+                stream_id: stream?.id || null,
+                context_name: context,
+            });
+            if (r.data.updatedData) setSubjects(r.data.updatedData);
+            if (r.data.count > 0) showToast(`✅ ${r.data.count} subjects auto-loaded!`);
+        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        finally { setFetchingKey(''); }
+    };
+
+    const autoFetchChapters = async (subject) => {
+        if (!subject) return;
+        const existing = chapters.filter(c => c.subject_id === subject.id);
+        if (existing.length > 0) return; // already loaded
+        setFetchingKey('chapters');
+        try {
+            const r = await api.post('/ai-fetch/chapters', { subject_id: subject.id, subject_name: subject.name });
+            if (r.data.updatedData) setChapters(r.data.updatedData);
+            if (r.data.count > 0) showToast(`✅ ${r.data.count} chapters auto-loaded!`);
+        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        finally { setFetchingKey(''); }
+    };
+
     const aiFetchChapters = async () => {
         if (!selSubject) return showToast('Select a subject first', 'error');
-
         // Quota save: check if chapters already exist for this subject
         const existingChapters = chapters.filter(c => c.subject_id === selSubject.id);
         if (existingChapters.length > 0) {
             return showToast(`${existingChapters.length} chapters already loaded. Delete them first to re-fetch.`, 'error');
         }
-
         setFetchingKey('chapters');
         try {
             const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
@@ -340,11 +378,20 @@ export function SchoolCentral() {
                     </Col>
 
                     {/* CLASSES — filtered based on board type */}
-                    <Col title="Class" icon={School} color="text-violet-400" items={filtClasses} selId={selClass?.id} onSel={(c) => { setSelClass(c); setSelStream(null); setSelSubject(null); }} />
+                    <Col title="Class" icon={School} color="text-violet-400" items={filtClasses} selId={selClass?.id}
+                        onSel={async (c) => {
+                            setSelClass(c); setSelStream(null); setSelSubject(null);
+                            // Auto-fetch subjects if no stream needed
+                            const classNum = parseInt(c.name.replace(/\D/g, ''));
+                            if (classNum < 11) await autoFetchSubjects(selBoard, c, null);
+                        }}
+                    />
 
                     {/* STREAM (only for Class 11-12) */}
                     {needsStream && (
-                        <Col title="Stream" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id} onSel={(s) => { setSelStream(s); setSelSubject(null); }}>
+                        <Col title="Stream" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id}
+                            onSel={async (s) => { setSelStream(s); setSelSubject(null); await autoFetchSubjects(selBoard, selClass, s); }}
+                        >
                             <AIFetchBtn label="AI Fetch" onClick={aiFetchStreams} loading={fetchingKey === 'streams'} />
                         </Col>
                     )}
@@ -353,7 +400,7 @@ export function SchoolCentral() {
                     <Col title="Subject" icon={School} color="text-green-400"
                         items={filtSubjects}
                         selId={selSubject?.id}
-                        onSel={setSelSubject}
+                        onSel={async (s) => { setSelSubject(s); await autoFetchChapters(s); }}
                     >
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
                         <AddBtn label="Add Manual" onClick={addSubject} />
