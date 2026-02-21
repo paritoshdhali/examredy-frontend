@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
 import { NeuralHub } from './modules/NeuralHub';
 import { UserManagement } from './modules/UserManagement';
+import { PrimeArchitecture } from './modules/PrimeArchitecture';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -62,6 +63,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'competitive') return <CompetitiveArena />;
     if (id === 'ai') return <NeuralHub />;
     if (id === 'users') return <UserManagement />;
+    if (id === 'prime') return <PrimeArchitecture />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
