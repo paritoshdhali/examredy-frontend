@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -10,9 +10,10 @@ import AdminDashboard from './admin/AdminDashboard';
 import AdminLogin from './admin/AdminLogin';
 import Prime from './pages/Prime';
 
-// ── Admin-only protected route ──────────────────────────────────────────────
+// ── Admin-only protected route ──────────────────────────────────────
 const AdminRoute = ({ children }) => {
     const { user, loading } = useAuth();
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -20,6 +21,7 @@ const AdminRoute = ({ children }) => {
             </div>
         );
     }
+
     const token = localStorage.getItem('adminToken');
     if (!token || !user || user.role !== 'admin') {
         return <Navigate to="/admin/login" replace />;
@@ -27,7 +29,7 @@ const AdminRoute = ({ children }) => {
     return children;
 };
 
-// ── Regular protected route ─────────────────────────────────────────────────
+// ── Regular protected route ──────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
     if (loading) return <div className="p-10 text-center text-gray-500">Loading...</div>;
@@ -35,11 +37,24 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-// ── App with two layout zones: admin (fullscreen) vs main (with header) ──────
+// ── Layout wrapper for main site (Header + Footer) ───────────────────
+const MainLayout = () => (
+    <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <main className="flex-grow">
+            <Outlet />
+        </main>
+        <footer className="bg-white border-t py-6 text-center text-gray-500 text-sm">
+            &copy; {new Date().getFullYear()} ExamRedy. All rights reserved.
+        </footer>
+    </div>
+);
+
+// ── All routes ────────────────────────────────────────────────────────
 function AppRoutes() {
     return (
         <Routes>
-            {/* ── Admin zone — NO global header/footer ── */}
+            {/* Admin zone — fullscreen, no Header/Footer */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route
                 path="/admin"
@@ -58,28 +73,15 @@ function AppRoutes() {
                 }
             />
 
-            {/* ── Main site zone — with global header/footer ── */}
-            <Route
-                path="*"
-                element={
-                    <div className="min-h-screen flex flex-col bg-gray-50">
-                        <Header />
-                        <main className="flex-grow">
-                            <Routes>
-                                <Route path="/" element={<Home />} />
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/register" element={<Register />} />
-                                <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
-                                <Route path="/group" element={<ProtectedRoute><Group /></ProtectedRoute>} />
-                                <Route path="/prime" element={<ProtectedRoute><Prime /></ProtectedRoute>} />
-                            </Routes>
-                        </main>
-                        <footer className="bg-white border-t py-6 text-center text-gray-500 text-sm">
-                            &copy; {new Date().getFullYear()} ExamRedy. All rights reserved.
-                        </footer>
-                    </div>
-                }
-            />
+            {/* Main site zone — uses MainLayout (Header + Footer) */}
+            <Route element={<MainLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
+                <Route path="/group" element={<ProtectedRoute><Group /></ProtectedRoute>} />
+                <Route path="/prime" element={<ProtectedRoute><Prime /></ProtectedRoute>} />
+            </Route>
         </Routes>
     );
 }
