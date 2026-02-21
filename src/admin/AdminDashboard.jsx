@@ -67,7 +67,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'users') return <UserManagement />;
     if (id === 'prime') return <PrimeArchitecture />;
     if (id === 'mcq') return <MCQModeration />;
-    if (id === 'analytics') return <RevenueAnalytics />;
+    if (id === 'revenue') return <RevenueAnalytics />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
