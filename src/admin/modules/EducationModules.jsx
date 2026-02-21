@@ -523,6 +523,56 @@ export function UniversityHub() {
         finally { setFetchingKey(''); }
     };
 
+    const autoFetchSemesters = async (uni, deg) => {
+        if (!uni || !deg) return;
+        // Check if semesters already exist for this university
+        const existing = semesters.filter(s => s.university_id === uni.id);
+        if (existing.length > 0) return; // already loaded
+
+        setFetchingKey('semesters');
+        try {
+            const r = await api.post('/ai-fetch/semesters', {
+                university_id: uni.id,
+                university_name: uni.name,
+                degree_type_name: deg.name
+            });
+            if (r.data.semesters) {
+                setSemesters(prev => {
+                    const ids = new Set(prev.map(s => s.id));
+                    const newOnes = r.data.semesters.filter(s => !ids.has(s.id));
+                    return [...prev, ...newOnes];
+                });
+                if (r.data.semesters.length > 0) showToast(`✅ ${r.data.semesters.length} terms auto-loaded!`);
+            }
+        } catch (e) { console.error('Auto Fetch Semesters Error:', e); }
+        finally { setFetchingKey(''); }
+    };
+
+    const aiFetchSemesters = async () => {
+        if (!selUni || !selDegree) return showToast('Select University & Degree Type', 'error');
+        const existing = semesters.filter(s => s.university_id === selUni.id);
+        if (existing.length > 0) {
+            return showToast(`${existing.length} terms already loaded.`, 'error');
+        }
+        setFetchingKey('semesters');
+        try {
+            const r = await api.post('/ai-fetch/semesters', {
+                university_id: selUni.id,
+                university_name: selUni.name,
+                degree_type_name: selDegree.name
+            });
+            if (r.data.semesters) {
+                setSemesters(prev => {
+                    const ids = new Set(prev.map(s => s.id));
+                    const newOnes = r.data.semesters.filter(s => !ids.has(s.id));
+                    return [...prev, ...newOnes];
+                });
+                showToast(r.data.message);
+            }
+        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        finally { setFetchingKey(''); }
+    };
+
     const aiFetchSubjects = async () => {
         if (!selUni || !selDegree) return showToast('Select University & Degree Type', 'error');
         setFetchingKey('subjects');
@@ -620,12 +670,14 @@ export function UniversityHub() {
                     </Col>
 
                     <Col title="Degree Type" color="text-pink-400" items={selUni ? degreeTypes : []} selId={selDegree?.id}
-                        onSel={(d) => { setSelDegree(d); setSelSemester(null); setSelSubject(null); }}
+                        onSel={(d) => { setSelDegree(d); setSelSemester(null); setSelSubject(null); autoFetchSemesters(selUni, d); }}
                     />
 
-                    <Col title="Semester" color="text-yellow-400" items={selDegree ? semesters : []} selId={selSemester?.id}
+                    <Col title="Semester" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id === selUni?.id) : []} selId={selSemester?.id}
                         onSel={(s) => { setSelSemester(s); setSelSubject(null); }}
-                    />
+                    >
+                        <AIFetchBtn label="AI Fetch" onClick={aiFetchSemesters} loading={fetchingKey === 'semesters'} />
+                    </Col>
 
                     <Col title="Subject" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />

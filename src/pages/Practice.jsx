@@ -29,8 +29,33 @@ const Practice = () => {
     const [selectedState, setSelectedState] = useState('');
     const [selectedBoard, setSelectedBoard] = useState('');
     const [selectedClass, setSelectedClass] = useState('');
+    const [selectedStream, setSelectedStream] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
+
+    const [streams, setStreams] = useState([]);
+
+    // Logic: extract number from class name "Class 11" string
+    const classNum = selectedClass ? parseInt(classes.find(c => c.id == selectedClass)?.name.replace(/\D/g, '')) : 0;
+    const needsStream = classNum >= 11;
+
+    // Logic: filter classes based on board type (same as admin logic)
+    const getFilteredClasses = (boardId) => {
+        const board = boards.find(b => b.id == boardId);
+        if (!board) return [];
+        const n = board.name.toLowerCase();
+        if (n.includes('higher secondary') || n.includes('intermediate') || n.includes('pre-university') || n.includes('+2') || n.includes('hsc') || n.includes('council of higher')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) >= 11);
+        }
+        if (n.includes('primary') || n.includes('elementary')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) <= 5);
+        }
+        if ((n.includes('secondary') && !n.includes('higher')) || n.includes('madhyamik') || n.includes('matriculation') || n.includes('sslc')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) <= 10);
+        }
+        return classes;
+    };
+    const filtClasses = getFilteredClasses(selectedBoard);
 
     useEffect(() => {
         const loadInitial = async () => {
@@ -57,14 +82,20 @@ const Practice = () => {
     useEffect(() => {
         if (selectedBoard) {
             api.get(`/structure/classes`).then(res => setClasses(res.data));
-        } else setClasses([]);
+            api.get(`/structure/streams`).then(res => setStreams(res.data));
+        } else {
+            setClasses([]);
+            setStreams([]);
+        }
     }, [selectedBoard]);
 
     useEffect(() => {
         if (selectedClass) {
-            api.get(`/structure/subjects?class_id=${selectedClass}`).then(res => setSubjects(res.data));
+            let url = `/structure/subjects?class_id=${selectedClass}&board_id=${selectedBoard}`;
+            if (selectedStream) url += `&stream_id=${selectedStream}`;
+            api.get(url).then(res => setSubjects(res.data));
         } else setSubjects([]);
-    }, [selectedClass]);
+    }, [selectedClass, selectedBoard, selectedStream]);
 
     useEffect(() => {
         if (selectedSubject) {
@@ -135,27 +166,58 @@ const Practice = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} disabled={!selectedBoard}>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard}>
                             <option value="">Choose Class</option>
-                            {classes.map(c => <option key={c.id} value={c.id}>Class {c.name}</option>)}
+                            {filtClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} disabled={!selectedClass}>
-                            <option value="">Choose Subject</option>
-                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </div>
+                    {needsStream ? (
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass}>
+                                <option value="">Choose Stream</option>
+                                {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass}>
+                                <option value="">Choose Subject</option>
+                                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
-                        <option value="">Choose Chapter</option>
-                        {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
+                {needsStream && (
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream}>
+                                <option value="">Choose Subject</option>
+                                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
+                                <option value="">Choose Chapter</option>
+                                {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {!needsStream && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
+                            <option value="">Choose Chapter</option>
+                            {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                )}
 
                 <button
                     onClick={startSoloPractice}
