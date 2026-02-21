@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from './AuthContext';
 
 const AdContext = createContext();
@@ -9,12 +9,10 @@ export const AdProvider = ({ children }) => {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(true);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await axios.get(`${API_URL}/api/settings`);
+                const res = await api.get(`/settings`);
                 setSettings(res.data);
             } catch (e) {
                 console.error('Failed to fetch ad settings', e);
@@ -23,7 +21,7 @@ export const AdProvider = ({ children }) => {
             }
         };
         fetchSettings();
-    }, [API_URL]);
+    }, []);
 
     const showAds =
         settings.ADS_ENABLED === 'true' &&
