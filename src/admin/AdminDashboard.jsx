@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
+import { NeuralHub } from './modules/NeuralHub';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -58,6 +59,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'school') return <SchoolCentral />;
     if (id === 'university') return <UniversityHub />;
     if (id === 'competitive') return <CompetitiveArena />;
+    if (id === 'ai') return <NeuralHub />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
