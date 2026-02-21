@@ -205,6 +205,7 @@ export function SchoolCentral() {
                         <button
                             key={item.id}
                             onClick={() => onSel(item)}
+                            title={item.name}
                             className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
                         >
                             <span className="truncate">{item.name}</span>
@@ -462,6 +463,7 @@ export function UniversityHub() {
                     ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
                     : items.map(item => (
                         <button key={item.id} onClick={() => onSel(item)}
+                            title={item.name}
                             className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all ${selId === item.id ? 'bg-violet-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
                         >
                             {item.name}
@@ -663,6 +665,7 @@ export function CompetitiveArena() {
                     ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
                     : items.map(item => (
                         <button key={item.id} onClick={() => onSel(item)}
+                            title={item.name}
                             className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all ${selId === item.id ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
                         >{item.name}</button>
                     ))
