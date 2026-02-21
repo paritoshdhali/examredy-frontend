@@ -58,6 +58,8 @@ export const PrimeArchitecture = () => {
 
     const handleSavePlan = async () => {
         if (!planForm.name) return showToast('Plan name is required', 'error');
+        console.log('[DEBUG-PLAN-SAVE] Target:', editingPlan ? `PUT /plans/${editingPlan.id}` : 'POST /plans');
+        console.log('[DEBUG-PLAN-SAVE] Payload:', planForm);
         setLoading(true);
         try {
             if (editingPlan) {
