@@ -90,14 +90,19 @@ export function SchoolCentral() {
 
     useEffect(() => { load(); }, [load]);
 
-    // -- AI Fetch helpers
-    const aiFetchBoards = async () => {
+    // -- AI Fetch boards (syncMode=true: deletes existing boards for state first)
+    const aiFetchBoards = async (syncMode = false) => {
         if (!selState) return showToast('Select a state first', 'error');
         setFetchingKey('boards');
         try {
+            if (syncMode) {
+                // Delete all existing boards for this state first
+                await api.delete(`/admin/boards/state/${selState.id}`);
+                showToast('Old boards cleared, fetching fresh from internet...');
+            }
             const r = await api.post('/ai-fetch/boards', { state_id: selState.id, state_name: selState.name });
             if (r.data.updatedData) setBoards(r.data.updatedData);
-            showToast(r.data.message);
+            showToast(r.data.message || 'Boards fetched!');
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
         finally { setFetchingKey(''); }
     };
@@ -230,13 +235,43 @@ export function SchoolCentral() {
                 <div className="flex divide-x divide-gray-800">
 
                     {/* STATES */}
-                    <Col title="State" icon={School} color="text-blue-400" items={states} selId={selState?.id} onSel={(s) => { setSelState(s); setSelBoard(null); setSelClass(null); setSelStream(null); setSelSubject(null); }}>
+                    <Col title="State" icon={School} color="text-blue-400" items={states} selId={selState?.id}
+                        onSel={async (s) => {
+                            setSelState(s);
+                            setSelBoard(null); setSelClass(null); setSelStream(null); setSelSubject(null);
+                            // Auto-fetch boards for selected state
+                            const existing = boards.filter(b => b.state_id === s.id);
+                            if (existing.length === 0) {
+                                setFetchingKey('boards');
+                                try {
+                                    const r = await api.post('/ai-fetch/boards', { state_id: s.id, state_name: s.name });
+                                    if (r.data.updatedData) setBoards(r.data.updatedData);
+                                    showToast(r.data.message || 'Boards loaded!');
+                                } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+                                finally { setFetchingKey(''); }
+                            }
+                        }}
+                    >
                         <AddBtn label="Add State" onClick={async () => { const n = prompt('State Name:'); if (n) { await api.post('/admin/states', { name: n }); load(); } }} />
                     </Col>
 
                     {/* BOARDS */}
                     <Col title="Board" icon={School} color="text-indigo-400" items={filtBoards} selId={selBoard?.id} onSel={(b) => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}>
-                        <AIFetchBtn label="AI Fetch" onClick={aiFetchBoards} loading={fetchingKey === 'boards'} />
+                        <AIFetchBtn
+                            label={fetchingKey === 'boards' ? 'Fetching...' : 'AI Fetch'}
+                            onClick={() => aiFetchBoards(false)}
+                            loading={fetchingKey === 'boards'}
+                        />
+                        <button
+                            onClick={() => {
+                                if (!window.confirm(`Re-sync all boards for ${selState?.name}? This will DELETE existing boards and fetch fresh from internet.`)) return;
+                                aiFetchBoards(true);
+                            }}
+                            disabled={!selState || fetchingKey === 'boards'}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-orange-600/20 border border-orange-500/30 text-orange-400 rounded-lg text-xs font-bold hover:bg-orange-600 hover:text-white transition-all disabled:opacity-40"
+                        >
+                            🔄 Re-sync
+                        </button>
                         <AddBtn label="Add Manual" onClick={addBoard} />
                     </Col>
 
