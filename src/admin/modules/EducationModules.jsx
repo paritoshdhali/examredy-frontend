@@ -95,7 +95,7 @@ export function SchoolCentral() {
         if (!selState) return showToast('Select a state first', 'error');
         setFetchingKey('boards');
         try {
-            const r = await api.post('/api/ai-fetch/boards', { state_id: selState.id, state_name: selState.name });
+            const r = await api.post('/ai-fetch/boards', { state_id: selState.id, state_name: selState.name });
             if (r.data.updatedData) setBoards(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -110,7 +110,7 @@ export function SchoolCentral() {
         const SCHOOL_CAT_ID = 1; // category_id for School
         try {
             const context = `${selBoard.name}, Class ${selClass.name}${selStream ? ', ' + selStream.name : ''}`;
-            const r = await api.post('/api/ai-fetch/subjects', {
+            const r = await api.post('/ai-fetch/subjects', {
                 category_id: SCHOOL_CAT_ID,
                 board_id: selBoard.id,
                 class_id: selClass.id,
@@ -127,7 +127,7 @@ export function SchoolCentral() {
         if (!selSubject) return showToast('Select a subject first', 'error');
         setFetchingKey('chapters');
         try {
-            const r = await api.post('/api/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
+            const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -368,7 +368,7 @@ export function UniversityHub() {
         if (!selState) return showToast('Select a state first', 'error');
         setFetchingKey('unis');
         try {
-            const r = await api.post('/api/ai-fetch/universities', { state_id: selState.id, state_name: selState.name });
+            const r = await api.post('/ai-fetch/universities', { state_id: selState.id, state_name: selState.name });
             if (r.data.updatedData) setUniversities(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -381,7 +381,7 @@ export function UniversityHub() {
         const UNIV_CAT_ID = 2;
         try {
             const context = `${selUni.name}, ${selDegree.name}${selSemester ? ', Semester ' + selSemester.name : ''}`;
-            const r = await api.post('/api/ai-fetch/subjects', {
+            const r = await api.post('/ai-fetch/subjects', {
                 category_id: UNIV_CAT_ID,
                 university_id: selUni.id,
                 degree_type_id: selDegree.id,
@@ -398,7 +398,7 @@ export function UniversityHub() {
         if (!selSubject) return showToast('Select a subject first', 'error');
         setFetchingKey('chapters');
         try {
-            const r = await api.post('/api/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
+            const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -575,7 +575,7 @@ export function CompetitiveArena() {
         if (!selCat) return showToast('Select an exam category', 'error');
         setFetchingKey('papers');
         try {
-            const r = await api.post('/api/ai-fetch/papers', { category_id: selCat.id, category_name: selCat.name });
+            const r = await api.post('/ai-fetch/papers', { category_id: selCat.id, category_name: selCat.name });
             if (r.data.updatedData) setPapers(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -586,7 +586,7 @@ export function CompetitiveArena() {
         if (!selCat || !selPaper) return showToast('Select Category & Paper', 'error');
         setFetchingKey('subjects');
         try {
-            const r = await api.post('/api/ai-fetch/subjects', {
+            const r = await api.post('/ai-fetch/subjects', {
                 category_id: selCat.id,
                 paper_stage_id: selPaper.id,
                 context_name: `${selCat.name} - ${selPaper.name}`,
@@ -601,7 +601,7 @@ export function CompetitiveArena() {
         if (!selSubject) return showToast('Select a subject', 'error');
         setFetchingKey('chapters');
         try {
-            const r = await api.post('/api/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
+            const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             showToast(r.data.message);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
