@@ -3,7 +3,7 @@ import api from '../../services/api';
 import {
     TrendingUp, IndianRupee, Users, ShoppingCart,
     Calendar, ArrowUpRight, ArrowDownRight, Activity,
-    Download, Filter, RefreshCw, Layers
+    Download, Filter, RefreshCw, Layers, Search
 } from 'lucide-react';
 
 const Toast = ({ msg, type }) => {
@@ -272,8 +272,8 @@ export const RevenueAnalytics = () => {
                                     </td>
                                     <td className="px-10 py-6">
                                         <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border ${t.status === 'captured' || t.status === 'success'
-                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                                : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            : 'bg-red-500/10 border-red-500/20 text-red-400'
                                             }`}>
                                             {t.status}
                                         </span>
