@@ -109,12 +109,23 @@ export function SchoolCentral() {
 
     const aiFetchSubjects = async () => {
         if (!selBoard || !selClass) return showToast('Select Board & Class first', 'error');
-        const needsStream = parseInt(selClass?.name) >= 11;
+        const classNum = parseInt(selClass?.name.replace(/\D/g, ''));
+        const needsStream = classNum >= 11;
         if (needsStream && !selStream) return showToast('Select Stream first', 'error');
+
+        // Quota save: check if subjects already exist for this context
+        const existingSubjects = subjects.filter(s =>
+            s.board_id === selBoard.id && s.class_id === selClass.id &&
+            (selStream ? s.stream_id === selStream.id : !s.stream_id)
+        );
+        if (existingSubjects.length > 0) {
+            return showToast(`${existingSubjects.length} subjects already loaded. Delete them first to re-fetch.`, 'error');
+        }
+
         setFetchingKey('subjects');
-        const SCHOOL_CAT_ID = 1; // category_id for School
+        const SCHOOL_CAT_ID = 1;
         try {
-            const context = `${selBoard.name}, Class ${selClass.name}${selStream ? ', ' + selStream.name : ''}`;
+            const context = `${selBoard.name}, Class ${selClass.name}${selStream ? ', ' + selStream.name + ' stream' : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
                 category_id: SCHOOL_CAT_ID,
                 board_id: selBoard.id,
@@ -130,11 +141,36 @@ export function SchoolCentral() {
 
     const aiFetchChapters = async () => {
         if (!selSubject) return showToast('Select a subject first', 'error');
+
+        // Quota save: check if chapters already exist for this subject
+        const existingChapters = chapters.filter(c => c.subject_id === selSubject.id);
+        if (existingChapters.length > 0) {
+            return showToast(`${existingChapters.length} chapters already loaded. Delete them first to re-fetch.`, 'error');
+        }
+
         setFetchingKey('chapters');
         try {
             const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             showToast(r.data.message);
+        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        finally { setFetchingKey(''); }
+    };
+
+    const aiFetchStreams = async () => {
+        if (!selBoard || !selClass) return showToast('Select Board & Class first', 'error');
+        setFetchingKey('streams');
+        try {
+            const r = await api.post('/ai-fetch/streams', {
+                board_name: selBoard.name,
+                class_name: selClass.name,
+            });
+            if (r.data.streams) setStreams(prev => {
+                const ids = new Set(prev.map(s => s.id));
+                const newOnes = r.data.streams.filter(s => !ids.has(s.id));
+                return [...prev, ...newOnes];
+            });
+            showToast(r.data.message || 'Streams loaded!');
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
         finally { setFetchingKey(''); }
     };
@@ -184,13 +220,40 @@ export function SchoolCentral() {
         load(); showToast('Chapter added');
     };
 
+    // -- Smart class filtering based on board name
+    const getFilteredClasses = (board) => {
+        if (!board) return [];
+        const n = board.name.toLowerCase();
+        // Higher secondary boards → only Class 11-12
+        if (n.includes('higher secondary') || n.includes('intermediate') ||
+            n.includes('pre-university') || n.includes('+2') || n.includes('hsc') ||
+            n.includes('higher sec') || n.includes('hs board') || n.includes('hslc') ||
+            n.includes('council of higher')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) >= 11);
+        }
+        // Primary / elementary boards → Class 1-5
+        if (n.includes('primary') || n.includes('elementary') || n.includes('prathamic')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) <= 5);
+        }
+        // Secondary only boards (not higher) → Class 1-10
+        if ((n.includes('secondary') && !n.includes('higher')) ||
+            n.includes('madhyamik') || n.includes('matriculation') ||
+            n.includes('sslc') || n.includes('10th')) {
+            return classes.filter(c => parseInt(c.name.replace(/\D/g, '')) <= 10);
+        }
+        // CBSE, ICSE, NIOS, general state boards → all Classes
+        return classes;
+    };
+
     // -- Derived filtered lists
     const filtBoards = selState ? boards.filter(b => b.state_id === selState.id) : [];
+    const filtClasses = getFilteredClasses(selBoard);
     const filtSubjects = selBoard && selClass
         ? subjects.filter(s => s.board_id === selBoard.id && s.class_id === selClass.id && (selStream ? s.stream_id === selStream.id : true))
         : [];
     const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
-    const needsStream = selClass && parseInt(selClass.name) >= 11;
+    // Fix: parseInt('Class 11') = NaN bug — extract number properly
+    const needsStream = selClass && parseInt(selClass.name.replace(/\D/g, '')) >= 11;
 
     // -- Column selector component
     const Col = ({ title, icon: Icon, color, items, selId, onSel, children }) => (
@@ -276,12 +339,14 @@ export function SchoolCentral() {
                         <AddBtn label="Add Manual" onClick={addBoard} />
                     </Col>
 
-                    {/* CLASSES */}
-                    <Col title="Class" icon={School} color="text-violet-400" items={selBoard ? classes : []} selId={selClass?.id} onSel={(c) => { setSelClass(c); setSelStream(null); setSelSubject(null); }} />
+                    {/* CLASSES — filtered based on board type */}
+                    <Col title="Class" icon={School} color="text-violet-400" items={filtClasses} selId={selClass?.id} onSel={(c) => { setSelClass(c); setSelStream(null); setSelSubject(null); }} />
 
                     {/* STREAM (only for Class 11-12) */}
                     {needsStream && (
-                        <Col title="Stream" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id} onSel={(s) => { setSelStream(s); setSelSubject(null); }} />
+                        <Col title="Stream" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id} onSel={(s) => { setSelStream(s); setSelSubject(null); }}>
+                            <AIFetchBtn label="AI Fetch" onClick={aiFetchStreams} loading={fetchingKey === 'streams'} />
+                        </Col>
                     )}
 
                     {/* SUBJECTS */}
