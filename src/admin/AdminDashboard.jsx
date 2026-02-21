@@ -9,6 +9,7 @@ import { MCQModeration } from './modules/MCQModeration';
 import { RevenueAnalytics } from './modules/RevenueAnalytics';
 import { AdSenseCore } from './modules/AdSenseCore';
 import { LegalCompliance } from './modules/LegalCompliance';
+import { SystemSettings } from './modules/SystemSettings';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -72,6 +73,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'revenue') return <RevenueAnalytics />;
     if (id === 'ads') return <AdSenseCore />;
     if (id === 'legal') return <LegalCompliance />;
+    if (id === 'settings') return <SystemSettings />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
