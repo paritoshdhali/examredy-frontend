@@ -6,6 +6,7 @@ import {
     BarChart2, FileText, CheckCircle, Clock,
     Shield, Star, TrendingUp, Activity, Smartphone
 } from 'lucide-react';
+import AdSlot from '../components/AdSlot';
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
@@ -124,6 +125,10 @@ const Home = () => {
                     </div>
                 </div>
             </section>
+
+            <div className="container mx-auto">
+                <AdSlot type="mid" />
+            </div>
 
             {/* 4. Competitive Exams */}
             <section className="py-16 bg-indigo-50">

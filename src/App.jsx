@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AdProvider } from './context/AdContext';
 import Header from './components/Header';
+import AdSlot from './components/AdSlot';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -41,9 +43,15 @@ const ProtectedRoute = ({ children }) => {
 const MainLayout = () => (
     <div className="min-h-screen flex flex-col bg-gray-50">
         <Header />
+        <div className="container mx-auto">
+            <AdSlot type="top" />
+        </div>
         <main className="flex-grow">
             <Outlet />
         </main>
+        <div className="container mx-auto">
+            <AdSlot type="bottom" />
+        </div>
         <footer className="bg-white border-t py-6 text-center text-gray-500 text-sm">
             &copy; {new Date().getFullYear()} ExamRedy. All rights reserved.
         </footer>
@@ -89,7 +97,9 @@ function AppRoutes() {
 function App() {
     return (
         <AuthProvider>
-            <AppRoutes />
+            <AdProvider>
+                <AppRoutes />
+            </AdProvider>
         </AuthProvider>
     );
 }

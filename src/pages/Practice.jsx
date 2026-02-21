@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import MCQSession from '../components/MCQSession';
 import PrimePopup from '../components/PrimePopup';
+import AdSlot from '../components/AdSlot';
 
 const Practice = () => {
     const [searchParams] = useSearchParams();
@@ -142,6 +143,7 @@ const Practice = () => {
     return (
         <div className="container mx-auto px-4 py-12 max-w-4xl">
             <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Ready to Practice?</h1>
+            <AdSlot type="mid" />
 
             {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
 
