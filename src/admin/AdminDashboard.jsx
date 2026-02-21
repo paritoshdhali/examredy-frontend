@@ -65,6 +65,11 @@ const AdminDashboard = () => {
     const [selStream, setSelStream] = useState(null);
     const [selSubject, setSelSubject] = useState(null);
 
+    // Legal page active state (must be top-level to follow React rules)
+    const [activeLegalPage, setActiveLegalPage] = useState(null);
+    // Plan inline edit state
+    const [editingPlan, setEditingPlan] = useState(null);
+
     // --- FETCHERS ---
     useEffect(() => {
         fetchDashboardData();
@@ -288,15 +293,17 @@ const AdminDashboard = () => {
         try {
             setLoading(true);
             let endpoint = `/admin/settings/${type}`;
+            // Fix: These types route directly to /admin/... not /admin/settings/...
             if (type.startsWith('ai-providers/')) endpoint = `/admin/${type}`;
             if (type.startsWith('approve/')) endpoint = `/admin/${type}`;
             if (type.startsWith('states/')) endpoint = `/admin/${type}`;
+            if (type.startsWith('plans/')) endpoint = `/admin/${type}`;
 
             await api.put(endpoint, data);
             showToast('✅ Operation successful');
             fetchDashboardData();
         } catch (err) {
-            showToast(`❌ Update Error: ${err.message}`, 'error');
+            showToast(`❌ Update Error: ${err.response?.data?.error || err.message}`, 'error');
         } finally { setLoading(false); }
     };
 
@@ -434,8 +441,17 @@ const AdminDashboard = () => {
     const renderStates = () => (
         <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">Indian States & UT</h2>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">Add State</button>
+                <h2 className="text-2xl font-bold text-white">Indian States &amp; UT</h2>
+                <button
+                    onClick={() => {
+                        const name = prompt('Enter State Name:');
+                        if (!name) return;
+                        api.post('/admin/states', { name }).then(() => fetchDashboardData()).catch(err => showToast(`❌ ${err.response?.data?.error || err.message}`, 'error'));
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                    <Plus size={16} /> Add State
+                </button>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
                 <table className="w-full text-left">
@@ -451,13 +467,16 @@ const AdminDashboard = () => {
                             <tr key={s.id} className="hover:bg-gray-800/50">
                                 <td className="px-6 py-4 text-sm text-gray-300 font-medium">{s.name}</td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                    <button
+                                        onClick={() => api.put(`/admin/states/${s.id}`, { name: s.name, is_active: !s.is_active }).then(() => fetchDashboardData()).catch(err => showToast(`❌ ${err.message}`, 'error'))}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all ${s.is_active ? 'bg-green-500/10 text-green-500 hover:bg-red-500/10 hover:text-red-500' : 'bg-red-500/10 text-red-500 hover:bg-green-500/10 hover:text-green-500'}`}
+                                    >
                                         {s.is_active ? 'ENABLED' : 'DISABLED'}
-                                    </span>
+                                    </button>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
-                                    <button className="text-gray-500 hover:text-red-500 p-1.5"><Trash2 size={14} /></button>
+                                    <button onClick={() => handleManualEdit('states', s)} className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
+                                    <button onClick={() => handleDeleteHierarchy('states', s.id)} className="text-gray-500 hover:text-red-500 p-1.5"><Trash2 size={14} /></button>
                                 </td>
                             </tr>
                         ))}
@@ -471,7 +490,16 @@ const AdminDashboard = () => {
         <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Official Languages</h2>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">Add Language</button>
+                <button
+                    onClick={() => {
+                        const name = prompt('Enter Language Name:');
+                        if (!name) return;
+                        api.post('/admin/languages', { name }).then(() => fetchDashboardData()).catch(err => showToast(`❌ ${err.message}`, 'error'));
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                    <Plus size={16} /> Add Language
+                </button>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
                 <table className="w-full text-left">
@@ -487,12 +515,16 @@ const AdminDashboard = () => {
                             <tr key={l.id} className="hover:bg-gray-800/50">
                                 <td className="px-6 py-4 text-sm text-gray-300 font-medium">{l.name}</td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${l.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                    <button
+                                        onClick={() => api.put(`/admin/languages/${l.id}`, { name: l.name, is_active: !l.is_active }).then(() => fetchDashboardData()).catch(err => showToast(`❌ ${err.message}`, 'error'))}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all ${l.is_active ? 'bg-green-500/10 text-green-500 hover:bg-red-500/10 hover:text-red-500' : 'bg-red-500/10 text-red-500 hover:bg-green-500/10 hover:text-green-500'}`}
+                                    >
                                         {l.is_active ? 'ENABLED' : 'DISABLED'}
-                                    </span>
+                                    </button>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
+                                    <button onClick={() => handleManualEdit('languages', l)} className="text-gray-500 hover:text-white p-1.5"><Edit size={14} /></button>
+                                    <button onClick={() => handleDeleteHierarchy('languages', l.id)} className="text-gray-500 hover:text-red-500 p-1.5"><Trash2 size={14} /></button>
                                 </td>
                             </tr>
                         ))}
@@ -1237,7 +1269,7 @@ const AdminDashboard = () => {
                     <p className="text-xs text-gray-500 font-bold mt-1">Meta Control & Google Visibility (Requirement 8)</p>
                 </div>
                 <button
-                    onClick={() => handleUpdateSettings('system', { settings: settings.system })}
+                    onClick={() => handleUpdateSettings('global', { settings: settings.system })}
                     className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[10px] uppercase font-black tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/40"
                 >
                     Deploy SEO Config
@@ -1300,7 +1332,9 @@ const AdminDashboard = () => {
     );
 
     const renderLegalMgmt = () => {
-        const [activePage, setActivePage] = useState(settings.legal[0] || null);
+        // activeLegalPage is defined at component top-level (React rules compliance)
+        const activePage = activeLegalPage || settings.legal[0] || null;
+        const setActivePage = (p) => setActiveLegalPage(p);
 
         return (
             <div className="space-y-8 animate-fadeIn">
@@ -1472,7 +1506,17 @@ const AdminDashboard = () => {
         <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">MCQ Categories</h2>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+                <button
+                    onClick={() => {
+                        const name = prompt('Category Name:');
+                        if (!name) return;
+                        const sort_order = parseInt(prompt('Sort Order (number):') || '99');
+                        api.post('/admin/categories', { name, sort_order })
+                            .then(() => { showToast('✅ Category added'); fetchDashboardData(); })
+                            .catch(err => showToast(`❌ ${err.response?.data?.error || err.message}`, 'error'));
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                >
                     <Plus size={16} /> Add Category
                 </button>
             </div>
@@ -1484,15 +1528,43 @@ const AdminDashboard = () => {
                                 {cat.image_url ? <img src={cat.image_url} alt="" className="w-full h-full object-cover" /> : <Layers className="w-full h-full p-3 text-gray-600" />}
                             </div>
                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded"><Edit size={14} /></button>
-                                <button className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-red-500 rounded"><Trash2 size={14} /></button>
+                                <button
+                                    onClick={() => {
+                                        const name = prompt('Edit Category Name:', cat.name);
+                                        if (!name || name === cat.name) return;
+                                        api.put(`/admin/categories/${cat.id}`, { ...cat, name })
+                                            .then(() => { showToast('✅ Category updated'); fetchDashboardData(); })
+                                            .catch(err => showToast(`❌ ${err.message}`, 'error'));
+                                    }}
+                                    className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded"
+                                >
+                                    <Edit size={14} />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!window.confirm(`Delete category "${cat.name}"?`)) return;
+                                        api.delete(`/admin/categories/${cat.id}`)
+                                            .then(() => { showToast('🗑️ Category deleted'); fetchDashboardData(); })
+                                            .catch(err => showToast(`❌ ${err.message}`, 'error'));
+                                    }}
+                                    className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-red-500 rounded"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
                             </div>
                         </div>
                         <h4 className="text-white font-bold mb-1">{cat.name}</h4>
                         <p className="text-gray-500 text-xs line-clamp-2 mb-4">{cat.description || 'No description provided'}</p>
                         <div className="flex justify-between items-center pt-4 border-t border-gray-800">
                             <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Sort Order: {cat.sort_order}</span>
-                            <span className={`text-[10px] font-bold ${cat.is_active ? 'text-green-500' : 'text-red-500'}`}>{cat.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                            <button
+                                onClick={() => api.put(`/admin/categories/${cat.id}`, { ...cat, is_active: !cat.is_active })
+                                    .then(() => { showToast(`${!cat.is_active ? '🟢' : '🔴'} ${cat.name} ${!cat.is_active ? 'Enabled' : 'Disabled'}`); fetchDashboardData(); })
+                                    .catch(err => showToast(`❌ ${err.message}`, 'error'))}
+                                className={`text-[10px] font-bold cursor-pointer px-2 py-0.5 rounded transition-all ${cat.is_active ? 'text-green-500 bg-green-500/10 hover:bg-red-500/10 hover:text-red-500' : 'text-red-500 bg-red-500/10 hover:bg-green-500/10 hover:text-green-500'}`}
+                            >
+                                {cat.is_active ? 'ACTIVE' : 'INACTIVE'}
+                            </button>
                         </div>
                     </div>
                 ))}
@@ -1828,7 +1900,18 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 pt-6 border-t border-gray-800">
-                            <button className="py-2 bg-gray-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const name = prompt('Plan Name:', p.name);
+                                    if (!name) return;
+                                    const price = parseFloat(prompt('Price (₹):', p.price) || p.price);
+                                    const duration_hours = parseInt(prompt('Duration (hours):', p.duration_hours) || p.duration_hours);
+                                    api.put(`/admin/plans/${p.id}`, { name, price, duration_hours, is_active: p.is_active })
+                                        .then(() => { showToast('✅ Plan updated'); fetchDashboardData(); })
+                                        .catch(err => showToast(`❌ ${err.response?.data?.error || err.message}`, 'error'));
+                                }}
+                                className="py-2 bg-gray-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2"
+                            >
                                 <Edit size={12} /> Edit Plan
                             </button>
                             <button
