@@ -64,7 +64,10 @@ export const AdSenseCore = () => {
         ADS_TXT: '',
         ADS_TOP_BANNER: '',
         ADS_MID_CONTENT: '',
-        ADS_BOTTOM_BANNER: ''
+        ADS_TOP_BANNER: '',
+        ADS_MID_CONTENT: '',
+        ADS_BOTTOM_BANNER: '',
+        ADS_FOR_PREMIUM: 'false'
     });
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState({ msg: '', type: 'success' });
@@ -86,7 +89,8 @@ export const AdSenseCore = () => {
                 ADS_TXT: sys.ADS_TXT || '',
                 ADS_TOP_BANNER: sys.ADS_TOP_BANNER || '',
                 ADS_MID_CONTENT: sys.ADS_MID_CONTENT || '',
-                ADS_BOTTOM_BANNER: sys.ADS_BOTTOM_BANNER || ''
+                ADS_BOTTOM_BANNER: sys.ADS_BOTTOM_BANNER || '',
+                ADS_FOR_PREMIUM: sys.ADS_FOR_PREMIUM || 'false'
             });
         } catch (e) {
             showToast('Failed to load ad configuration', 'error');
@@ -130,8 +134,8 @@ export const AdSenseCore = () => {
                     <button
                         onClick={toggleAds}
                         className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${isEnabled
-                                ? 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-500'
-                                : 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-500'
+                            ? 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-500'
+                            : 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-500'
                             }`}
                     >
                         {isEnabled ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -148,8 +152,8 @@ export const AdSenseCore = () => {
 
             {/* Global Status Card */}
             <div className={`p-8 rounded-[2.5rem] border flex items-center gap-6 transition-all duration-500 ${isEnabled
-                    ? 'bg-emerald-500/5 border-emerald-500/20'
-                    : 'bg-red-500/5 border-red-500/20'
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-red-500/5 border-red-500/20'
                 }`}>
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isEnabled ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
                     {isEnabled ? <Power size={28} className="text-emerald-400" /> : <PowerOff size={28} className="text-red-400" />}
@@ -162,6 +166,35 @@ export const AdSenseCore = () => {
                         {isEnabled ? 'All configured ad units are serving impressions to users' : 'Ads are globally disabled. No impressions will be served.'}
                     </p>
                 </div>
+            </div>
+
+            {/* Premium Shield Toggle Card */}
+            <div className={`p-8 rounded-[2.5rem] border flex items-center justify-between gap-6 transition-all duration-500 ${config.ADS_FOR_PREMIUM === 'true'
+                ? 'bg-orange-500/5 border-orange-500/20'
+                : 'bg-indigo-500/5 border-indigo-500/20'
+                }`}>
+                <div className="flex items-center gap-6">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${config.ADS_FOR_PREMIUM === 'true' ? 'bg-orange-500/10' : 'bg-indigo-500/10'}`}>
+                        <Shield className={config.ADS_FOR_PREMIUM === 'true' ? 'text-orange-400' : 'text-indigo-400'} size={28} />
+                    </div>
+                    <div>
+                        <h3 className={`text-xl font-black uppercase tracking-tight ${config.ADS_FOR_PREMIUM === 'true' ? 'text-orange-400' : 'text-indigo-400'}`}>
+                            {config.ADS_FOR_PREMIUM === 'true' ? 'Premium Shield Disabled' : 'Premium Shield Active'}
+                        </h3>
+                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                            {config.ADS_FOR_PREMIUM === 'true' ? 'Ads are being shown even to Prime subscribers' : 'Ads are automatically hidden for all Prime subscribers'}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setConfig(prev => ({ ...prev, ADS_FOR_PREMIUM: prev.ADS_FOR_PREMIUM === 'true' ? 'false' : 'true' }))}
+                    className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest border transition-all ${config.ADS_FOR_PREMIUM === 'true'
+                        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                        : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                        }`}
+                >
+                    {config.ADS_FOR_PREMIUM === 'true' ? 'DISABLE ADS FOR PRO' : 'ENABLE ADS FOR PRO'}
+                </button>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

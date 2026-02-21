@@ -27,7 +27,7 @@ export const AdProvider = ({ children }) => {
 
     const showAds =
         settings.ADS_ENABLED === 'true' &&
-        (!user || !user.is_premium);
+        (settings.ADS_FOR_PREMIUM === 'true' || !user || !user.is_premium);
 
     useEffect(() => {
         if (showAds && settings.ADS_HEADER_SCRIPT) {
