@@ -57,6 +57,8 @@ export const PrimeArchitecture = () => {
     useEffect(() => { fetchData(); }, []);
 
     const handleSavePlan = async () => {
+        if (!planForm.name) return showToast('Plan name is required', 'error');
+        setLoading(true);
         try {
             if (editingPlan) {
                 await api.put(`/admin/plans/${editingPlan.id}`, planForm);
@@ -68,7 +70,12 @@ export const PrimeArchitecture = () => {
             setShowPlanModal(false);
             setEditingPlan(null);
             fetchData();
-        } catch (e) { showToast('Operation failed', 'error'); }
+        } catch (e) {
+            console.error('Save error:', e);
+            showToast(e.response?.data?.error || 'Operation failed', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const togglePlanStatus = async (plan) => {
@@ -131,8 +138,8 @@ export const PrimeArchitecture = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {plans.map(plan => (
                             <div key={plan.id} className={`relative p-8 rounded-[2rem] border transition-all duration-300 group ${plan.is_active
-                                    ? 'bg-gray-900/60 border-gray-800 hover:border-pink-500/30'
-                                    : 'bg-gray-900/20 border-gray-800/50 grayscale'
+                                ? 'bg-gray-900/60 border-gray-800 hover:border-pink-500/30'
+                                : 'bg-gray-900/20 border-gray-800/50 grayscale'
                                 }`}>
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center border border-gray-700">
@@ -154,8 +161,8 @@ export const PrimeArchitecture = () => {
                                     <button
                                         onClick={() => togglePlanStatus(plan)}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${plan.is_active
-                                                ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                                                : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                                            ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                            : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
                                             }`}
                                     >
                                         {plan.is_active ? <Power size={12} /> : <PowerOff size={12} />}
@@ -259,7 +266,7 @@ export const PrimeArchitecture = () => {
                                         className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
                                         type="number"
                                         value={planForm.duration_hours}
-                                        onChange={e => setPlanForm({ ...planForm, duration_hours: parseInt(e.target.value) })}
+                                        onChange={e => setPlanForm({ ...planForm, duration_hours: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -268,7 +275,7 @@ export const PrimeArchitecture = () => {
                                         className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
                                         type="number"
                                         value={planForm.price}
-                                        onChange={e => setPlanForm({ ...planForm, price: parseFloat(e.target.value) })}
+                                        onChange={e => setPlanForm({ ...planForm, price: parseFloat(e.target.value) || 0 })}
                                     />
                                 </div>
                             </div>
@@ -286,9 +293,15 @@ export const PrimeArchitecture = () => {
 
                             <button
                                 onClick={handleSavePlan}
-                                className="w-full py-5 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-pink-500/20 mt-6 hover:scale-[1.01] transition-transform active:scale-95 flex items-center justify-center gap-2"
+                                disabled={loading}
+                                className={`w-full py-5 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-pink-500/20 mt-6 transition-transform active:scale-95 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
                             >
-                                <CheckCircle2 size={18} /> Finalize Configuration
+                                {loading ? 'PROCESSING...' : (
+                                    <>
+                                        <CheckCircle2 size={18} />
+                                        {editingPlan ? 'SAVE CHANGES' : 'FINALIZE CONFIGURATION'}
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
