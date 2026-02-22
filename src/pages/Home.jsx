@@ -41,17 +41,9 @@ const Home = () => {
                         style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
                     >
                         {(() => {
-                            // strictly order logic
-                            const STRICT_ORDER = ['School', 'University', 'UPSC', 'CTET', 'SSC', 'Banking', 'Railway', 'State Govt Exams', 'Others'];
                             const actCats = categories.filter(c => c.is_active);
 
-                            return actCats.sort((a, b) => {
-                                let idxA = STRICT_ORDER.indexOf(a.name);
-                                let idxB = STRICT_ORDER.indexOf(b.name);
-                                if (idxA === -1) idxA = 999;
-                                if (idxB === -1) idxB = 999;
-                                return idxA - idxB;
-                            }).map(cat => (
+                            return actCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(cat => (
                                 <div key={cat.id} className="snap-start flex-shrink-0 w-[280px] group cursor-pointer bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] border border-gray-100 hover:border-indigo-100 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden flex flex-col">
                                     <div className="h-44 bg-gray-100 relative overflow-hidden flex-shrink-0 flex items-center justify-center">
                                         {cat.image_url ? (
