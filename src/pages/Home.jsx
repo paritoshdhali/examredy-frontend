@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Target } from 'lucide-react';
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
     const sliderRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -44,7 +46,11 @@ const Home = () => {
                             const actCats = categories.filter(c => c.is_active);
 
                             return actCats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(cat => (
-                                <div key={cat.id} className="snap-start flex-shrink-0 w-[280px] group cursor-pointer bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] border border-gray-100 hover:border-indigo-100 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden flex flex-col">
+                                <div
+                                    key={cat.id}
+                                    onClick={() => navigate(`/practice?cat=${cat.id}`)}
+                                    className="snap-start flex-shrink-0 w-[280px] group cursor-pointer bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] border border-gray-100 hover:border-indigo-100 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden flex flex-col"
+                                >
                                     <div className="h-44 bg-gray-100 relative overflow-hidden flex-shrink-0 flex items-center justify-center">
                                         {cat.image_url ? (
                                             <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />

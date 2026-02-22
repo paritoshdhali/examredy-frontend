@@ -16,31 +16,159 @@ const Practice = () => {
     const [error, setError] = useState('');
     const [showPopup, setShowPopup] = useState(false);
 
-    // Data States
-    const [questions, setQuestions] = useState([]);
+    // Global Data States
     const [categories, setCategories] = useState([]);
     const [states, setStates] = useState([]);
+
+    // Flow Type
+    const [flowType, setFlowType] = useState('competitive'); // 'school' | 'university' | 'competitive'
+
+    // School Data States
     const [boards, setBoards] = useState([]);
     const [classes, setClasses] = useState([]);
+    const [streams, setStreams] = useState([]);
+
+    // University Data States
+    const [universities, setUniversities] = useState([]);
+    const [semesters, setSemesters] = useState([]);
+
+    // Competitive Data States
+    const [papersStages, setPapersStages] = useState([]);
+
+    // Common Target States
     const [subjects, setSubjects] = useState([]);
     const [chapters, setChapters] = useState([]);
+    const [questions, setQuestions] = useState([]);
 
     // Selection States
     const [selectedCat, setSelectedCat] = useState(initialCatId || '');
+
+    // Common / Flow-specific Selection
     const [selectedState, setSelectedState] = useState('');
     const [selectedBoard, setSelectedBoard] = useState('');
+    const [selectedUniversity, setSelectedUniversity] = useState('');
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStream, setSelectedStream] = useState('');
+    const [selectedSemester, setSelectedSemester] = useState('');
+    const [selectedPaperStage, setSelectedPaperStage] = useState('');
+
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
 
-    const [streams, setStreams] = useState([]);
+    // Flow Detection
+    useEffect(() => {
+        if (!selectedCat || categories.length === 0) return;
+        const cat = categories.find(c => String(c.id) === String(selectedCat));
+        if (!cat) return;
 
-    // Logic: extract number from class name "Class 11" string
+        const name = cat.name.toLowerCase();
+        if (name.includes('school')) setFlowType('school');
+        else if (name.includes('university') || name.includes('college')) setFlowType('university');
+        else setFlowType('competitive');
+
+        // Reset lower cascade when category changes to prevent invalid state
+        setSelectedState('');
+        setSelectedBoard('');
+        setSelectedUniversity('');
+        setSelectedClass('');
+        setSelectedStream('');
+        setSelectedSemester('');
+        setSelectedPaperStage('');
+        setSelectedSubject('');
+        setSelectedChapter('');
+    }, [selectedCat, categories]);
+
+    // Initial Load
+    useEffect(() => {
+        const loadInitial = async () => {
+            try {
+                const [catRes, stateRes, semRes] = await Promise.all([
+                    api.get('/structure/categories'),
+                    api.get('/structure/states'),
+                    api.get('/structure/semesters')
+                ]);
+                setCategories(catRes.data);
+                setStates(stateRes.data);
+                setSemesters(semRes.data);
+            } catch (err) {
+                console.error('Failed to load initial data', err);
+            }
+        };
+        loadInitial();
+    }, []);
+
+    // ── DATA CASCADE LOGIC ──
+
+    // State changes -> Load Boards (School) OR Universities (University)
+    useEffect(() => {
+        if (selectedState && flowType === 'school') {
+            api.get(`/structure/boards/${selectedState}`).then(res => setBoards(res.data));
+        } else if (selectedState && flowType === 'university') {
+            api.get(`/structure/universities/${selectedState}`).then(res => setUniversities(res.data));
+        } else {
+            setBoards([]);
+            setUniversities([]);
+        }
+    }, [selectedState, flowType]);
+
+    // Board changes -> Load Classes & Streams
+    useEffect(() => {
+        if (selectedBoard && flowType === 'school') {
+            api.get(`/structure/classes`).then(res => setClasses(res.data));
+            api.get(`/structure/streams`).then(res => setStreams(res.data));
+        } else {
+            setClasses([]);
+            setStreams([]);
+        }
+    }, [selectedBoard, flowType]);
+
+    // Category changes (Competitive) -> Load Papers Stages
+    useEffect(() => {
+        if (selectedCat && flowType === 'competitive') {
+            api.get(`/structure/papers-stages/${selectedCat}`).then(res => setPapersStages(res.data));
+        } else {
+            setPapersStages([]);
+        }
+    }, [selectedCat, flowType]);
+
+    // Subject loading unified handler
+    useEffect(() => {
+        let url = `/structure/subjects?category_id=${selectedCat}`;
+        let shouldFetch = false;
+
+        if (flowType === 'school' && selectedClass) {
+            url += `&board_id=${selectedBoard}&class_id=${selectedClass}`;
+            if (selectedStream) url += `&stream_id=${selectedStream}`;
+            shouldFetch = true;
+        } else if (flowType === 'university' && selectedUniversity && selectedSemester) {
+            url += `&university_id=${selectedUniversity}&semester_id=${selectedSemester}`;
+            shouldFetch = true;
+        } else if (flowType === 'competitive' && selectedPaperStage) {
+            url += `&paper_stage_id=${selectedPaperStage}`;
+            shouldFetch = true;
+        }
+
+        if (shouldFetch) {
+            api.get(url).then(res => setSubjects(res.data));
+        } else {
+            setSubjects([]);
+        }
+    }, [selectedCat, flowType, selectedClass, selectedBoard, selectedStream, selectedUniversity, selectedSemester, selectedPaperStage]);
+
+    // Chapter Loading
+    useEffect(() => {
+        if (selectedSubject) {
+            api.get(`/structure/chapters/${selectedSubject}`).then(res => setChapters(res.data));
+        } else {
+            setChapters([]);
+        }
+    }, [selectedSubject]);
+
+
+    // Helper functions for School UI logic
     const classNum = selectedClass ? parseInt(classes.find(c => c.id == selectedClass)?.name.replace(/\D/g, '')) : 0;
     const needsStream = classNum >= 11;
 
-    // Logic: filter classes based on board type (same as admin logic)
     const getFilteredClasses = (boardId) => {
         const board = boards.find(b => b.id == boardId);
         if (!board) return [];
@@ -58,52 +186,8 @@ const Practice = () => {
     };
     const filtClasses = getFilteredClasses(selectedBoard);
 
-    useEffect(() => {
-        const loadInitial = async () => {
-            try {
-                const [catRes, stateRes] = await Promise.all([
-                    api.get('/categories'),
-                    api.get('/structure/states')
-                ]);
-                setCategories(catRes.data);
-                setStates(stateRes.data);
-            } catch (err) {
-                console.error('Failed to load initial data');
-            }
-        };
-        loadInitial();
-    }, []);
 
-    useEffect(() => {
-        if (selectedState) {
-            api.get(`/structure/boards/${selectedState}`).then(res => setBoards(res.data));
-        } else setBoards([]);
-    }, [selectedState]);
-
-    useEffect(() => {
-        if (selectedBoard) {
-            api.get(`/structure/classes`).then(res => setClasses(res.data));
-            api.get(`/structure/streams`).then(res => setStreams(res.data));
-        } else {
-            setClasses([]);
-            setStreams([]);
-        }
-    }, [selectedBoard]);
-
-    useEffect(() => {
-        if (selectedClass) {
-            let url = `/structure/subjects?class_id=${selectedClass}&board_id=${selectedBoard}`;
-            if (selectedStream) url += `&stream_id=${selectedStream}`;
-            api.get(url).then(res => setSubjects(res.data));
-        } else setSubjects([]);
-    }, [selectedClass, selectedBoard, selectedStream]);
-
-    useEffect(() => {
-        if (selectedSubject) {
-            api.get(`/structure/chapters/${selectedSubject}`).then(res => setChapters(res.data));
-        } else setChapters([]);
-    }, [selectedSubject]);
-
+    // ── SESSION START ──
     const startSoloPractice = async () => {
         setLoading(true);
         setError('');
@@ -127,10 +211,12 @@ const Practice = () => {
     };
 
     const handleSessionComplete = (data) => {
-        console.log('Session complete:', data);
         setMode(null);
         setQuestions([]);
     };
+
+
+    // ── RENDERERS ──
 
     if (mode === 'solo' && questions.length > 0) {
         return (
@@ -148,86 +234,173 @@ const Practice = () => {
             {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
 
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
-                            <option value="">Choose State</option>
-                            {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState}>
-                            <option value="">Choose Board</option>
-                            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                    </div>
+
+                {/* 1. Category Identifier - Global for all flows */}
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Category</label>
+                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold text-indigo-900"
+                        value={selectedCat} onChange={e => setSelectedCat(e.target.value)}>
+                        <option value="">Choose Category</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard}>
-                            <option value="">Choose Class</option>
-                            {filtClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-                    {needsStream ? (
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass}>
-                                <option value="">Choose Stream</option>
-                                {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                        </div>
-                    ) : (
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass}>
-                                <option value="">Choose Subject</option>
-                                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                        </div>
-                    )}
-                </div>
+                {/* ── FLOW SPECIFIC UIs ── */}
 
-                {needsStream && (
+                {/* SCHOOL FLOW */}
+                {flowType === 'school' && selectedCat && (
+                    <>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
+                                    <option value="">Choose State</option>
+                                    {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState}>
+                                    <option value="">Choose Board</option>
+                                    {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard}>
+                                    <option value="">Choose Class</option>
+                                    {filtClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            {needsStream ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass}>
+                                        <option value="">Choose Stream</option>
+                                        {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass}>
+                                        <option value="">Choose Subject</option>
+                                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* UNIVERSITY FLOW */}
+                {flowType === 'university' && selectedCat && (
+                    <>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
+                                    <option value="">Choose State</option>
+                                    {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select University</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedUniversity} onChange={e => setSelectedUniversity(e.target.value)} disabled={!selectedState}>
+                                    <option value="">Choose University</option>
+                                    {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Semester</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity}>
+                                    <option value="">Choose Semester</option>
+                                    {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedSemester}>
+                                    <option value="">Choose Subject</option>
+                                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* COMPETITIVE FLOW */}
+                {flowType === 'competitive' && selectedCat && (
                     <div className="grid md:grid-cols-2 gap-6">
                         <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Exam Stage / Paper</label>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedPaperStage} onChange={e => { setSelectedPaperStage(e.target.value); setSelectedSubject(''); }}>
+                                <option value="">Choose Exam Stage</option>
+                                {papersStages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream}>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedPaperStage}>
                                 <option value="">Choose Subject</option>
                                 {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
-                                <option value="">Choose Chapter</option>
-                                {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
                     </div>
                 )}
 
-                {!needsStream && (
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
-                            <option value="">Choose Chapter</option>
-                            {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-                )}
 
-                <button
-                    onClick={startSoloPractice}
-                    disabled={!selectedChapter || loading}
-                    className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 block text-center"
-                >
-                    {loading ? 'Starting Session...' : 'Start Practice Now'}
-                </button>
+                {/* ── COMMON CHAPTER SELECTOR & ACTION BUTTON ── */}
+
+                {selectedCat && (
+                    <>
+                        {/* If it's School Stream mode we need a different layout to match the original, but let's just use grid logic */}
+                        {((flowType === 'school' && needsStream) || flowType !== 'school') && selectedSubject !== false && (
+                            <div className={`grid md:grid-cols-2 gap-6 ${(flowType === 'competitive' || flowType === 'university') ? 'mt-0' : 'mt-0'}`}>
+                                {flowType === 'school' && needsStream && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream}>
+                                            <option value="">Choose Subject</option>
+                                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                <div className={flowType !== 'school' || !needsStream ? 'col-span-1' : ''}>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
+                                        <option value="">Choose Chapter</option>
+                                        {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {flowType === 'school' && !needsStream && (
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
+                                    <option value="">Choose Chapter</option>
+                                    {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={startSoloPractice}
+                            disabled={!selectedChapter || loading}
+                            className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 block text-center mt-6 disabled:opacity-50 disabled:hover:translate-y-0"
+                        >
+                            {loading ? 'Starting Session...' : 'Start Practice Now'}
+                        </button>
+                    </>
+                )}
             </div>
 
             <div className="mt-12 text-center text-gray-400">
