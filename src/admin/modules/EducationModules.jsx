@@ -60,6 +60,7 @@ export function SchoolCentral() {
     const [streams, setStreams] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [chapters, setChapters] = useState([]);
+    const [catId, setCatId] = useState(1);
 
     // Selection & Bulk Approval
     const [checkedItems, setCheckedItems] = useState({});
@@ -76,16 +77,19 @@ export function SchoolCentral() {
 
     const load = useCallback(async () => {
         try {
-            const [st, bo, cl, str, sub, ch] = await Promise.all([
+            const [st, bo, cl, str, sub, ch, catRes] = await Promise.all([
                 api.get('/admin/states'),
                 api.get('/admin/boards'),
                 api.get('/admin/classes'),
                 api.get('/admin/streams'),
                 api.get('/admin/subjects'),
                 api.get('/admin/chapters'),
+                api.get('/structure/categories')
             ]);
             setStates(st.data); setBoards(bo.data); setClasses(cl.data);
             setStreams(str.data); setSubjects(sub.data); setChapters(ch.data);
+            const foundCat = catRes.data.find(c => c.name.toLowerCase().includes('school'));
+            if (foundCat) setCatId(foundCat.id);
         } catch (e) { showToast('Load error: ' + (e.response?.data?.error || e.message), 'error'); }
     }, []);
 
@@ -124,11 +128,10 @@ export function SchoolCentral() {
         }
 
         setFetchingKey('subjects');
-        const SCHOOL_CAT_ID = 1;
         try {
             const context = `${selBoard.name}, Class ${selClass.name}${selStream ? ', ' + selStream.name + ' stream' : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
-                category_id: SCHOOL_CAT_ID,
+                category_id: catId,
                 board_id: selBoard.id,
                 class_id: selClass.id,
                 stream_id: selStream?.id || null,
@@ -155,7 +158,7 @@ export function SchoolCentral() {
         try {
             const context = `${board.name}, Class ${cls.name}${stream ? ', ' + stream.name + ' stream' : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
-                category_id: 1,
+                category_id: catId,
                 board_id: board.id,
                 class_id: cls.id,
                 stream_id: stream?.id || null,
@@ -265,8 +268,7 @@ export function SchoolCentral() {
     const addSubject = async () => {
         if (!selBoard || !selClass) return showToast('Select Board & Class', 'error');
         const name = prompt('Subject Name:'); if (!name) return;
-        const SCHOOL_CAT_ID = 1;
-        await api.post('/admin/subjects', { name, category_id: SCHOOL_CAT_ID, board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id || null });
+        await api.post('/admin/subjects', { name, category_id: catId, board_id: selBoard.id, class_id: selClass.id, stream_id: selStream?.id || null });
         load(); showToast('Subject added');
     };
 
@@ -399,7 +401,18 @@ export function SchoolCentral() {
                     <h2 className="text-xl font-black text-white uppercase tracking-tight">School Central</h2>
                     <p className="text-gray-500 text-xs mt-0.5">State → Board → Class → Stream → Subject → Chapter</p>
                 </div>
-                <button onClick={load} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"><RefreshCw size={16} /></button>
+                <div className="flex items-center gap-2">
+                    <button onClick={async () => {
+                        try {
+                            const r = await api.get('/admin/fix-subjects');
+                            showToast(r.data.message || 'Database Healed successfully!');
+                            load();
+                        } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+                    }} className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-500 hover:text-white transition-all">
+                        Fix Database Sync
+                    </button>
+                    <button onClick={load} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"><RefreshCw size={16} /></button>
+                </div>
             </div>
 
             {/* Hierarchy Flow */}
@@ -568,6 +581,7 @@ export function UniversityHub() {
     const [semesters, setSemesters] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [chapters, setChapters] = useState([]);
+    const [catId, setCatId] = useState(2);
 
     const [selState, setSelState] = useState(null);
     const [selUni, setSelUni] = useState(null);
@@ -582,16 +596,19 @@ export function UniversityHub() {
 
     const load = useCallback(async () => {
         try {
-            const [st, uni, deg, sem, sub, ch] = await Promise.all([
+            const [st, uni, deg, sem, sub, ch, catRes] = await Promise.all([
                 api.get('/admin/states'),
                 api.get('/admin/universities'),
                 api.get('/admin/degree-types'),
                 api.get('/admin/semesters'),
                 api.get('/admin/subjects'),
                 api.get('/admin/chapters'),
+                api.get('/structure/categories')
             ]);
             setStates(st.data); setUniversities(uni.data); setDegreeTypes(deg.data);
             setSemesters(sem.data); setSubjects(sub.data); setChapters(ch.data);
+            const foundCat = catRes.data.find(c => c.name.toLowerCase().includes('university') || c.name.toLowerCase().includes('college'));
+            if (foundCat) setCatId(foundCat.id);
         } catch (e) { showToast('Load error', 'error'); }
     }, []);
 
@@ -661,11 +678,10 @@ export function UniversityHub() {
     const aiFetchSubjects = async () => {
         if (!selUni || !selDegree) return showToast('Select University & Degree Type', 'error');
         setFetchingKey('subjects');
-        const UNIV_CAT_ID = 2;
         try {
             const context = `${selUni.name}, ${selDegree.name}${selSemester ? ', Semester ' + selSemester.name : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
-                category_id: UNIV_CAT_ID,
+                category_id: catId,
                 university_id: selUni.id,
                 degree_type_id: selDegree.id,
                 semester_id: selSemester?.id || null,
@@ -805,7 +821,18 @@ export function UniversityHub() {
                     <h2 className="text-xl font-black text-white uppercase tracking-tight">University Hub</h2>
                     <p className="text-gray-500 text-xs mt-0.5">University → Degree Type → Semester → Subject → Chapter</p>
                 </div>
-                <button onClick={load} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"><RefreshCw size={16} /></button>
+                <div className="flex items-center gap-2">
+                    <button onClick={async () => {
+                        try {
+                            const r = await api.get('/admin/fix-subjects');
+                            showToast(r.data.message || 'Database Healed successfully!');
+                            load();
+                        } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+                    }} className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-lg text-xs font-bold hover:bg-yellow-500 hover:text-white transition-all">
+                        Fix Database Sync
+                    </button>
+                    <button onClick={load} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"><RefreshCw size={16} /></button>
+                </div>
             </div>
 
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto">
@@ -843,7 +870,7 @@ export function UniversityHub() {
                         <AddBtn label="Add Manual" onClick={async () => {
                             if (!selUni || !selDegree) return showToast('Select Uni & Degree', 'error');
                             const n = prompt('Subject Name:'); if (!n) return;
-                            await api.post('/admin/subjects', { name: n, category_id: 2, university_id: selUni.id, degree_type_id: selDegree.id, semester_id: selSemester?.id || null });
+                            await api.post('/admin/subjects', { name: n, category_id: catId, university_id: selUni.id, degree_type_id: selDegree.id, semester_id: selSemester?.id || null });
                             load(); showToast('Subject added');
                         }} />
                     </Col>
