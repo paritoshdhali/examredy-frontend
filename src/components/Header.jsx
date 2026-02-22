@@ -19,11 +19,22 @@ const Header = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
 
-                    {/* LEFT SIDE: Navigation & Auth (Desktop) + Mobile Menu Toggle */}
+                    {/* LEFT SIDE: Static Logo */}
+                    <div className="flex-shrink-0 flex items-center cursor-pointer group" onClick={() => navigate('/')}>
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mr-3 shadow-lg shadow-indigo-200/50 group-hover:-rotate-12 transition-transform duration-300">
+                            <span className="text-white font-black text-2xl">E</span>
+                        </div>
+                        <div className="flex flex-col items-start">
+                            <span className="font-black text-2xl text-gray-900 tracking-tighter group-hover:text-indigo-600 transition-colors">{logoText}</span>
+                            <div className="h-1 w-8 bg-indigo-600 rounded-full mt-1 group-hover:w-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT SIDE: Navigation & Auth (Desktop) + Mobile Menu Toggle */}
                     <div className="flex items-center gap-8">
-                        {/* Mobile Menu Button */}
+                        {/* Mobile Menu Button (Visible on mobile) */}
                         <div className="md:hidden flex items-center">
-                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 -ml-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 -mr-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                             </button>
                         </div>
@@ -59,17 +70,6 @@ const Header = () => {
                                     </Link>
                                 </div>
                             )}
-                        </div>
-                    </div>
-
-                    {/* RIGHT SIDE: Static Logo */}
-                    <div className="flex-shrink-0 flex items-center cursor-pointer group" onClick={() => navigate('/')}>
-                        <div className="flex flex-col items-end">
-                            <span className="font-black text-2xl text-gray-900 tracking-tighter group-hover:text-indigo-600 transition-colors">{logoText}</span>
-                            <div className="h-1 w-8 bg-indigo-600 rounded-full mt-1 group-hover:w-full transition-all duration-300"></div>
-                        </div>
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center ml-3 shadow-lg shadow-indigo-200/50 group-hover:rotate-12 transition-transform duration-300">
-                            <span className="text-white font-black text-2xl">E</span>
                         </div>
                     </div>
 
