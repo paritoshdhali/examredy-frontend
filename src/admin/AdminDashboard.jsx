@@ -10,6 +10,7 @@ import { RevenueAnalytics } from './modules/RevenueAnalytics';
 import { AdSenseCore } from './modules/AdSenseCore';
 import { LegalCompliance } from './modules/LegalCompliance';
 import { SystemSettings } from './modules/SystemSettings';
+import { DashboardOverview } from './modules/DashboardOverview';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -63,6 +64,7 @@ const BADGE_COLORS = {
 
 function ModulePlaceholder({ id }) {
     // Real modules
+    if (id === 'dashboard') return <DashboardOverview />;
     if (id === 'school') return <SchoolCentral />;
     if (id === 'university') return <UniversityHub />;
     if (id === 'competitive') return <CompetitiveArena />;
