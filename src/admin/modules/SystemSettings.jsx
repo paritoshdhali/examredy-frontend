@@ -32,7 +32,7 @@ export const SystemSettings = () => {
     const fetchConfig = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/settings');
+            const res = await api.get('/admin/settings');
             const data = res.data;
 
             // Map general settings
@@ -180,8 +180,8 @@ export const SystemSettings = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-4 w-full p-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${isActive
-                                            ? 'bg-slate-500/10 text-slate-300 border border-slate-500/20 shadow-lg shadow-slate-500/10'
-                                            : 'bg-gray-900/40 text-gray-500 border border-gray-800/50 hover:bg-gray-800 hover:text-white'
+                                        ? 'bg-slate-500/10 text-slate-300 border border-slate-500/20 shadow-lg shadow-slate-500/10'
+                                        : 'bg-gray-900/40 text-gray-500 border border-gray-800/50 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
                                     <Icon size={18} className={isActive ? 'text-slate-400' : ''} />
