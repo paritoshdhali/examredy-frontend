@@ -733,30 +733,28 @@ export function UniversityHub() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   COMPETITIVE ARENA
-   Exam Category → Paper/Stage → Subject → Chapter
+   GLOBAL CATEGORIES (Root Level)
+   Add, Edit, Enable/Disable Top-Level System Categories natively here
 ────────────────────────────────────────────────────────────────────────── */
-const COMPETITIVE_EXAMS = ['UPSC', 'SSC', 'Banking', 'Railway', 'State PSC', 'NDA', 'CDS', 'NEET', 'JEE', 'Others'];
-
-export function CompetitiveArena() {
+export function GlobalCategories() {
     const [toast, setToast] = useState({ msg: '', type: 'success' });
-    const [fetchingKey, setFetchingKey] = useState('');
-
     const [categories, setCategories] = useState([]);
-    const [papers, setPapers] = useState([]);
-    const [subjects, setSubjects] = useState([]);
-    const [chapters, setChapters] = useState([]);
-
-    const [selCat, setSelCat] = useState(null);
     const [catModalOpen, setCatModalOpen] = useState(false);
     const [catForm, setCatForm] = useState({ id: null, name: '', image_url: '', description: '', is_active: true, sort_order: 0 });
-    const [selPaper, setSelPaper] = useState(null);
-    const [selSubject, setSelSubject] = useState(null);
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast({ msg: '', type: 'success' }), 3500);
     };
+
+    const load = useCallback(async () => {
+        try {
+            const res = await api.get('/admin/categories');
+            setCategories(res.data);
+        } catch (e) { showToast('Load error', 'error'); }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
 
     const handleSaveCategory = async () => {
         if (!catForm.name) return showToast('Name is required', 'error');
@@ -772,6 +770,150 @@ export function CompetitiveArena() {
         } catch (e) {
             showToast(e.response?.data?.error || e.message, 'error');
         }
+    };
+
+    const toggleStatus = async (cat) => {
+        try {
+            await api.put(`/admin/categories/${cat.id}`, { ...cat, is_active: !cat.is_active });
+            load();
+            showToast(`Category ${!cat.is_active ? 'enabled' : 'disabled'}`);
+        } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+    }
+
+    const delCat = async (id) => {
+        if (!window.confirm('Delete this category entirely? This might orphan related papers.')) return;
+        try {
+            await api.delete(`/admin/categories/${id}`);
+            load();
+            showToast('Category Deleted');
+        }
+        catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+    };
+
+    return (
+        <div className="p-6 space-y-6">
+            <Toast msg={toast.msg} type={toast.type} />
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Global Categories</h2>
+                    <p className="text-gray-500 text-xs mt-0.5">Manage root-level categories (School, University, UPSC, etc.) shown on Home Page</p>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={load} className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-all"><RefreshCw size={16} /></button>
+                    <AddBtn label="Add Top Category" onClick={() => {
+                        setCatForm({ id: null, name: '', image_url: '', description: '', is_active: true, sort_order: 99 });
+                        setCatModalOpen(true);
+                    }} />
+                </div>
+            </div>
+
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-800/50 text-gray-500 text-[10px] uppercase tracking-wider">
+                        <tr>
+                            <th className="px-4 py-3">Category Name</th>
+                            <th className="px-4 py-3">Description</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Sort Level</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {categories.sort((a, b) => a.sort_order - b.sort_order).map(c => (
+                            <tr key={c.id} className="hover:bg-gray-800/30 text-gray-300">
+                                <td className="px-4 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {c.image_url ? <img src={c.image_url} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-gray-600 font-bold">IMG</span>}
+                                        </div>
+                                        <span className="text-sm font-bold text-white">{c.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-4 text-xs max-w-xs truncate">{c.description || <span className="text-gray-600 italic">No description</span>}</td>
+                                <td className="px-4 py-4">
+                                    <StatusBadge active={c.is_active} onClick={() => toggleStatus(c)} />
+                                </td>
+                                <td className="px-4 py-4 text-xs font-mono text-gray-400">{c.sort_order}</td>
+                                <td className="px-4 py-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button onClick={() => { setCatForm({ ...c }); setCatModalOpen(true); }} className="text-gray-500 hover:text-yellow-400 p-1.5 transition-colors"><Edit size={14} /></button>
+                                        <button onClick={() => delCat(c.id)} className="text-gray-500 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={14} /></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {catModalOpen && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl w-full max-w-md">
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">
+                            {catForm.id ? 'Edit Category' : 'Add Category'}
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Name</label>
+                                <input type="text" value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white" placeholder="e.g. UPSC" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Image URL</label>
+                                <input type="text" value={catForm.image_url} onChange={e => setCatForm({ ...catForm, image_url: e.target.value })} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white" placeholder="https://..." />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Description</label>
+                                <textarea value={catForm.description} onChange={e => setCatForm({ ...catForm, description: e.target.value })} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm" rows="3" placeholder="Brief info about category..."></textarea>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Sort Level</label>
+                                    <input type="number" value={catForm.sort_order} onChange={e => setCatForm({ ...catForm, sort_order: parseInt(e.target.value) || 0 })} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 border-b border-transparent">Status</label>
+                                    <button
+                                        onClick={() => setCatForm({ ...catForm, is_active: !catForm.is_active })}
+                                        className={`w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${catForm.is_active ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}
+                                    >
+                                        {catForm.is_active ? 'Enabled' : 'Disabled'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end mt-6">
+                            <button onClick={() => setCatModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-400 hover:bg-gray-800 text-xs font-bold uppercase tracking-wider transition-all">Cancel</button>
+                            <button onClick={handleSaveCategory} className="px-5 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold uppercase tracking-wider transition-all">Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   COMPETITIVE ARENA
+   Exam Category → Paper/Stage → Subject → Chapter
+────────────────────────────────────────────────────────────────────────── */
+const COMPETITIVE_EXAMS = ['UPSC', 'SSC', 'Banking', 'Railway', 'State PSC', 'NDA', 'CDS', 'NEET', 'JEE', 'Others'];
+
+export function CompetitiveArena() {
+    const [toast, setToast] = useState({ msg: '', type: 'success' });
+    const [fetchingKey, setFetchingKey] = useState('');
+
+    const [categories, setCategories] = useState([]);
+    const [papers, setPapers] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [chapters, setChapters] = useState([]);
+
+    const [selCat, setSelCat] = useState(null);
+    const [selPaper, setSelPaper] = useState(null);
+    const [selSubject, setSelSubject] = useState(null);
+
+    const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast({ msg: '', type: 'success' }), 3500);
     };
 
     const load = useCallback(async () => {
@@ -886,29 +1028,14 @@ export function CompetitiveArena() {
                         <div key={cat.id} className="relative group">
                             <button
                                 onClick={() => { setSelCat(cat); setSelPaper(null); setSelSubject(null); }}
-                                className={`px-3 py-1.5 pr-8 rounded-lg text-xs font-black uppercase tracking-wide border transition-all ${selCat?.id === cat.id
+                                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border transition-all ${selCat?.id === cat.id
                                     ? 'bg-yellow-500 text-black border-yellow-400'
                                     : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-yellow-500/50 hover:text-yellow-400'} ${!cat.is_active ? 'opacity-50 line-through' : ''}`}
                             >
                                 {cat.name}
                             </button>
-                            <button
-                                onClick={() => { setCatForm({ ...cat }); setCatModalOpen(true); }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Edit size={12} />
-                            </button>
                         </div>
                     ))}
-                    <button
-                        onClick={() => {
-                            setCatForm({ id: null, name: '', image_url: '', description: '', is_active: true, sort_order: 99 });
-                            setCatModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-black border border-dashed border-gray-600 text-gray-500 hover:text-white hover:border-gray-400 transition-all flex items-center gap-1"
-                    >
-                        <Plus size={12} /> Add Category
-                    </button>
                 </div>
             </div>
 
@@ -976,65 +1103,6 @@ export function CompetitiveArena() {
                         </table>
                     </div>
                 </section>
-            )}
-            {/* Category Modal */}
-            {catModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-gray-900 border border-gray-800 p-6 rounded-3xl w-full max-w-md">
-                        <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">
-                            {catForm.id ? 'Edit Category' : 'Add Category'}
-                        </h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1">Name</label>
-                                <input
-                                    value={catForm.name} onChange={e => setCatForm({ ...catForm, name: e.target.value })}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-3 px-4 text-white text-sm outline-none focus:border-yellow-500 mt-1"
-                                    placeholder="e.g. UPSC"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1">Image URL</label>
-                                <input
-                                    value={catForm.image_url || ''} onChange={e => setCatForm({ ...catForm, image_url: e.target.value })}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-3 px-4 text-white text-sm outline-none focus:border-yellow-500 mt-1"
-                                    placeholder="https://example.com/image.png"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1">Description</label>
-                                <textarea
-                                    value={catForm.description || ''} onChange={e => setCatForm({ ...catForm, description: e.target.value })}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-3 px-4 text-white text-sm outline-none focus:border-yellow-500 mt-1 h-24 resize-none"
-                                    placeholder="Description of the category..."
-                                />
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1">Sort Order</label>
-                                    <input
-                                        type="number" value={catForm.sort_order} onChange={e => setCatForm({ ...catForm, sort_order: parseInt(e.target.value) || 0 })}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-3 px-4 text-white text-sm outline-none focus:border-yellow-500 mt-1"
-                                    />
-                                </div>
-                                <div className="flex-1 flex items-center justify-end">
-                                    <label className="flex items-center gap-2 cursor-pointer mt-4">
-                                        <div className="relative">
-                                            <input type="checkbox" checked={catForm.is_active} onChange={e => setCatForm({ ...catForm, is_active: e.target.checked })} className="sr-only" />
-                                            <div className={`w-10 h-6 rounded-full transition-colors ${catForm.is_active ? 'bg-yellow-500' : 'bg-gray-700'}`}></div>
-                                            <div className={`absolute left-1 flex items-center justify-center w-4 h-4 rounded-full bg-white transition-transform ${catForm.is_active ? 'translate-x-4' : 'translate-x-0'} top-1`}></div>
-                                        </div>
-                                        <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Active</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 justify-end mt-6">
-                            <button onClick={() => setCatModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-400 hover:bg-gray-800 text-xs font-bold uppercase tracking-wider transition-all">Cancel</button>
-                            <button onClick={handleSaveCategory} className="px-5 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold uppercase tracking-wider transition-all">Save</button>
-                        </div>
-                    </div>
-                </div>
             )}
         </div>
     );

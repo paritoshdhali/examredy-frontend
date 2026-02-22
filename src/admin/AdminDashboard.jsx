@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
+import { GlobalCategories, SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
 import { NeuralHub } from './modules/NeuralHub';
 import { UserManagement } from './modules/UserManagement';
 import { PrimeArchitecture } from './modules/PrimeArchitecture';
@@ -22,6 +22,7 @@ import {
 // ─── Sidebar menu definition ───────────────────────────────────────────────
 const MENU = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-400' },
+    { id: 'categories', label: 'Global Categories', icon: CheckSquare, color: 'text-pink-400' },
     { id: 'school', label: 'School Central', icon: School, color: 'text-blue-400' },
     { id: 'university', label: 'University Hub', icon: GraduationCap, color: 'text-violet-400' },
     { id: 'competitive', label: 'Competitive Arena', icon: Briefcase, color: 'text-yellow-400' },
@@ -39,6 +40,7 @@ const MENU = [
 // ─── Module placeholder renderer ──────────────────────────────────────────
 const MODULE_META = {
     dashboard: { title: 'Dashboard', desc: 'Overview Analytics & System Diagnostics', badge: 'CORE' },
+    categories: { title: 'Global Categories', desc: 'Manage all top-level exam and education categories', badge: 'EDUCATION' },
     school: { title: 'School Central', desc: 'State → Board → Class → Stream → Subject → Chapter hierarchy', badge: 'EDUCATION' },
     university: { title: 'University Hub', desc: 'University → Degree → Semester management', badge: 'EDUCATION' },
     competitive: { title: 'Competitive Arena', desc: 'UPSC / SSC / NEET papers and stages', badge: 'EDUCATION' },
@@ -69,6 +71,7 @@ const BADGE_COLORS = {
 function ModulePlaceholder({ id }) {
     // Real modules
     if (id === 'dashboard') return <DashboardOverview />;
+    if (id === 'categories') return <GlobalCategories />;
     if (id === 'school') return <SchoolCentral />;
     if (id === 'university') return <UniversityHub />;
     if (id === 'competitive') return <CompetitiveArena />;
