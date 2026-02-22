@@ -40,7 +40,8 @@ export const SystemSettings = () => {
                 SITE_TITLE: data.system.SITE_TITLE || '',
                 SUPPORT_EMAIL: data.system.SUPPORT_EMAIL || '',
                 WHATSAPP_NUMBER: data.system.WHATSAPP_NUMBER || '',
-                FOOTER_TEXT: data.system.FOOTER_TEXT || ''
+                FOOTER_TEXT: data.system.FOOTER_TEXT || '',
+                GOOGLE_CLIENT_ID: data.system.GOOGLE_CLIENT_ID || ''
             });
 
             // Map SEO settings
@@ -233,6 +234,16 @@ export const SystemSettings = () => {
                                             onChange={e => setGeneral({ ...general, FOOTER_TEXT: e.target.value })}
                                             className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-bold text-sm focus:ring-2 focus:ring-slate-500/20 outline-none"
                                         />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] ml-1">Google OAuth Client ID</label>
+                                        <input
+                                            value={general.GOOGLE_CLIENT_ID || ''}
+                                            onChange={e => setGeneral({ ...general, GOOGLE_CLIENT_ID: e.target.value })}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-bold text-sm focus:ring-2 focus:ring-slate-500/20 outline-none"
+                                            placeholder="XXXXX-YYYYY.apps.googleusercontent.com"
+                                        />
+                                        <p className="text-[10px] text-gray-600 font-black uppercase ml-1 mt-2 tracking-widest leading-relaxed">Required for "Continue with Google" buttons on Login & Register. Get this from the Google Cloud Console.</p>
                                     </div>
                                 </div>
                                 <div className="pt-6">

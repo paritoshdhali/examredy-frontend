@@ -58,8 +58,14 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const googleLogin = async (credential, referrerId = null) => {
+        const res = await api.post('/auth/google', { credential, referrer_id: referrerId });
+        setAuthData(res.data);
+        return res.data;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, setAuthData }}>
+        <AuthContext.Provider value={{ user, login, register, googleLogin, logout, loading, setAuthData }}>
             {children}
         </AuthContext.Provider>
     );
