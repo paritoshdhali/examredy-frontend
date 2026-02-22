@@ -130,18 +130,45 @@ const Home = () => {
                 <AdSlot type="mid" />
             </div>
 
-            {/* 4. Competitive Exams */}
-            <section className="py-16 bg-indigo-50">
-                <div className="max-w-7xl mx-auto px-4">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center">Prepare for Top Competitive Exams</h2>
-                    <div className="flex flex-wrap justify-center gap-4">
-                        {['SSC', 'HSC', 'BCS', 'Bank Job', 'University Admission', 'Medical', 'Engineering', 'IELTS'].map((exam, idx) => (
-                            <span key={idx} className="bg-white px-6 py-3 rounded-full shadow-sm text-gray-700 font-semibold border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 transition cursor-default">
-                                {exam}
-                            </span>
+            {/* 4. Main Category Display (Layer 2) */}
+            <section className="py-16 bg-indigo-50 overflow-hidden">
+                <div className="max-w-7xl mx-auto px-4 mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900 text-center tracking-tight">Explore Categories</h2>
+                    <p className="text-gray-500 text-center mt-2">Find the right path for your next big achievement</p>
+                </div>
+
+                <div className="max-w-[1400px] mx-auto px-4">
+                    {/* Horizontal Scrollable Container - No Vertical Stacking */}
+                    <div className="flex flex-nowrap overflow-x-auto overflow-y-hidden gap-6 pb-8 snap-x hide-scroll-bar" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                        {categories.filter(c => c.is_active).map(cat => (
+                            <div key={cat.id} className="snap-start flex-shrink-0 w-72 md:w-80 group cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
+                                <div className="h-40 bg-gray-100 relative overflow-hidden">
+                                    {cat.image_url ? (
+                                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-indigo-100 text-indigo-300">
+                                            <Target size={48} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-6">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{cat.name}</h3>
+                                    <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed h-10">
+                                        {cat.description || "Master your upcoming exams with AI-driven insights and unlimited practice."}
+                                    </p>
+                                    <div className="mt-4 pt-4 border-t border-gray-50 flex items-center text-indigo-600 font-semibold text-sm group-hover:text-indigo-700">
+                                        Start Exploring <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
+                                    </div>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </div>
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .hide-scroll-bar::-webkit-scrollbar { display: none; }
+                    .hide-scroll-bar { -ms-overflow-style: none; scrollbar-width: none; }
+                `}} />
             </section>
 
             {/* 8. AI Features Section */}
