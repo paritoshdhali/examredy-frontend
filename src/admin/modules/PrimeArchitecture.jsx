@@ -127,17 +127,17 @@ export const PrimeArchitecture = () => {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="w-full">
 
                 {/* Plans List */}
-                <div className="xl:col-span-2 space-y-6">
+                <div className="space-y-6">
                     <div className="flex items-center justify-between px-4">
                         <h3 className="text-gray-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2">
                             Active Subscription Tiers
                         </h3>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {plans.map(plan => (
                             <div key={plan.id} className={`relative p-8 rounded-[2rem] border transition-all duration-300 group ${plan.is_active
                                 ? 'bg-gray-900/60 border-gray-800 hover:border-pink-500/30'
@@ -173,67 +173,6 @@ export const PrimeArchitecture = () => {
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-
-                {/* Referral Settings Sidebar */}
-                <div className="space-y-8">
-                    <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-indigo-500/20 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl relative overflow-hidden">
-                        <div className="absolute -right-4 -top-4 w-32 h-32 bg-indigo-600/10 rounded-full blur-3xl"></div>
-
-                        <h3 className="text-white text-lg font-black uppercase tracking-tight flex items-center gap-3 mb-6">
-                            <Gift className="text-indigo-400" /> Referral Protocol
-                        </h3>
-
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-[10px] text-indigo-300 font-black uppercase tracking-widest pl-1">Incentive Reward (Days Prime)</label>
-                                <input
-                                    type="number"
-                                    value={settings.REFERRAL_REWARD_DAYS}
-                                    onChange={(e) => setSettings({ ...settings, REFERRAL_REWARD_DAYS: e.target.value })}
-                                    className="w-full bg-gray-900/80 border border-indigo-500/30 rounded-2xl py-4 px-5 text-white font-black text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                                />
-                            </div>
-
-                            <div className="space-y-3">
-                                <label className="text-[10px] text-indigo-300 font-black uppercase tracking-widest pl-1">Min Qualifier Purchase (₹)</label>
-                                <input
-                                    type="number"
-                                    value={settings.REFERRAL_MIN_PURCHASE_RS}
-                                    onChange={(e) => setSettings({ ...settings, REFERRAL_MIN_PURCHASE_RS: e.target.value })}
-                                    className="w-full bg-gray-900/80 border border-indigo-500/30 rounded-2xl py-4 px-5 text-white font-black text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                                />
-                            </div>
-
-                            <button
-                                onClick={saveReferralSettings}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/30 hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"
-                            >
-                                <Save size={16} /> Save Protocol
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-900/60 border border-gray-800 p-8 rounded-[2.5rem] shadow-2xl">
-                        <h3 className="text-white text-sm font-black uppercase tracking-widest flex items-center gap-3 mb-6">
-                            <TrendingUp className="text-emerald-400" size={18} /> Economic Logs
-                        </h3>
-                        <div className="space-y-4">
-                            {referrals.slice(0, 5).map(ref => (
-                                <div key={ref.id} className="flex items-center justify-between p-4 bg-gray-800/40 rounded-2xl border border-gray-700/50 group">
-                                    <div className="min-w-0">
-                                        <p className="text-white text-[11px] font-black truncate">{ref.referrer_email.split('@')[0]}</p>
-                                        <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Referred {ref.referred_email.split('@')[0]}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${ref.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-gray-500/10 text-gray-500 border border-gray-700'
-                                        }`}>
-                                        {ref.status}
-                                    </span>
-                                </div>
-                            ))}
-                            {referrals.length === 0 && <p className="text-center text-gray-600 text-xs py-10 uppercase tracking-widest font-black opacity-30">No Transactions</p>}
-                        </div>
                     </div>
                 </div>
             </div>

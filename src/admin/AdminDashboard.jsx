@@ -11,6 +11,7 @@ import { AdSenseCore } from './modules/AdSenseCore';
 import { LegalCompliance } from './modules/LegalCompliance';
 import { SystemSettings } from './modules/SystemSettings';
 import { DashboardOverview } from './modules/DashboardOverview';
+import { ReferralManagement } from './modules/ReferralManagement';
 import {
     LayoutDashboard, School, GraduationCap, Briefcase,
     Users, CreditCard, Cpu, CheckSquare,
@@ -32,6 +33,7 @@ const MENU = [
     { id: 'ads', label: 'AdSense Core', icon: PieChart, color: 'text-red-400' },
     { id: 'legal', label: 'Legal Compliance', icon: FileText, color: 'text-gray-400' },
     { id: 'settings', label: 'System Settings', icon: Settings, color: 'text-slate-400' },
+    { id: 'referral', label: 'Referral Program', icon: Users, color: 'text-pink-400' },
 ];
 
 // ─── Module placeholder renderer ──────────────────────────────────────────
@@ -48,6 +50,7 @@ const MODULE_META = {
     ads: { title: 'AdSense Core', desc: 'Ad slots, scripts and ads.txt management', badge: 'MARKETING' },
     legal: { title: 'Legal Compliance', desc: 'Privacy Policy, Terms and legal docs editor', badge: 'POLICY' },
     settings: { title: 'System Settings', desc: 'SEO, branding, global toggles and config', badge: 'SYSTEM' },
+    referral: { title: 'Referral Program', desc: 'Incentive tracking and reward management', badge: 'GROWTH' },
 };
 
 const BADGE_COLORS = {
@@ -60,6 +63,7 @@ const BADGE_COLORS = {
     MARKETING: 'bg-red-500/10 text-red-400 border-red-500/20',
     POLICY: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
     SYSTEM: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    GROWTH: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
 };
 
 function ModulePlaceholder({ id }) {
@@ -76,6 +80,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'ads') return <AdSenseCore />;
     if (id === 'legal') return <LegalCompliance />;
     if (id === 'settings') return <SystemSettings />;
+    if (id === 'referral') return <ReferralManagement />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
