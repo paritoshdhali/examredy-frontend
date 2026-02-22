@@ -25,7 +25,8 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
 
             const res = await api.post('/mcq/submit', {
                 mcq_id: currentQuestion.id,
-                selected_option: selectedOption
+                selected_option: selectedOption,
+                actual_correct_option: currentQuestion.correct_option
             });
 
             setResult(res.data);
@@ -115,12 +116,12 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
                 </div>
 
                 {/* Explanation */}
-                {isChecked && result?.explanation && (
-                    <div className={`mt-6 p-4 rounded-lg ${result.is_correct ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`}>
-                        <h4 className={`font-bold mb-2 ${result.is_correct ? 'text-green-800' : 'text-red-800'}`}>
-                            {result.is_correct ? 'Correct!' : 'Incorrect'}
+                {isChecked && (result?.explanation || currentQuestion.explanation) && (
+                    <div className={`mt-6 p-4 rounded-lg shadow-inner ${result.is_correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                        <h4 className={`font-black uppercase tracking-wider mb-2 ${result.is_correct ? 'text-green-800' : 'text-red-800'}`}>
+                            {result.is_correct ? 'Correct Answer!' : 'Incorrect Answer'}
                         </h4>
-                        <p className="text-gray-700">{result.explanation}</p>
+                        <p className="text-gray-900 font-medium leading-relaxed">{result?.explanation || currentQuestion.explanation}</p>
                     </div>
                 )}
 
