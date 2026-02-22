@@ -896,7 +896,7 @@ export function CompetitiveArena() {
                                 onClick={() => { setCatForm({ ...cat }); setCatModalOpen(true); }}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                                <Edit2 size={12} />
+                                <Edit size={12} />
                             </button>
                         </div>
                     ))}
