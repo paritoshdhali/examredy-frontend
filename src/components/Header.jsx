@@ -43,6 +43,7 @@ const Header = () => {
                         <nav className="hidden md:flex space-x-1 items-center">
                             <Link to="/" className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-2xl transition-all uppercase tracking-widest">Home</Link>
                             <Link to="/practice" className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-2xl transition-all uppercase tracking-widest">Practice</Link>
+                            <Link to="/group" className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-2xl transition-all uppercase tracking-widest">Group Battle</Link>
                             <Link to="/prime" className="px-5 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 rounded-2xl transition-all flex items-center gap-2 uppercase tracking-widest">
                                 <span className="text-lg">👑</span> Prime
                             </Link>
@@ -83,6 +84,7 @@ const Header = () => {
                         <nav className="flex flex-col space-y-2">
                             <Link to="/" onClick={() => setIsMenuOpen(false)} className="px-4 py-4 rounded-2xl text-sm font-black text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 uppercase tracking-widest transition-all">Home</Link>
                             <Link to="/practice" onClick={() => setIsMenuOpen(false)} className="px-4 py-4 rounded-2xl text-sm font-black text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 uppercase tracking-widest transition-all">Practice</Link>
+                            <Link to="/group" onClick={() => setIsMenuOpen(false)} className="px-4 py-4 rounded-2xl text-sm font-black text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 uppercase tracking-widest transition-all">Group Battle</Link>
                             <Link to="/prime" onClick={() => setIsMenuOpen(false)} className="px-4 py-4 rounded-2xl text-sm font-black text-amber-600 hover:bg-amber-50 uppercase tracking-widest transition-all flex items-center gap-3">
                                 <span className="text-xl">👑</span> Prime Access
                             </Link>
