@@ -61,7 +61,8 @@ export function SchoolCentral() {
     const [subjects, setSubjects] = useState([]);
     const [chapters, setChapters] = useState([]);
 
-    // Selection
+    // Selection & Bulk Approval
+    const [checkedItems, setCheckedItems] = useState({});
     const [selState, setSelState] = useState(null);
     const [selBoard, setSelBoard] = useState(null);
     const [selClass, setSelClass] = useState(null);
@@ -234,6 +235,24 @@ export function SchoolCentral() {
         catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
     };
 
+    // -- Bulk Approve
+    const handleBulkApprove = async () => {
+        const payloadPromises = [];
+        for (const [table, ids] of Object.entries(checkedItems)) {
+            const arr = Array.from(ids);
+            if (arr.length > 0) {
+                payloadPromises.push(api.put('/admin/bulk-approve', { type: table, ids: arr }));
+            }
+        }
+        if (payloadPromises.length === 0) return showToast('No items checked', 'error');
+        try {
+            await Promise.all(payloadPromises);
+            setCheckedItems({});
+            load();
+            showToast('Selected items approved and live!');
+        } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+    };
+
     // -- Manual Add helpers
     const addBoard = async () => {
         if (!selState) return showToast('Select a state first', 'error');
@@ -293,31 +312,81 @@ export function SchoolCentral() {
     // Fix: parseInt('Class 11') = NaN bug — extract number properly
     const needsStream = selClass && parseInt(selClass.name.replace(/\D/g, '')) >= 11;
 
-    // -- Column selector component
-    const Col = ({ title, icon: Icon, color, items, selId, onSel, children }) => (
-        <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0">
-            <div className={`px-3 py-2 border-b border-gray-800 flex items-center gap-2 ${color}`}>
-                <Icon size={14} /> <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto max-h-72 space-y-0.5 p-2">
-                {items.length === 0
-                    ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
-                    : items.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => onSel(item)}
-                            title={item.name}
-                            className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-                        >
-                            <span className="truncate">{item.name}</span>
-                            <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
-                        </button>
-                    ))
+    // -- Column selector component with Multi-Check support
+    const Col = ({ title, tableType, icon: Icon, color, items, selId, onSel, children }) => {
+        const isTableValid = !!tableType && !['states', 'classes', 'streams', 'degree_types', 'semesters'].includes(tableType);
+        const handleCheck = (e, id) => {
+            e.stopPropagation();
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                if (!map[tableType]) map[tableType] = new Set();
+                const set = new Set(map[tableType]);
+                if (set.has(id)) set.delete(id); else set.add(id);
+                return { ...map, [tableType]: set };
+            });
+        };
+        const handleCheckAll = () => {
+            const allInactive = items.filter(i => !i.is_active).map(i => i.id);
+            if (allInactive.length === 0) return;
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                const set = new Set(map[tableType] || []);
+                const allSelected = allInactive.every(id => set.has(id));
+                if (allSelected) {
+                    allInactive.forEach(id => set.delete(id));
+                } else {
+                    allInactive.forEach(id => set.add(id));
                 }
+                return { ...map, [tableType]: set };
+            });
+        };
+
+        const hasInactive = items.some(i => !i.is_active);
+        const allInactive = items.filter(i => !i.is_active);
+        const mapSet = checkedItems[tableType] || new Set();
+        const isAllSelected = allInactive.length > 0 && allInactive.every(i => mapSet.has(i.id));
+
+        return (
+            <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0 relative">
+                <div className={`px-3 py-2 border-b border-gray-800 flex items-center justify-between gap-1`}>
+                    <div className={`flex items-center gap-2 ${color}`}>
+                        <Icon size={14} /> <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
+                    </div>
+                    {isTableValid && hasInactive && (
+                        <button onClick={handleCheckAll} className="text-[10px] bg-gray-800 text-gray-300 font-bold px-1.5 py-0.5 rounded hover:bg-gray-700 transition-all">
+                            {isAllSelected ? '- ALL' : '+ ALL'}
+                        </button>
+                    )}
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-72 space-y-0.5 p-2" style={{ paddingBottom: '3rem' }}>
+                    {items.length === 0
+                        ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
+                        : items.map(item => (
+                            <div key={item.id} className="flex flex-col mb-1 border-b border-gray-800/50 pb-1">
+                                <button
+                                    onClick={() => onSel(item)}
+                                    title={item.name}
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
+                                >
+                                    <span className="truncate">{item.name}</span>
+                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
+                                </button>
+                                {isTableValid && (
+                                    <div className="flex items-center justify-between px-2 pt-1">
+                                        <div className="flex items-center gap-1.5" onClick={(e) => handleCheck(e, item.id)}>
+                                            <input type="checkbox" checked={mapSet.has(item.id)} onChange={() => { }} className="w-3 h-3 text-indigo-600 rounded border-gray-600 focus:ring-0 cursor-pointer" />
+                                            <span className="text-[9px] text-gray-500 font-bold uppercase cursor-pointer">{item.is_active ? 'LIVE' : 'HIDDEN'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
+                {children && <div className="p-2 border-t border-gray-800 z-10 space-y-1 bg-gray-900 absolute bottom-0 w-full shadow-[0_-10px_20px_rgb(0,0,0,0.5)]">{children}</div>}
             </div>
-            {children && <div className="p-2 border-t border-gray-800 space-y-1">{children}</div>}
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -337,7 +406,7 @@ export function SchoolCentral() {
                 <div className="flex divide-x divide-gray-800">
 
                     {/* STATES */}
-                    <Col title="State" icon={School} color="text-blue-400" items={states} selId={selState?.id}
+                    <Col title="State" tableType="states" icon={School} color="text-blue-400" items={states} selId={selState?.id}
                         onSel={async (s) => {
                             setSelState(s);
                             setSelBoard(null); setSelClass(null); setSelStream(null); setSelSubject(null);
@@ -358,7 +427,7 @@ export function SchoolCentral() {
                     </Col>
 
                     {/* BOARDS */}
-                    <Col title="Board" icon={School} color="text-indigo-400" items={filtBoards} selId={selBoard?.id} onSel={(b) => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}>
+                    <Col title="Board" tableType="boards" icon={School} color="text-indigo-400" items={filtBoards} selId={selBoard?.id} onSel={(b) => { setSelBoard(b); setSelClass(null); setSelStream(null); setSelSubject(null); }}>
                         <AIFetchBtn
                             label={fetchingKey === 'boards' ? 'Fetching...' : 'AI Fetch'}
                             onClick={() => aiFetchBoards(false)}
@@ -389,7 +458,7 @@ export function SchoolCentral() {
 
                     {/* STREAM (only for Class 11-12) */}
                     {needsStream && (
-                        <Col title="Stream" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id}
+                        <Col title="Stream" tableType="streams" icon={School} color="text-yellow-400" items={streams} selId={selStream?.id}
                             onSel={async (s) => { setSelStream(s); setSelSubject(null); await autoFetchSubjects(selBoard, selClass, s); }}
                         >
                             <AIFetchBtn label="AI Fetch" onClick={aiFetchStreams} loading={fetchingKey === 'streams'} />
@@ -407,12 +476,26 @@ export function SchoolCentral() {
                     </Col>
 
                     {/* CHAPTERS */}
-                    <Col title="Chapter" icon={School} color="text-orange-400" items={filtChapters} selId={null} onSel={() => { }}>
+                    <Col title="Chapter" tableType="chapters" icon={School} color="text-orange-400" items={filtChapters} selId={null} onSel={() => { }}>
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchChapters} loading={fetchingKey === 'chapters'} />
                         <AddBtn label="Add Manual" onClick={addChapter} />
                     </Col>
                 </div>
             </div>
+
+            {/* Bulk Actions Floating Bar */}
+            {Object.values(checkedItems).some(set => set.size > 0) && (
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl p-4 z-50 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="text-green-400" size={20} />
+                        <span className="text-white font-bold text-sm">{Object.values(checkedItems).reduce((sum, set) => sum + set.size, 0)} items selected</span>
+                    </div>
+                    <button onClick={handleBulkApprove} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                        <Save size={16} /> Save & Enable Selected
+                    </button>
+                    <button onClick={() => setCheckedItems({})} className="text-gray-400 hover:text-white px-3 text-sm">Cancel</button>
+                </div>
+            )}
 
             {/* Board management table */}
             {filtBoards.length > 0 && (
@@ -476,6 +559,7 @@ export function SchoolCentral() {
 export function UniversityHub() {
     const [toast, setToast] = useState({ msg: '', type: 'success' });
     const [fetchingKey, setFetchingKey] = useState('');
+    const [checkedItems, setCheckedItems] = useState({}); // { tableType: Set<id> }
 
     const [states, setStates] = useState([]);
     const [universities, setUniversities] = useState([]);
@@ -609,33 +693,106 @@ export function UniversityHub() {
         catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
     };
 
+    const handleBulkApprove = async () => {
+        if (Object.values(checkedItems).every(set => set.size === 0)) {
+            return showToast('No items selected for bulk action.', 'error');
+        }
+
+        try {
+            for (const tableType in checkedItems) {
+                const ids = Array.from(checkedItems[tableType]);
+                if (ids.length > 0) {
+                    await api.put('/admin/bulk-approve', { type: tableType, ids });
+                }
+            }
+            showToast('Selected items enabled successfully!');
+            setCheckedItems({});
+            load();
+        } catch (e) {
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
+    };
+
     const filtUnis = selState ? universities.filter(u => u.state_id === selState.id) : [];
     const filtSubjects = selUni && selDegree
         ? subjects.filter(s => s.university_id === selUni.id && s.degree_type_id === selDegree.id && (selSemester ? s.semester_id === selSemester.id : true))
         : [];
     const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
 
-    const Col = ({ title, color, items, selId, onSel, children }) => (
-        <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0">
-            <div className={`px-3 py-2 border-b border-gray-800 flex items-center gap-2 ${color}`}>
-                <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto max-h-64 space-y-0.5 p-2">
-                {items.length === 0
-                    ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
-                    : items.map(item => (
-                        <button key={item.id} onClick={() => onSel(item)}
-                            title={item.name}
-                            className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all ${selId === item.id ? 'bg-violet-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-                        >
-                            {item.name}
-                        </button>
-                    ))
+    const Col = ({ title, tableType, color, items, selId, onSel, children }) => {
+        const isTableValid = !!tableType && !['states', 'classes', 'streams', 'degree_types', 'semesters'].includes(tableType);
+        const handleCheck = (e, id) => {
+            e.stopPropagation();
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                if (!map[tableType]) map[tableType] = new Set();
+                const set = new Set(map[tableType]);
+                if (set.has(id)) set.delete(id); else set.add(id);
+                return { ...map, [tableType]: set };
+            });
+        };
+        const handleCheckAll = () => {
+            const allInactive = items.filter(i => !i.is_active).map(i => i.id);
+            if (allInactive.length === 0) return;
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                const set = new Set(map[tableType] || []);
+                const allSelected = allInactive.every(id => set.has(id));
+                if (allSelected) {
+                    allInactive.forEach(id => set.delete(id));
+                } else {
+                    allInactive.forEach(id => set.add(id));
                 }
+                return { ...map, [tableType]: set };
+            });
+        };
+
+        const hasInactive = items.some(i => !i.is_active);
+        const allInactive = items.filter(i => !i.is_active);
+        const mapSet = checkedItems[tableType] || new Set();
+        const isAllSelected = allInactive.length > 0 && allInactive.every(i => mapSet.has(i.id));
+
+        return (
+            <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0 relative">
+                <div className={`px-3 py-2 border-b border-gray-800 flex items-center justify-between gap-1`}>
+                    <div className={`flex items-center gap-2 ${color}`}>
+                        <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
+                    </div>
+                    {isTableValid && hasInactive && (
+                        <button onClick={handleCheckAll} className="text-[10px] bg-gray-800 text-gray-300 font-bold px-1.5 py-0.5 rounded hover:bg-gray-700 transition-all">
+                            {isAllSelected ? '- ALL' : '+ ALL'}
+                        </button>
+                    )}
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-64 space-y-0.5 p-2" style={{ paddingBottom: '3rem' }}>
+                    {items.length === 0
+                        ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
+                        : items.map(item => (
+                            <div key={item.id} className="flex flex-col mb-1 border-b border-gray-800/50 pb-1">
+                                <button
+                                    onClick={() => onSel(item)}
+                                    title={item.name}
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-violet-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
+                                >
+                                    <span className="truncate">{item.name}</span>
+                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
+                                </button>
+                                {isTableValid && (
+                                    <div className="flex items-center justify-between px-2 pt-1">
+                                        <div className="flex items-center gap-1.5" onClick={(e) => handleCheck(e, item.id)}>
+                                            <input type="checkbox" checked={mapSet.has(item.id)} onChange={() => { }} className="w-3 h-3 text-indigo-600 rounded border-gray-600 focus:ring-0 cursor-pointer" />
+                                            <span className="text-[9px] text-gray-500 font-bold uppercase cursor-pointer">{item.is_active ? 'LIVE' : 'HIDDEN'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
+                {children && <div className="p-2 border-t border-gray-800 z-10 space-y-1 bg-gray-900 absolute bottom-0 w-full shadow-[0_-10px_20px_rgb(0,0,0,0.5)]">{children}</div>}
             </div>
-            {children && <div className="p-2 border-t border-gray-800 space-y-1">{children}</div>}
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -651,13 +808,13 @@ export function UniversityHub() {
 
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto">
                 <div className="flex divide-x divide-gray-800">
-                    <Col title="State" color="text-blue-400" items={states} selId={selState?.id}
+                    <Col title="State" tableType="states" color="text-blue-400" items={states} selId={selState?.id}
                         onSel={(s) => { setSelState(s); setSelUni(null); setSelDegree(null); setSelSemester(null); setSelSubject(null); }}
                     >
                         <AddBtn label="Add State" onClick={async () => { const n = prompt('State Name:'); if (n) { await api.post('/admin/states', { name: n }); load(); } }} />
                     </Col>
 
-                    <Col title="University" color="text-violet-400" items={filtUnis} selId={selUni?.id}
+                    <Col title="University" tableType="universities" color="text-violet-400" items={filtUnis} selId={selUni?.id}
                         onSel={(u) => { setSelUni(u); setSelDegree(null); setSelSemester(null); setSelSubject(null); }}
                     >
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchUnis} loading={fetchingKey === 'unis'} />
@@ -669,17 +826,17 @@ export function UniversityHub() {
                         }} />
                     </Col>
 
-                    <Col title="Degree Type" color="text-pink-400" items={selUni ? degreeTypes : []} selId={selDegree?.id}
+                    <Col title="Degree Type" tableType="degree_types" color="text-pink-400" items={selUni ? degreeTypes : []} selId={selDegree?.id}
                         onSel={(d) => { setSelDegree(d); setSelSemester(null); setSelSubject(null); autoFetchSemesters(selUni, d); }}
                     />
 
-                    <Col title="Semester" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id === selUni?.id) : []} selId={selSemester?.id}
+                    <Col title="Semester" tableType="semesters" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id === selUni?.id) : []} selId={selSemester?.id}
                         onSel={(s) => { setSelSemester(s); setSelSubject(null); }}
                     >
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchSemesters} loading={fetchingKey === 'semesters'} />
                     </Col>
 
-                    <Col title="Subject" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
+                    <Col title="Subject" tableType="subjects" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
                         <AddBtn label="Add Manual" onClick={async () => {
                             if (!selUni || !selDegree) return showToast('Select Uni & Degree', 'error');
@@ -689,7 +846,7 @@ export function UniversityHub() {
                         }} />
                     </Col>
 
-                    <Col title="Chapter" color="text-orange-400" items={filtChapters} selId={null} onSel={() => { }}>
+                    <Col title="Chapter" tableType="chapters" color="text-orange-400" items={filtChapters} selId={null} onSel={() => { }}>
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchChapters} loading={fetchingKey === 'chapters'} />
                         <AddBtn label="Add Manual" onClick={async () => {
                             if (!selSubject) return showToast('Select a subject', 'error');
@@ -700,6 +857,20 @@ export function UniversityHub() {
                     </Col>
                 </div>
             </div>
+
+            {/* Bulk Actions Floating Bar */}
+            {Object.values(checkedItems).some(set => set.size > 0) && (
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl p-4 z-50 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="text-green-400" size={20} />
+                        <span className="text-white font-bold text-sm">{Object.values(checkedItems).reduce((sum, set) => sum + set.size, 0)} items selected</span>
+                    </div>
+                    <button onClick={handleBulkApprove} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                        <Save size={16} /> Save & Enable Selected
+                    </button>
+                    <button onClick={() => setCheckedItems({})} className="text-gray-400 hover:text-white px-3 text-sm">Cancel</button>
+                </div>
+            )}
 
             {/* University Table */}
             {filtUnis.length > 0 && (
@@ -901,6 +1072,7 @@ const COMPETITIVE_EXAMS = ['UPSC', 'SSC', 'Banking', 'Railway', 'State PSC', 'ND
 export function CompetitiveArena() {
     const [toast, setToast] = useState({ msg: '', type: 'success' });
     const [fetchingKey, setFetchingKey] = useState('');
+    const [checkedItems, setCheckedItems] = useState({}); // { tableType: Set<id> }
 
     const [categories, setCategories] = useState([]);
     const [papers, setPapers] = useState([]);
@@ -959,7 +1131,7 @@ export function CompetitiveArena() {
     };
 
     const aiFetchChapters = async () => {
-        if (!selSubject) return showToast('Select a subject', 'error');
+        if (!selSubject) return showToast('Select a subject first', 'error');
         setFetchingKey('chapters');
         try {
             const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
@@ -975,29 +1147,106 @@ export function CompetitiveArena() {
         catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
     };
 
+    const handleBulkApprove = async () => {
+        if (Object.values(checkedItems).every(set => set.size === 0)) {
+            return showToast('No items selected for bulk action.', 'error');
+        }
+
+        try {
+            for (const tableType in checkedItems) {
+                const ids = Array.from(checkedItems[tableType]);
+                if (ids.length > 0) {
+                    await api.post(`/admin/bulk-update/${tableType}`, { ids, is_active: true });
+                }
+            }
+            showToast('Selected items enabled successfully!');
+            setCheckedItems({});
+            load();
+        } catch (e) {
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
+    };
+
     const filtPapers = selCat ? papers.filter(p => p.category_id === selCat.id) : [];
     const filtSubjects = selCat && selPaper
         ? subjects.filter(s => s.category_id === selCat.id && s.paper_stage_id === selPaper.id)
         : [];
     const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
 
-    const Col = ({ title, color, items, selId, onSel, children }) => (
-        <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0">
-            <div className={`px-3 py-2 border-b border-gray-800 text-[11px] font-black uppercase tracking-wider ${color}`}>{title}</div>
-            <div className="flex-1 overflow-y-auto max-h-64 space-y-0.5 p-2">
-                {items.length === 0
-                    ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
-                    : items.map(item => (
-                        <button key={item.id} onClick={() => onSel(item)}
-                            title={item.name}
-                            className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all ${selId === item.id ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-                        >{item.name}</button>
-                    ))
+    const Col = ({ title, tableType, color, items, selId, onSel, children }) => {
+        const isTableValid = !!tableType && !['states', 'classes', 'streams', 'degree_types', 'semesters'].includes(tableType);
+        const handleCheck = (e, id) => {
+            e.stopPropagation();
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                if (!map[tableType]) map[tableType] = new Set();
+                const set = new Set(map[tableType]);
+                if (set.has(id)) set.delete(id); else set.add(id);
+                return { ...map, [tableType]: set };
+            });
+        };
+        const handleCheckAll = () => {
+            const allInactive = items.filter(i => !i.is_active).map(i => i.id);
+            if (allInactive.length === 0) return;
+            setCheckedItems(prev => {
+                const map = { ...prev };
+                const set = new Set(map[tableType] || []);
+                const allSelected = allInactive.every(id => set.has(id));
+                if (allSelected) {
+                    allInactive.forEach(id => set.delete(id));
+                } else {
+                    allInactive.forEach(id => set.add(id));
                 }
+                return { ...map, [tableType]: set };
+            });
+        };
+
+        const hasInactive = items.some(i => !i.is_active);
+        const allInactive = items.filter(i => !i.is_active);
+        const mapSet = checkedItems[tableType] || new Set();
+        const isAllSelected = allInactive.length > 0 && allInactive.every(i => mapSet.has(i.id));
+
+        return (
+            <div className="flex flex-col min-w-[160px] max-w-[200px] flex-shrink-0 relative">
+                <div className={`px-3 py-2 border-b border-gray-800 flex items-center justify-between gap-1`}>
+                    <div className={`flex items-center gap-2 ${color}`}>
+                        <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
+                    </div>
+                    {isTableValid && hasInactive && (
+                        <button onClick={handleCheckAll} className="text-[10px] bg-gray-800 text-gray-300 font-bold px-1.5 py-0.5 rounded hover:bg-gray-700 transition-all">
+                            {isAllSelected ? '- ALL' : '+ ALL'}
+                        </button>
+                    )}
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-64 space-y-0.5 p-2" style={{ paddingBottom: '3rem' }}>
+                    {items.length === 0
+                        ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
+                        : items.map(item => (
+                            <div key={item.id} className="flex flex-col mb-1 border-b border-gray-800/50 pb-1">
+                                <button
+                                    onClick={() => onSel(item)}
+                                    title={item.name}
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
+                                >
+                                    <span className="truncate">{item.name}</span>
+                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
+                                </button>
+                                {isTableValid && (
+                                    <div className="flex items-center justify-between px-2 pt-1">
+                                        <div className="flex items-center gap-1.5" onClick={(e) => handleCheck(e, item.id)}>
+                                            <input type="checkbox" checked={mapSet.has(item.id)} onChange={() => { }} className="w-3 h-3 text-indigo-600 rounded border-gray-600 focus:ring-0 cursor-pointer" />
+                                            <span className="text-[9px] text-gray-500 font-bold uppercase cursor-pointer">{item.is_active ? 'LIVE' : 'HIDDEN'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
+                {children && <div className="p-2 border-t border-gray-800 z-10 space-y-1 bg-gray-900 absolute bottom-0 w-full shadow-[0_-10px_20px_rgb(0,0,0,0.5)]">{children}</div>}
             </div>
-            {children && <div className="p-2 border-t border-gray-800 space-y-1">{children}</div>}
-        </div>
-    );
+        );
+    };
 
     // Quick-access exam grid
     const compCategories = categories.filter(c =>
@@ -1043,7 +1292,7 @@ export function CompetitiveArena() {
             {selCat && (
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto">
                     <div className="flex divide-x divide-gray-800">
-                        <Col title="Paper / Stage" color="text-yellow-400" items={filtPapers} selId={selPaper?.id}
+                        <Col title="Paper / Stage" tableType="papers_stages" color="text-yellow-400" items={filtPapers} selId={selPaper?.id}
                             onSel={(p) => { setSelPaper(p); setSelSubject(null); }}
                         >
                             <AIFetchBtn label="AI Fetch" onClick={aiFetchPapers} loading={fetchingKey === 'papers'} />
@@ -1054,7 +1303,7 @@ export function CompetitiveArena() {
                             }} />
                         </Col>
 
-                        <Col title="Subject" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
+                        <Col title="Subject" tableType="subjects" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
                             <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
                             <AddBtn label="Add Manual" onClick={async () => {
                                 if (!selPaper) return showToast('Select a paper first', 'error');
