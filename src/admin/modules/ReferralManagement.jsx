@@ -164,7 +164,7 @@ export const ReferralManagement = () => {
                             <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-start gap-4 mt-2">
                                 <AlertCircle className="text-indigo-400 mt-0.5 shrink-0" size={16} />
                                 <div className="text-[11px] text-indigo-200 uppercase tracking-widest leading-relaxed font-bold">
-                                    If enabled, when a referred user buys a plan >= ₹{settings.REFERRAL_MIN_PURCHASE_RS}, both parties automatically receive {settings.REFERRAL_REWARD_DURATION} {settings.REFERRAL_REWARD_TYPE} of Prime Access.
+                                    If enabled, when a referred user buys a plan &gt;= ₹{settings.REFERRAL_MIN_PURCHASE_RS}, both parties automatically receive {settings.REFERRAL_REWARD_DURATION} {settings.REFERRAL_REWARD_TYPE} of Prime Access.
                                 </div>
                             </div>
 
