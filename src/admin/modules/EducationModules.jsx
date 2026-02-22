@@ -352,12 +352,13 @@ export function SchoolCentral() {
                     <div className={`flex items-center gap-2 ${color}`}>
                         <Icon size={14} /> <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
                     </div>
-                    {isTableValid && hasInactive && (
-                        <button onClick={handleCheckAll} className="text-[10px] bg-gray-800 text-gray-300 font-bold px-1.5 py-0.5 rounded hover:bg-gray-700 transition-all">
-                            {isAllSelected ? '- ALL' : '+ ALL'}
-                        </button>
-                    )}
                 </div>
+                {isTableValid && hasInactive && (
+                    <div className="px-3 py-2 border-b border-gray-800 bg-gray-800/50 flex items-center justify-between cursor-pointer group hover:bg-gray-800 transition-all" onClick={handleCheckAll}>
+                        <span className="text-[10px] font-bold text-gray-300 group-hover:text-white uppercase tracking-wider">Select All Inactive</span>
+                        <input type="checkbox" checked={isAllSelected} onChange={() => { }} className="w-3.5 h-3.5 text-indigo-500 rounded border-gray-500 bg-gray-800 focus:ring-0 cursor-pointer pointer-events-none" />
+                    </div>
+                )}
                 <div className="flex-1 overflow-y-auto max-h-72 space-y-0.5 p-2" style={{ paddingBottom: '3rem' }}>
                     {items.length === 0
                         ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
@@ -758,12 +759,13 @@ export function UniversityHub() {
                     <div className={`flex items-center gap-2 ${color}`}>
                         <span className="text-[11px] font-black uppercase tracking-wider">{title}</span>
                     </div>
-                    {isTableValid && hasInactive && (
-                        <button onClick={handleCheckAll} className="text-[10px] bg-gray-800 text-gray-300 font-bold px-1.5 py-0.5 rounded hover:bg-gray-700 transition-all">
-                            {isAllSelected ? '- ALL' : '+ ALL'}
-                        </button>
-                    )}
                 </div>
+                {isTableValid && hasInactive && (
+                    <div className="px-3 py-2 border-b border-gray-800 bg-gray-800/50 flex items-center justify-between cursor-pointer group hover:bg-gray-800 transition-all" onClick={handleCheckAll}>
+                        <span className="text-[10px] font-bold text-gray-300 group-hover:text-white uppercase tracking-wider">Select All Inactive</span>
+                        <input type="checkbox" checked={isAllSelected} onChange={() => { }} className="w-3.5 h-3.5 text-indigo-500 rounded border-gray-500 bg-gray-800 focus:ring-0 cursor-pointer pointer-events-none" />
+                    </div>
+                )}
                 <div className="flex-1 overflow-y-auto max-h-64 space-y-0.5 p-2" style={{ paddingBottom: '3rem' }}>
                     {items.length === 0
                         ? <p className="text-[10px] text-gray-600 italic p-2">None yet</p>
