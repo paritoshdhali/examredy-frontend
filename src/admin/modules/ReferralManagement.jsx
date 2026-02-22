@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Gift, Save, CheckCircle2, TrendingUp, Users, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Gift, Save, CheckCircle2, TrendingUp, Users, Link as LinkIcon, AlertCircle, Settings } from 'lucide-react';
 
 const Toast = ({ msg, type }) => {
     if (!msg) return null;
