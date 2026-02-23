@@ -30,7 +30,7 @@ const Group = () => {
         if (!inputCode) return;
         setLoading(true);
         try {
-            await api.post(`/group/join/${inputCode}`); // Updated to use axios instance
+            await api.post('/group/join', { code: inputCode }); // Code must be in the body, not url
             setSessionCode(inputCode);
             setStep('lobby');
             setParticipants([{ username: 'You', isHost: false }]);
