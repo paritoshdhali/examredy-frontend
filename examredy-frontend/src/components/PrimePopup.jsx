@@ -5,39 +5,36 @@ const PrimePopup = ({ onClose }) => {
     const navigate = useNavigate();
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden relative">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative border-4 border-amber-400">
                 {/* Close button removed to enforce subscription/sharing */}
-                <div className="bg-gradient-to-r from-amber-400 to-orange-500 p-6 text-white text-center">
-                    <h2 className="text-2xl font-bold mb-2">Daily Limit Reached! 🚀</h2>
-                    <p>Upgrade to Prime to continue your streak.</p>
+                <div className="bg-gradient-to-r from-red-500 to-pink-600 p-8 text-white text-center">
+                    <div className="text-5xl mb-4">🛑</div>
+                    <h2 className="text-3xl font-black mb-2">Daily Free Limit Reached</h2>
+                    <p className="font-medium text-lg">You have used up all your free sessions for today.</p>
                 </div>
 
-                <div className="p-6 grid gap-4">
-                    <div className="border border-amber-200 bg-amber-50 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:shadow-md transition" onClick={() => navigate('/prime')}>
-                        <div>
-                            <h3 className="font-bold text-gray-800">1 Hour Pass</h3>
-                            <p className="text-sm text-gray-600">Uninterrupted access</p>
-                        </div>
-                        <span className="bg-amber-500 text-white px-3 py-1 rounded-full font-bold">₹10</span>
-                    </div>
-
-                    <div className="border border-indigo-200 bg-indigo-50 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:shadow-md transition" onClick={() => navigate('/prime')}>
-                        <div>
-                            <h3 className="font-bold text-gray-800">3 Hour Pass</h3>
-                            <p className="text-sm text-gray-600">Best Value</p>
-                        </div>
-                        <span className="bg-primary text-white px-3 py-1 rounded-full font-bold">₹25</span>
-                    </div>
-
-                    <div className="border border-green-200 bg-green-50 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition" onClick={() => navigate('/prime?tab=referral')}>
-                        <h3 className="font-bold text-green-700">🎁 Refer & Earn</h3>
-                        <p className="text-sm text-green-600">Get 1.5 Hours Free per friend</p>
-                    </div>
+                <div className="p-6 bg-gray-50 text-center border-b border-gray-100">
+                    <p className="text-gray-800 font-bold text-lg mb-1">Want to keep practicing?</p>
+                    <p className="text-gray-600 text-sm">You must unlock Prime or refer a friend to continue your practice session.</p>
                 </div>
 
-                <div className="p-4 bg-gray-50 text-center">
-                    <p className="text-gray-500 text-sm font-medium">Please select an option above to continue practicing.</p>
+                <div className="p-6 grid gap-4 bg-white">
+                    <button onClick={() => navigate('/prime')} className="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-2xl p-4 flex justify-between items-center hover:shadow-lg transition transform hover:-translate-y-1 shadow-md">
+                        <div className="text-left">
+                            <h3 className="font-black text-xl drop-shadow-sm">🚀 Unlock Prime</h3>
+                            <p className="text-sm font-medium opacity-90 drop-shadow-sm">Plans starting at just ₹10</p>
+                        </div>
+                        <span className="bg-white text-orange-600 px-4 py-2 rounded-full font-black shadow-sm">View Plans</span>
+                    </button>
+
+                    <button onClick={() => navigate('/prime?tab=referral')} className="w-full border-2 border-green-500 bg-green-50 text-green-700 rounded-2xl p-4 flex justify-between items-center hover:bg-green-100 transition transform hover:-translate-y-1 shadow-sm">
+                        <div className="text-left">
+                            <h3 className="font-black text-xl">🎁 Share & Earn</h3>
+                            <p className="text-sm font-medium opacity-90">Get 1.5 Hours Free per friend</p>
+                        </div>
+                        <span className="bg-green-500 text-white px-4 py-2 rounded-full font-black shadow-sm">Share Now</span>
+                    </button>
                 </div>
             </div>
         </div>
