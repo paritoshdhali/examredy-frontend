@@ -34,6 +34,11 @@ api.interceptors.response.use(
     (error) => {
         console.error('[API-ERROR]', error.response?.status, error.response?.data || error.message);
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            // Check if it's the custom LIMIT_REACHED error (which is also a 403 but shouldn't log the user out)
+            if (error.response.data?.code === 'LIMIT_REACHED') {
+                return Promise.reject(error);
+            }
+
             // Token expired, invalid, or lacking privileges
             const path = window.location.pathname;
             if (path.startsWith('/admin')) {
