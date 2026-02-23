@@ -25,11 +25,38 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// Strict CORS (Adjust origin for production)
+// CORS Configuration
+const allowedOrigins = [
+    process.env.FRONTEND_URL,         // Production frontend URL (set in Railway env)
+    'http://localhost:5173',           // Vite dev server default
+    'http://localhost:3000',           // CRA / alternate dev server
+    'http://localhost:4173',           // Vite preview
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) {
+            return callback(null, true);
+        }
+        // Allow any localhost origin for local development
+        if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            return callback(null, true);
+        }
+        // Allow configured origins (production frontend, Vercel previews, etc.)
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        }
+        // Allow any Vercel deployment for this project
+        if (origin.includes('vercel.app')) {
+            return callback(null, true);
+        }
+        console.warn(`[CORS] Blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 
 app.use(express.json());
@@ -42,7 +69,7 @@ app.get('/', (req, res) => {
 
 // Root API Route
 app.get('/api', (req, res) => {
-    res.json({ message: 'ExamRedy API is running' });
+    res.json({ message: 'ExamRedy API is running', version: '1.2.2-OR-Final-Fix' });
 });
 
 // Health Check
