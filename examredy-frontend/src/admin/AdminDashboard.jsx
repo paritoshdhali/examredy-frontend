@@ -1,807 +1,256 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { GlobalCategories, SchoolCentral, UniversityHub, CompetitiveArena } from './modules/EducationModules';
+import { NeuralHub } from './modules/NeuralHub';
+import { UserManagement } from './modules/UserManagement';
+import { PrimeArchitecture } from './modules/PrimeArchitecture';
+import { MCQModeration } from './modules/MCQModeration';
+import { RevenueAnalytics } from './modules/RevenueAnalytics';
+import { AdSenseCore } from './modules/AdSenseCore';
+import { LegalCompliance } from './modules/LegalCompliance';
+import { SystemSettings } from './modules/SystemSettings';
+import { DashboardOverview } from './modules/DashboardOverview';
+import { ReferralManagement } from './modules/ReferralManagement';
 import {
-    LayoutDashboard, Users, Layers, CheckSquare,
-    Settings, ShieldAlert, Cpu, Share2,
-    Eye, Edit, Trash2, Check, X, Search,
-    Plus, DollarSign, UserCheck, TrendingUp, Clock, CheckCircle,
-    LogOut, Globe, BookOpen, Book
+    LayoutDashboard, School, GraduationCap, Briefcase,
+    Users, CreditCard, Cpu, CheckSquare,
+    DollarSign, PieChart, FileText, Settings, LogOut,
+    ChevronRight, ShieldCheck
 } from 'lucide-react';
 
-const Admin = () => {
+// ─── Sidebar menu definition ───────────────────────────────────────────────
+const MENU = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-400' },
+    { id: 'categories', label: 'Global Categories', icon: CheckSquare, color: 'text-pink-400' },
+    { id: 'school', label: 'School Central', icon: School, color: 'text-blue-400' },
+    { id: 'university', label: 'University Hub', icon: GraduationCap, color: 'text-violet-400' },
+    { id: 'competitive', label: 'Competitive Arena', icon: Briefcase, color: 'text-yellow-400' },
+    { id: 'users', label: 'User Management', icon: Users, color: 'text-green-400' },
+    { id: 'prime', label: 'Prime Architecture', icon: CreditCard, color: 'text-pink-400' },
+    { id: 'ai', label: 'Neural Hub (AI)', icon: Cpu, color: 'text-cyan-400' },
+    { id: 'mcq', label: 'MCQ Moderation', icon: CheckSquare, color: 'text-orange-400' },
+    { id: 'revenue', label: 'Revenue Analytics', icon: DollarSign, color: 'text-emerald-400' },
+    { id: 'ads', label: 'AdSense Core', icon: PieChart, color: 'text-red-400' },
+    { id: 'legal', label: 'Legal Compliance', icon: FileText, color: 'text-gray-400' },
+    { id: 'settings', label: 'System Settings', icon: Settings, color: 'text-slate-400' },
+    { id: 'referral', label: 'Referral Program', icon: Users, color: 'text-pink-400' },
+];
+
+// ─── Module placeholder renderer ──────────────────────────────────────────
+const MODULE_META = {
+    dashboard: { title: 'Dashboard', desc: 'Overview Analytics & System Diagnostics', badge: 'CORE' },
+    categories: { title: 'Global Categories', desc: 'Manage all top-level exam and education categories', badge: 'EDUCATION' },
+    school: { title: 'School Central', desc: 'State → Board → Class → Stream → Subject → Chapter hierarchy', badge: 'EDUCATION' },
+    university: { title: 'University Hub', desc: 'University → Degree → Semester management', badge: 'EDUCATION' },
+    competitive: { title: 'Competitive Arena', desc: 'UPSC / SSC / NEET papers and stages', badge: 'EDUCATION' },
+    users: { title: 'User Management', desc: 'Identity, role, subscription controls', badge: 'ACCESS' },
+    prime: { title: 'Prime Architecture', desc: 'Subscription plans and monetization tiers', badge: 'ECONOMICS' },
+    ai: { title: 'Neural Hub (AI)', desc: 'AI provider config and model selection', badge: 'AI' },
+    mcq: { title: 'MCQ Moderation', desc: 'Review and approve AI-generated questions', badge: 'CONTENT' },
+    revenue: { title: 'Revenue Analytics', desc: 'Transactions, payments and revenue reports', badge: 'ECONOMICS' },
+    ads: { title: 'AdSense Core', desc: 'Ad slots, scripts and ads.txt management', badge: 'MARKETING' },
+    legal: { title: 'Legal Compliance', desc: 'Privacy Policy, Terms and legal docs editor', badge: 'POLICY' },
+    settings: { title: 'System Settings', desc: 'SEO, branding, global toggles and config', badge: 'SYSTEM' },
+    referral: { title: 'Referral Program', desc: 'Incentive tracking and reward management', badge: 'GROWTH' },
+};
+
+const BADGE_COLORS = {
+    CORE: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    EDUCATION: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    ACCESS: 'bg-green-500/10 text-green-400 border-green-500/20',
+    ECONOMICS: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    AI: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    CONTENT: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    MARKETING: 'bg-red-500/10 text-red-400 border-red-500/20',
+    POLICY: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    SYSTEM: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    GROWTH: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+};
+
+function ModulePlaceholder({ id }) {
+    // Real modules
+    if (id === 'dashboard') return <DashboardOverview />;
+    if (id === 'categories') return <GlobalCategories />;
+    if (id === 'school') return <SchoolCentral />;
+    if (id === 'university') return <UniversityHub />;
+    if (id === 'competitive') return <CompetitiveArena />;
+    if (id === 'ai') return <NeuralHub />;
+    if (id === 'users') return <UserManagement />;
+    if (id === 'prime') return <PrimeArchitecture />;
+    if (id === 'mcq') return <MCQModeration />;
+    if (id === 'revenue') return <RevenueAnalytics />;
+    if (id === 'ads') return <AdSenseCore />;
+    if (id === 'legal') return <LegalCompliance />;
+    if (id === 'settings') return <SystemSettings />;
+    if (id === 'referral') return <ReferralManagement />;
+
+    const meta = MODULE_META[id] || MODULE_META.dashboard;
+    const menuItem = MENU.find(m => m.id === id) || MENU[0];
+    const Icon = menuItem.icon;
+    const badgeClass = BADGE_COLORS[meta.badge] || BADGE_COLORS.CORE;
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full min-h-[60vh] p-10 text-center">
+            <div className="max-w-lg w-full">
+                {/* Icon */}
+                <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-gray-800 border border-gray-700`}>
+                    <Icon size={36} className={menuItem.color} />
+                </div>
+
+                {/* Badge */}
+                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border mb-4 ${badgeClass}`}>
+                    {meta.badge}
+                </span>
+
+                {/* Title */}
+                <h2 className="text-white font-black text-2xl uppercase tracking-tighter mb-3">
+                    {meta.title}
+                </h2>
+
+                {/* Description */}
+                <p className="text-gray-500 text-sm font-medium mb-8 leading-relaxed">
+                    {meta.desc}
+                </p>
+
+                {/* Status */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-left">
+                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mb-3">Module Status</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-sm font-bold">Layer 2 Layout</span>
+                        <span className="text-green-400 text-[10px] font-black bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">✓ STABLE</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                        <span className="text-gray-400 text-sm font-bold">Feature Module</span>
+                        <span className="text-yellow-400 text-[10px] font-black bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⏳ NEXT LAYER</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main AdminDashboard Component ─────────────────────────────────────────
+const AdminDashboard = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState('overview');
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { logout, user } = useAuth();
+    const [activeTab, setActiveTab] = useState('dashboard');
 
     const handleLogout = () => {
         logout();
-        navigate('/admin');
+        navigate('/admin/login');
     };
 
-    // Module States
-    const [users, setUsers] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [mcqs, setMcqs] = useState([]);
-    const [settings, setSettings] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Structural States
-    const [plans, setPlans] = useState([]);
-    const [languages, setLanguages] = useState([]);
-    const [subjects, setSubjects] = useState([]);
-    const [chapters, setChapters] = useState([]);
-    const [streams, setStreams] = useState([]);
-
-    useEffect(() => {
-        fetchStats();
-    }, []);
-
-    const fetchStats = async () => {
-        try {
-            setLoading(true);
-            const res = await api.get('/admin/stats');
-            setStats(res.data);
-            setLoading(false);
-        } catch (err) {
-            setError('Failed to load dashboard statistics');
-            setLoading(false);
-        }
-    };
-
-    const fetchUsers = async () => {
-        try {
-            const res = await api.get(`/admin/users?search=${searchQuery}`);
-            setUsers(res.data.users);
-        } catch (err) {
-            console.error('Error fetching users:', err);
-        }
-    };
-
-    const fetchCategories = async () => {
-        const res = await api.get('/admin/categories');
-        setCategories(res.data);
-    };
-
-    const fetchMcqs = async () => {
-        const res = await api.get('/admin/mcqs?status=pending');
-        setMcqs(res.data);
-    };
-
-    const fetchSettings = async () => {
-        const res = await api.get('/admin/settings');
-        setSettings(res.data);
-    };
-
-    const fetchStructure = async () => {
-        try {
-            const [sRes, bRes, cRes, lRes, subRes, chRes, stRes] = await Promise.all([
-                api.get('/admin/states'),
-                api.get('/admin/boards'),
-                api.get('/admin/classes'),
-                api.get('/admin/languages'),
-                api.get('/admin/subjects'),
-                api.get('/admin/chapters'),
-                api.get('/admin/streams')
-            ]);
-            setStates(sRes.data);
-            setBoards(bRes.data);
-            setClasses(cRes.data);
-            setLanguages(lRes.data);
-            setSubjects(subRes.data);
-            setChapters(chRes.data);
-            setStreams(stRes.data);
-        } catch (err) {
-            console.error('Error fetching structure:', err);
-        }
-    };
-
-    const fetchPlans = async () => {
-        const res = await api.get('/admin/plans');
-        setPlans(res.data);
-    };
-
-    useEffect(() => {
-        if (activeTab === 'users') fetchUsers();
-        if (activeTab === 'categories') fetchCategories();
-        if (activeTab === 'mcqs') fetchMcqs();
-        if (activeTab === 'settings' || activeTab === 'ai') fetchSettings();
-        if (activeTab === 'structure') fetchStructure();
-        if (activeTab === 'plans') fetchPlans();
-    }, [activeTab, searchQuery]);
-
-    const handleUserStatus = async (id, status) => {
-        await api.put(`/admin/users/${id}/status`, { is_active: !status });
-        fetchUsers();
-    };
-
-    const handleUserSub = async (id, action) => {
-        await api.put(`/admin/users/${id}/subscription`, { action });
-        fetchUsers();
-    };
-
-    const handleMcqApprove = async (id) => {
-        await api.put(`/admin/mcqs/${id}/approve`);
-        fetchMcqs();
-    };
-
-    const handleMcqDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this MCQ?')) {
-            await api.delete(`/admin/mcqs/${id}`);
-            fetchMcqs();
-        }
-    };
-
-    const handleUpdateAI = async (id, data) => {
-        try {
-            await api.put(`/admin/settings/ai/${id}`, data);
-            fetchSettings();
-            alert('AI Provider updated successfully');
-        } catch (err) {
-            alert('Failed to update AI provider');
-        }
-    };
-
-    const handleUpdateSettings = async (data) => {
-        try {
-            await api.put('/admin/settings/system', data);
-            fetchSettings();
-            alert('Settings saved');
-        } catch (err) {
-            alert('Failed to save settings');
-        }
-    };
-
-    const handleAIFetch = async (type, payload) => {
-        try {
-            setLoading(true);
-            const endpoint = `/ai-fetch/${type}`;
-            await api.post(endpoint, payload);
-            fetchStructure();
-            setLoading(false);
-            alert(`AI Fetch for ${type} complete!`);
-        } catch (err) {
-            setLoading(false);
-            alert(`AI Fetch failed: ${err.response?.data?.message || err.message}`);
-        }
-    };
-
-    // --- RENDER COMPONENTS ---
-
-    const SidebarItem = ({ id, label, icon: Icon }) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition-colors ${activeTab === id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100 hover:text-indigo-600'
-                }`}
-        >
-            <Icon size={20} />
-            <span className="font-medium">{label}</span>
-        </button>
-    );
-
-    const StatCard = ({ label, value, icon: Icon, color }) => (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <p className="text-gray-500 text-sm font-medium">{label}</p>
-                <h3 className="text-2xl font-bold mt-1">{value}</h3>
-            </div>
-            <div className={`p-3 rounded-lg ${color} bg-opacity-10 ${color.replace('bg-', 'text-')}`}>
-                <Icon size={24} />
-            </div>
-        </div>
-    );
-
-    const renderOverview = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-gray-800">Analytics Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard label="Active Users Now" value={stats?.activeUsers || 0} icon={UserCheck} color="bg-green-500" />
-                <StatCard label="Total Users Today" value={stats?.totalUsersToday || 0} icon={Users} color="bg-blue-500" />
-                <StatCard label="MCQs Generated" value={stats?.totalMcqsGenerated || 0} icon={Cpu} color="bg-purple-500" />
-                <StatCard label="Today Revenue" value={`₹${stats?.revenueToday || 0}`} icon={DollarSign} color="bg-orange-500" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h4 className="font-bold flex items-center gap-2 mb-4"><TrendingUp size={18} className="text-indigo-600" /> Revenue Growth</h4>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Monthly Revenue</span>
-                            <span className="font-bold text-indigo-600">₹{stats?.revenueMonthly || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Yearly Revenue</span>
-                            <span className="font-bold text-indigo-600">₹{stats?.revenueYearly || 0}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h4 className="font-bold flex items-center gap-2 mb-4"><Users size={18} className="text-indigo-600" /> User Traffic</h4>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Total Users</span>
-                            <span className="font-bold">{stats?.totalUsers || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center pb-2 border-b">
-                            <span className="text-gray-600">Yesterday Traffic</span>
-                            <span className="font-bold">{stats?.totalUsersYesterday || 0}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderUsers = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">User Management</h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search users..."
-                        className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none w-64"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 text-gray-500 text-sm uppercase">
-                        <tr>
-                            <th className="px-6 py-4 font-semibold">Username</th>
-                            <th className="px-6 py-4 font-semibold">Email</th>
-                            <th className="px-6 py-4 font-semibold">Subscription</th>
-                            <th className="px-6 py-4 font-semibold">Status</th>
-                            <th className="px-6 py-4 font-semibold">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {users.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-gray-800">{user.username}</td>
-                                <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                                <td className="px-6 py-4">
-                                    {user.is_premium ? (
-                                        <span className="bg-gold bg-opacity-20 text-indigo-700 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-100">PREMIUM</span>
-                                    ) : (
-                                        <span className="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full text-xs font-medium">FREE</span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {user.is_active ? 'ACTIVE' : 'DISABLED'}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 flex items-center space-x-3 text-gray-400">
-                                    <button onClick={() => handleUserStatus(user.id, user.is_active)} title={user.is_active ? 'Disable' : 'Enable'}>
-                                        {user.is_active ? (
-                                            <><X className="text-red-500 hover:scale-120 transition-transform" /></>
-                                        ) : (
-                                            <><Check className="text-green-500 hover:scale-120 transition-transform" /></>
-                                        )}
-                                    </button>
-                                    <button onClick={() => handleUserSub(user.id, 'extend')} className="hover:text-indigo-600" title="Extend Subscription">
-                                        <Plus size={20} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    const renderMcqs = () => (
-        <div className="space-y-6 animate-fadeIn">
-            <h2 className="text-2xl font-bold">MCQ Moderation</h2>
-            <div className="grid gap-4">
-                {mcqs.length === 0 && <p className="text-gray-500 italic">No pending MCQs to approve.</p>}
-                {mcqs.map(m => (
-                    <div key={m.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors">
-                        <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                                <h4 className="font-bold text-lg text-gray-800">{m.question}</h4>
-                                <div className="grid grid-cols-2 gap-2 mt-4">
-                                    {Object.entries(m.options).map(([key, opt], idx) => (
-                                        <div key={idx} className={`p-2 rounded text-sm ${idx === m.correct_option ? 'bg-green-100 border border-green-200 text-green-700' : 'bg-gray-50 text-gray-600'}`}>
-                                            {opt}
-                                        </div>
-                                    ))}
-                                </div>
-                                <p className="text-sm text-gray-500 mt-4 leading-relaxed"><span className="font-bold">Explanation:</span> {m.explanation}</p>
-                            </div>
-                            <div className="flex flex-col space-y-2 ml-4">
-                                <button onClick={() => handleMcqApprove(m.id)} className="bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors" title="Approve">
-                                    <Check size={20} />
-                                </button>
-                                <button onClick={() => handleMcqDelete(m.id)} className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-colors" title="Delete">
-                                    <Trash2 size={20} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    if (loading && activeTab === 'overview') return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-        </div>
-    );
+    const activeMenuItem = MENU.find(m => m.id === activeTab) || MENU[0];
+    const ActiveIcon = activeMenuItem.icon;
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] flex font-outfit">
-            {/* SIDEBAR */}
-            <aside className="w-72 bg-white border-r border-gray-100 h-screen sticky top-0 flex flex-col p-6 overflow-y-auto">
-                <div className="flex items-center space-x-2 text-indigo-600 mb-10 px-4">
-                    <ShieldAlert size={32} />
-                    <h1 className="text-xl font-black uppercase tracking-tighter">ExamRedy <span className="text-gray-400 text-xs block -mt-1 font-bold">Admin Panel</span></h1>
+        <div className="flex min-h-screen bg-gray-950 font-sans">
+
+            {/* ── Left Sidebar ───────────────────────────────────────── */}
+            <aside className="w-60 bg-gray-900 border-r border-gray-800 flex flex-col fixed h-full z-30 overflow-hidden">
+
+                {/* Brand */}
+                <div className="px-5 py-5 border-b border-gray-800 flex items-center gap-3 flex-shrink-0">
+                    <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20">
+                        <ShieldCheck size={18} className="text-white" />
+                    </div>
+                    <div>
+                        <p className="text-white font-black text-sm tracking-tight leading-none">EXAMREDY</p>
+                        <p className="text-indigo-400 text-[9px] font-bold uppercase tracking-widest mt-0.5">Admin v2.0</p>
+                    </div>
                 </div>
 
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem id="overview" label="Dashboard" icon={LayoutDashboard} />
-                    <SidebarItem id="users" label="User Management" icon={Users} />
-                    <SidebarItem id="plans" label="Subscription Plans" icon={DollarSign} />
-                    <SidebarItem id="categories" label="Categories" icon={Layers} />
-                    <SidebarItem id="mcqs" label="Approve MCQs" icon={CheckSquare} />
-                    <SidebarItem id="structure" label="Education Setup" icon={Share2} />
-                    <SidebarItem id="ai" label="AI Providers" icon={Cpu} />
-                    <SidebarItem id="settings" label="Site Settings" icon={Settings} />
+                {/* Nav items */}
+                <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+                    {MENU.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id)}
+                                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-bold transition-all text-left group ${isActive
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                    }`}
+                            >
+                                <Icon size={16} className={isActive ? 'text-white' : item.color} />
+                                <span className="flex-1 truncate">{item.label}</span>
+                                {isActive && <ChevronRight size={14} className="opacity-60 flex-shrink-0" />}
+                            </button>
+                        );
+                    })}
                 </nav>
 
-                <div className="mt-auto border-t pt-6 px-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 text-gray-600">
-                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">A</div>
-                            <div>
-                                <p className="text-sm font-bold">System Admin</p>
-                                <p className="text-xs text-gray-400">admin@examredy.in</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="Sign Out"
-                        >
-                            <LogOut size={20} />
-                        </button>
-                    </div>
+                {/* Logout */}
+                <div className="px-3 py-4 border-t border-gray-800 flex-shrink-0">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all text-sm font-bold"
+                    >
+                        <LogOut size={16} />
+                        Logout
+                    </button>
                 </div>
             </aside>
 
-            {/* MAIN CONTENT */}
-            <main className="flex-1 p-10 overflow-x-hidden">
-                <header className="flex justify-between items-center mb-10">
-                    <div className="flex items-center text-sm text-gray-400 space-x-2">
-                        <LayoutDashboard size={14} />
-                        <span>/ Admin / {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
+            {/* ── Main Area ──────────────────────────────────────────── */}
+            <div className="flex-1 ml-60 flex flex-col min-h-screen">
+
+                {/* Top Header */}
+                <header className="bg-gray-900 border-b border-gray-800 px-8 py-4 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
+
+                    {/* Left: breadcrumb */}
+                    <div className="flex items-center gap-3">
+                        <ActiveIcon size={18} className={activeMenuItem.color} />
+                        <h1 className="text-white font-black text-base uppercase tracking-tight">
+                            {activeMenuItem.label}
+                        </h1>
                     </div>
-                    <div className="flex items-center space-x-4">
-                        <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2">
-                            <Clock size={14} /> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+
+                    {/* Right: admin info */}
+                    <div className="flex items-center gap-4">
+                        {/* Role Badge */}
+                        <span className="hidden md:inline-block px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                            Admin
+                        </span>
+
+                        {/* Admin name + avatar */}
+                        <div className="flex items-center gap-2">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-white text-xs font-black leading-none">
+                                    {user?.username || user?.email?.split('@')[0] || 'Admin'}
+                                </p>
+                                <p className="text-gray-500 text-[10px] font-bold mt-0.5">
+                                    {user?.email || 'admin@examredy.in'}
+                                </p>
+                            </div>
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-xs font-black">
+                                    {(user?.username || user?.email || 'A')[0].toUpperCase()}
+                                </span>
+                            </div>
                         </div>
+
+                        {/* Logout button */}
+                        <button
+                            onClick={handleLogout}
+                            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-all text-xs font-bold"
+                        >
+                            <LogOut size={14} />
+                            Logout
+                        </button>
                     </div>
                 </header>
 
-                {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 flex items-center gap-2 font-medium border border-red-100 animate-slideIn"><ShieldAlert size={18} /> {error}</div>}
-
-                {activeTab === 'overview' && renderOverview()}
-                {activeTab === 'users' && renderUsers()}
-                {activeTab === 'mcqs' && renderMcqs()}
-
-                {activeTab === 'categories' && (
-                    <div className="space-y-6 animate-fadeIn">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">Category Management</h2>
-                            <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
-                                <Plus size={18} /> Add Category
-                            </button>
-                        </div>
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 text-sm uppercase">
-                                    <tr>
-                                        <th className="px-6 py-4 font-semibold text-xs text-indigo-900">Name</th>
-                                        <th className="px-6 py-4 font-semibold text-xs">Description</th>
-                                        <th className="px-6 py-4 font-semibold text-xs">Order</th>
-                                        <th className="px-6 py-4 font-semibold text-xs">Status</th>
-                                        <th className="px-6 py-4 font-semibold text-xs">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {categories.map(cat => (
-                                        <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 font-bold">{cat.name}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{cat.description || 'No description'}</td>
-                                            <td className="px-6 py-4 font-mono">{cat.sort_order}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {cat.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 flex items-center space-x-2 text-gray-400">
-                                                <button className="hover:text-indigo-600 transition-colors"><Edit size={18} /></button>
-                                                <button className="hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'structure' && (
-                    <div className="space-y-6 animate-fadeIn pb-20">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">Education Structure</h2>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleAIFetch('boards', { state_id: states[0]?.id, state_name: states[0]?.name })}
-                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
-                                >
-                                    <Cpu size={16} /> AI Fetch Boards
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {/* States & UT */}
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">States ({states.length})</h3>
-                                <div className="flex-1 overflow-y-auto space-y-1">
-                                    {states.map((s) => (
-                                        <div key={s.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
-                                            <span className="text-sm font-bold text-gray-700">{s.name}</span>
-                                            <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Languages */}
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Languages ({languages.length})</h3>
-                                <div className="flex-1 overflow-y-auto space-y-1">
-                                    {languages.map((l) => (
-                                        <div key={l.id} className="flex justify-between items-center p-2 rounded hover:bg-indigo-50 transition-colors group">
-                                            <span className="text-sm font-bold text-gray-700">{l.name}</span>
-                                            <button className="text-gray-300 hover:text-indigo-600"><Edit size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Boards */}
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Boards ({boards.length})</h3>
-                                <div className="flex-1 overflow-y-auto space-y-1">
-                                    {boards.map((b) => (
-                                        <div key={b.id} className="p-2 border-b last:border-0 hover:bg-gray-50">
-                                            <div className="flex justify-between">
-                                                <span className="text-sm font-bold">{b.name}</span>
-                                                <span className={`text-[8px] px-1 rounded ${b.is_active ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{b.is_active ? 'LIVE' : 'PENDING'}</span>
-                                            </div>
-                                            <p className="text-[9px] text-gray-400">{b.state_name}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Classes & Streams */}
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-[400px] flex flex-col">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Classes & Streams</h3>
-                                <div className="flex-1 overflow-y-auto space-y-1">
-                                    {classes.map(c => (
-                                        <div key={c.id} className="p-2 bg-gray-50 rounded text-sm font-bold flex justify-between">
-                                            {c.name}
-                                            <button className="text-gray-400 hover:text-indigo-600"><Edit size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Subjects & Chapters Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
-                                <div className="flex justify-between mb-4">
-                                    <h3 className="font-bold">Subjects ({subjects.length})</h3>
-                                    <button
-                                        onClick={() => handleAIFetch('subjects', { class_id: classes[9]?.id, class_name: classes[9]?.name, board_id: boards[0]?.id })}
-                                        className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
-                                    >
-                                        AI Fetch Subjects
-                                    </button>
-                                </div>
-                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                    {subjects.map(sub => (
-                                        <div key={sub.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
-                                            <div>
-                                                <span className="font-bold text-gray-800">{sub.name}</span>
-                                                <p className="text-[10px] text-gray-400">{sub.board_name} • {sub.class_name}</p>
-                                            </div>
-                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="text-indigo-600"><Edit size={14} /></button>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded font-black ${sub.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {sub.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[400px]">
-                                <div className="flex justify-between mb-4">
-                                    <h3 className="font-bold">Chapters ({chapters.length})</h3>
-                                    <button
-                                        onClick={() => handleAIFetch('chapters', { subject_id: subjects[0]?.id, subject_name: subjects[0]?.name })}
-                                        className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100"
-                                    >
-                                        AI Fetch Chapters
-                                    </button>
-                                </div>
-                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                    {chapters.map(ch => (
-                                        <div key={ch.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
-                                            <div>
-                                                <span className="font-bold text-gray-800">{ch.name}</span>
-                                                <p className="text-[10px] text-gray-400">{ch.subject_name}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button className="text-indigo-600 opacity-0 group-hover:opacity-100"><Edit size={14} /></button>
-                                                {!ch.is_active && <button onClick={() => api.put(`/admin/chapters/${ch.id}`, { ...ch, is_active: true }).then(() => fetchStructure())} className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-black">PUBLISH</button>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'ai' && settings?.aiProviders && (
-                    <div className="space-y-6 animate-fadeIn">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">AI Provider Control</h2>
-                            <span className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold uppercase tracking-widest">Enterprise Orchestration</span>
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {settings.aiProviders.map((ai, i) => (
-                                <div key={ai.id} className={`bg-white p-6 rounded-2xl shadow-sm border ${ai.is_active ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-gray-100'} relative overflow-hidden transition-all duration-300`}>
-                                    {ai.is_active && (
-                                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-widest flex items-center gap-1">
-                                            <CheckCircle size={10} /> Active Provider
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <div className={`p-3 rounded-xl ${ai.is_active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-100 text-gray-400'}`}><Cpu size={24} /></div>
-                                        <div>
-                                            <h4 className="font-black text-gray-800 uppercase tracking-widest leading-none mb-1">{ai.name}</h4>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {ai.id} • {ai.model_name}</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Base URL</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                defaultValue={ai.base_url}
-                                                id={`url-${ai.id}`}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">API Key</label>
-                                            <input
-                                                type="password"
-                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                defaultValue={ai.api_key ? "********" : ""}
-                                                placeholder={ai.api_key ? "Leave blank to keep same" : "Enter API Key"}
-                                                id={`key-${ai.id}`}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Model Name</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded text-xs outline-none focus:border-indigo-500 transition-colors"
-                                                defaultValue={ai.model_name}
-                                                id={`model-${ai.id}`}
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {!ai.is_active && (
-                                                <button
-                                                    onClick={() => handleUpdateAI(ai.id, { ...ai, is_active: true })}
-                                                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
-                                                >
-                                                    Activate
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => {
-                                                    const u = document.getElementById(`url-${ai.id}`).value;
-                                                    const k = document.getElementById(`key-${ai.id}`).value;
-                                                    const m = document.getElementById(`model-${ai.id}`).value;
-                                                    const updates = { base_url: u, model_name: m };
-                                                    if (k && k !== "********") updates.api_key = k;
-                                                    handleUpdateAI(ai.id, { ...ai, ...updates });
-                                                }}
-                                                className={`py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${ai.is_active ? 'w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50' : 'px-4 bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                            >
-                                                Save Config
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'plans' && (
-                    <div className="space-y-6 animate-fadeIn">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">Subscription Plans</h2>
-                            <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
-                                <Plus size={18} /> Add Plan
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {plans.map(plan => (
-                                <div key={plan.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${plan.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {plan.is_active ? 'ACTIVE' : 'DISABLED'}
-                                        </span>
-                                        <button className="text-gray-400 hover:text-indigo-600"><Edit size={18} /></button>
-                                    </div>
-                                    <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter mb-2">{plan.name}</h3>
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <span className="text-3xl font-black">₹{plan.price}</span>
-                                        <span className="text-gray-400 text-sm">/ {plan.duration_hours} Hours</span>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <button onClick={() => api.put(`/admin/plans/${plan.id}`, { ...plan, is_active: !plan.is_active }).then(() => fetchPlans())} className={`w-full py-2.5 rounded-xl font-bold text-xs transition-colors ${plan.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                                            {plan.is_active ? 'Disable Plan' : 'Enable Plan'}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'settings' && settings && (
-                    <div className="space-y-6 animate-fadeIn pb-20">
-                        <h2 className="text-2xl font-bold">Site & System Settings</h2>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* System Config */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-2">
-                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Settings size={18} className="text-indigo-600" /> System Configuration</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    {Object.entries(settings.system).filter(([k]) => !k.includes('ADS')).map(([key, value]) => (
-                                        <div key={key}>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{key.replace(/_/g, ' ')}</label>
-                                            <input
-                                                type="text"
-                                                className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                                defaultValue={value}
-                                                id={`setting-${key}`}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        const updates = {};
-                                        Object.keys(settings.system).forEach(k => {
-                                            const el = document.getElementById(`setting-${k}`);
-                                            if (el) updates[k] = el.value;
-                                        });
-                                        handleUpdateSettings(updates);
-                                    }}
-                                    className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors"
-                                >
-                                    Save All System Settings
-                                </button>
-                            </div>
-
-                            {/* Legal Pages */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><ShieldAlert size={18} className="text-indigo-600" /> Legal & Compliance</h3>
-                                <div className="space-y-3">
-                                    {settings.legalPages.map(page => (
-                                        <div key={page.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors group">
-                                            <div>
-                                                <p className="font-bold text-gray-700">{page.title}</p>
-                                                <p className="text-xs text-gray-400">/{page.slug}</p>
-                                            </div>
-                                            <button className="p-2 bg-white rounded-lg shadow-sm border group-hover:text-indigo-600 transition-colors"><Edit size={18} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Ads Control Section */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-3">
-                                <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Share2 size={18} className="text-indigo-600" /> Ads Control (Google AdSense)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AdSense Script Injection</label>
-                                            <textarea
-                                                className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-32 outline-none focus:ring-2 focus:ring-indigo-500"
-                                                placeholder="<script async src='...'></script>"
-                                                defaultValue={settings.system['ADSENSE_SCRIPT']}
-                                                id="ads-script"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                                            <div>
-                                                <p className="font-bold text-indigo-900">Enable Advertisements</p>
-                                                <p className="text-[10px] text-indigo-600 font-bold uppercase">Toggle Global Visibility</p>
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="w-6 h-6 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                                                defaultChecked={settings.system['ADS_ENABLED'] === 'true'}
-                                                id="ads-enabled"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ads.txt Content</label>
-                                        <textarea
-                                            className="w-full mt-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono h-48 outline-none focus:ring-2 focus:ring-indigo-500"
-                                            placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
-                                            defaultValue={settings.system['ADS_TXT']}
-                                            id="ads-txt"
-                                        />
-                                        <button
-                                            onClick={async () => {
-                                                const script = document.getElementById('ads-script').value;
-                                                const txt = document.getElementById('ads-txt').value;
-                                                const enabled = document.getElementById('ads-enabled').checked;
-                                                await api.put('/admin/settings/ads', { ADSENSE_SCRIPT: script, ADS_TXT: txt, ADS_ENABLED: enabled });
-                                                alert('Ads Settings Saved');
-                                                fetchSettings();
-                                            }}
-                                            className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors"
-                                        >
-                                            Update Ads Infrastructure
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {['analytics', 'other'].includes(activeTab) && !stats && (
-                    <div className="flex flex-col items-center justify-center p-20 bg-white rounded-2xl shadow-sm border border-dashed border-gray-200 text-gray-400 space-y-4">
-                        <div className="p-6 bg-gray-50 rounded-full"><Settings size={48} className="animate-spin-slow" /></div>
-                        <div className="text-center">
-                            <h3 className="text-lg font-bold text-gray-600 uppercase tracking-widest leading-none mb-1">Module Coming Soon</h3>
-                            <p className="text-sm">We are expanding the <strong>{activeTab}</strong> capabilities.</p>
-                        </div>
-                    </div>
-                )}
-            </main>
+                {/* Module Content */}
+                <main className="flex-1">
+                    <ModulePlaceholder id={activeTab} />
+                </main>
+            </div>
         </div>
     );
 };
 
-export default Admin;
+export default AdminDashboard;

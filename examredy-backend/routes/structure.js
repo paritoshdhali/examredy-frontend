@@ -21,7 +21,7 @@ router.get('/', (req, res) => {
 });
 
 // @route   GET /api/structure/categories
-router.get('/categories', (req, res) => safeFetch('SELECT id, name FROM categories WHERE is_active = TRUE ORDER BY sort_order ASC', [], res));
+router.get('/categories', (req, res) => safeFetch('SELECT * FROM categories WHERE is_active = TRUE ORDER BY sort_order ASC', [], res));
 
 // @route   GET /api/structure/states
 router.get('/states', (req, res) => safeFetch('SELECT id, name FROM states ORDER BY name ASC', [], res));
@@ -35,8 +35,16 @@ router.get('/boards/:state_id', (req, res) => safeFetch('SELECT id, name FROM bo
 // @route   GET /api/structure/classes
 router.get('/classes', (req, res) => safeFetch('SELECT id, name FROM classes WHERE is_active = TRUE ORDER BY id ASC', [], res));
 
-// @route   GET /api/structure/classes/:board_id (Alias or specific)
-router.get('/classes/:board_id', (req, res) => safeFetch('SELECT id, name FROM classes WHERE is_active = TRUE ORDER BY id ASC', [], res));
+// @route   GET /api/structure/classes/:board_id
+router.get('/classes/:board_id', (req, res) => {
+    safeFetch(`
+        SELECT c.id, c.name 
+        FROM board_classes bc 
+        JOIN classes c ON bc.class_id = c.id 
+        WHERE bc.board_id = $1 AND bc.is_active = TRUE 
+        ORDER BY c.id ASC
+    `, [req.params.board_id], res);
+});
 
 // @route   GET /api/structure/streams
 router.get('/streams', (req, res) => safeFetch('SELECT id, name FROM streams WHERE is_active = TRUE ORDER BY name ASC', [], res));
@@ -44,18 +52,27 @@ router.get('/streams', (req, res) => safeFetch('SELECT id, name FROM streams WHE
 // @route   GET /api/structure/universities/:state_id
 router.get('/universities/:state_id', (req, res) => safeFetch('SELECT id, name FROM universities WHERE state_id = $1 AND is_active = TRUE ORDER BY name ASC', [req.params.state_id], res));
 
+// @route   GET /api/structure/degree-types
+router.get('/degree-types', (req, res) => safeFetch('SELECT * FROM degree_types ORDER BY name ASC', [], res));
+
 // @route   GET /api/structure/semesters/:university_id
-router.get('/semesters/:university_id', (req, res) => safeFetch('SELECT id, name FROM semesters WHERE university_id = $1 AND is_active = TRUE ORDER BY name ASC', [req.params.university_id], res));
+router.get('/semesters', (req, res) => safeFetch('SELECT id, name FROM semesters ORDER BY id ASC', [], res));
+
+// @route   GET /api/structure/papers-stages/:category_id
+router.get('/papers-stages/:category_id', (req, res) => safeFetch('SELECT id, name FROM papers_stages WHERE category_id = $1 AND is_active = TRUE ORDER BY name ASC', [req.params.category_id], res));
 
 // @route   GET /api/structure/subjects
 router.get('/subjects', (req, res) => {
-    const { board_id, class_id, stream_id, semester_id } = req.query;
+    const { category_id, board_id, class_id, stream_id, university_id, semester_id, paper_stage_id } = req.query;
     let q = 'SELECT id, name FROM subjects WHERE is_active = TRUE';
     const params = [];
+    if (category_id) { params.push(category_id); q += ` AND category_id = $${params.length}`; }
     if (board_id) { params.push(board_id); q += ` AND board_id = $${params.length}`; }
     if (class_id) { params.push(class_id); q += ` AND class_id = $${params.length}`; }
     if (stream_id) { params.push(stream_id); q += ` AND stream_id = $${params.length}`; }
+    if (university_id) { params.push(university_id); q += ` AND university_id = $${params.length}`; }
     if (semester_id) { params.push(semester_id); q += ` AND semester_id = $${params.length}`; }
+    if (paper_stage_id) { params.push(paper_stage_id); q += ` AND paper_stage_id = $${params.length}`; }
     q += ' ORDER BY name ASC';
     safeFetch(q, params, res);
 });

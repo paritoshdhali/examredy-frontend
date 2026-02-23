@@ -12,11 +12,14 @@ const api = axios.create({
 // Add a request interceptor
 api.interceptors.request.use(
     (config) => {
-        const adminToken = localStorage.getItem('adminToken');
-        const userToken = localStorage.getItem('token');
-        const token = adminToken || userToken; // Prioritize adminToken for admin routes if both exist, or handle as needed
+        const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            config.headers = config.headers || {};
+            if (typeof config.headers.set === 'function') {
+                config.headers.set('Authorization', `Bearer ${token}`);
+            } else {
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
         }
         return config;
     },
@@ -30,12 +33,15 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         console.error('[API-ERROR]', error.response?.status, error.response?.data || error.message);
-        if (error.response && error.response.status === 401) {
-            // Token expired or invalid
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            // Token expired, invalid, or lacking privileges
             const path = window.location.pathname;
             if (path.startsWith('/admin')) {
-                console.warn('[AUTH] Admin 401 - staying on page');
+                console.warn('[AUTH] Admin auth failed - redirecting to login');
                 localStorage.removeItem('adminToken');
+                if (path !== '/admin/login') {
+                    window.location.href = '/admin/login';
+                }
             } else if (path !== '/login' && path !== '/register') {
                 localStorage.removeItem('token');
                 window.location.href = '/login';

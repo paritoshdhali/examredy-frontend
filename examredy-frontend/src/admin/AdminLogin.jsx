@@ -30,7 +30,7 @@ const AdminLogin = () => {
                 });
 
                 // Explicitly navigate to dashboard
-                navigate('/admin/dashboard');
+                navigate('/admin');
             } else {
                 setError('Login failed. Not authorized as admin.');
             }

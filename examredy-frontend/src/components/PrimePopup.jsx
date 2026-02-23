@@ -7,10 +7,7 @@ const PrimePopup = ({ onClose }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                    ✕
-                </button>
-
+                {/* Close button removed to enforce subscription/sharing */}
                 <div className="bg-gradient-to-r from-amber-400 to-orange-500 p-6 text-white text-center">
                     <h2 className="text-2xl font-bold mb-2">Daily Limit Reached! 🚀</h2>
                     <p>Upgrade to Prime to continue your streak.</p>
@@ -40,7 +37,7 @@ const PrimePopup = ({ onClose }) => {
                 </div>
 
                 <div className="p-4 bg-gray-50 text-center">
-                    <button onClick={onClose} className="text-gray-500 text-sm hover:underline">Maybe later</button>
+                    <p className="text-gray-500 text-sm font-medium">Please select an option above to continue practicing.</p>
                 </div>
             </div>
         </div>

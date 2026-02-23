@@ -4,18 +4,23 @@ const { query } = require('../db');
 const verifyToken = async (req, res, next) => {
     let token;
 
-    if (
-        req.headers.authorization &&
-        req.headers.authorization.startsWith('Bearer')
-    ) {
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer')) {
         try {
-            token = req.headers.authorization.split(' ')[1];
+            token = authHeader.split(' ')[1];
+            console.log(`[AUTH-DEBUG] Token extracted for ${req.path}`);
+
+            if (!token) {
+                console.warn(`[AUTH-DEBUG] Authorization header found but token missing in ${req.path}`);
+                return res.status(401).json({ message: 'Not authorized, token missing in Bearer' });
+            }
 
             if (!token) {
                 return res.status(401).json({ message: 'Not authorized, token missing' });
             }
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'examredy_secret_2026_fallback');
 
             // Fetch user from DB to ensure valid and attach to req
             const result = await query('SELECT id, username, email, role, is_premium, premium_expiry, is_active FROM users WHERE id = $1', [decoded.id]);
@@ -34,7 +39,7 @@ const verifyToken = async (req, res, next) => {
             return next();
         } catch (error) {
             console.error('Auth Error:', error.message);
-            return res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: `Not authorized, token failed: ${error.message}` });
         }
     }
 

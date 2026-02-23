@@ -83,6 +83,36 @@ const preloadData = async () => {
                 await query(`INSERT INTO categories (name, sort_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING;`, [cats[i], i]);
             }
             console.log('✅ Categories Preloaded');
+        } else {
+            // Ensure specific categories exist as per spec
+            const requiredCats = ['UPSC', 'CTET', 'SSC', 'Banking', 'Railway', 'State Govt Exams', 'Others'];
+            for (const cat of requiredCats) {
+                await query(`INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING;`, [cat]);
+            }
+        }
+
+        // 4. Classes Preload (Requirement 3)
+        const classCount = await query('SELECT COUNT(*) FROM classes');
+        if (parseInt(classCount.rows[0].count) === 0) {
+            const defaultClasses = [
+                'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
+                'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
+                'Class 11', 'Class 12'
+            ];
+            for (const c of defaultClasses) {
+                await query(`INSERT INTO classes (name) VALUES ($1) ON CONFLICT (name) DO NOTHING;`, [c]);
+            }
+            console.log('✅ Classes Preloaded');
+        }
+
+        // 5. Streams Preload (Requirement 3)
+        const streamCount = await query('SELECT COUNT(*) FROM streams');
+        if (parseInt(streamCount.rows[0].count) === 0) {
+            const defaultStreams = ['Science', 'Commerce', 'Arts'];
+            for (const s of defaultStreams) {
+                await query(`INSERT INTO streams (name) VALUES ($1) ON CONFLICT (name) DO NOTHING;`, [s]);
+            }
+            console.log('✅ Streams Preloaded');
         }
 
     } catch (err) {
@@ -103,13 +133,14 @@ const initDB = async () => {
         }
 
         // Users Table & Schema Sync
-        await query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role VARCHAR(20) DEFAULT 'user', is_premium BOOLEAN DEFAULT FALSE, premium_expiry TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+        await query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role VARCHAR(20) DEFAULT 'user', is_premium BOOLEAN DEFAULT FALSE, premium_expiry TIMESTAMP, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
 
         // Ensure 'role' column exists (for cases where table already existed without it)
         try {
             await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`);
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
         } catch (e) {
-            console.log('Note: role column already exists or migration skipped.');
+            console.log('Note: role/is_active column already exists or migration skipped.');
         }
 
         // User Daily Usage
@@ -119,17 +150,59 @@ const initDB = async () => {
         await query(`CREATE TABLE IF NOT EXISTS categories (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, image_url TEXT, description TEXT, is_active BOOLEAN DEFAULT TRUE, sort_order INTEGER DEFAULT 0);`);
 
         // States & UT
-        await query(`CREATE TABLE IF NOT EXISTS states (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL);`);
+        await query(`CREATE TABLE IF NOT EXISTS states (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
+        try { await query(`ALTER TABLE states ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`); } catch (e) { }
 
         // Languages
-        await query(`CREATE TABLE IF NOT EXISTS languages (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL);`);
+        await query(`CREATE TABLE IF NOT EXISTS languages (id SERIAL PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
+        try { await query(`ALTER TABLE languages ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`); } catch (e) { }
 
         // Hierarchy Tables
-        await query(`CREATE TABLE IF NOT EXISTS boards (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, state_id INTEGER REFERENCES states(id), is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`CREATE TABLE IF NOT EXISTS classes (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`CREATE TABLE IF NOT EXISTS streams (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`CREATE TABLE IF NOT EXISTS universities (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL, state_id INTEGER REFERENCES states(id), is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS boards (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(500) NOT NULL, 
+            state_id INTEGER REFERENCES states(id), 
+            logo_url TEXT, 
+            is_active BOOLEAN DEFAULT TRUE,
+            CONSTRAINT unique_board_per_state UNIQUE (state_id, name)
+        );`);
+        try { await query(`ALTER TABLE boards ADD COLUMN IF NOT EXISTS logo_url TEXT;`); } catch (e) { }
+
+        await query(`CREATE TABLE IF NOT EXISTS classes (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(50) UNIQUE NOT NULL, 
+            is_active BOOLEAN DEFAULT TRUE
+        );`);
+        await query(`CREATE TABLE IF NOT EXISTS streams (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(500) UNIQUE NOT NULL, 
+            is_active BOOLEAN DEFAULT TRUE
+        );`);
+
+        // Board -> Classes Explicit Mapping Table
+        await query(`CREATE TABLE IF NOT EXISTS board_classes (
+            id SERIAL PRIMARY KEY,
+            board_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,
+            class_id INTEGER REFERENCES classes(id) ON DELETE CASCADE,
+            is_active BOOLEAN DEFAULT FALSE,
+            CONSTRAINT unique_board_class UNIQUE (board_id, class_id)
+        );`);
+
+        await query(`CREATE TABLE IF NOT EXISTS universities (id SERIAL PRIMARY KEY, name VARCHAR(500) NOT NULL, state_id INTEGER REFERENCES states(id), logo_url TEXT, is_active BOOLEAN DEFAULT TRUE);`);
+        try { await query(`ALTER TABLE universities ADD CONSTRAINT unique_university_state UNIQUE (state_id, name);`); } catch (e) { console.log('Constraint unique_university_state already exists'); }
+        try { await query(`ALTER TABLE universities ADD COLUMN IF NOT EXISTS logo_url TEXT;`); } catch (e) { }
+
+        await query(`CREATE TABLE IF NOT EXISTS degree_types (id SERIAL PRIMARY KEY, name VARCHAR(500) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
+        const defaultDegrees = ['Pass', 'Honours'];
+        for (const deg of defaultDegrees) {
+            await query(`INSERT INTO degree_types (name) SELECT $1::varchar WHERE NOT EXISTS (SELECT 1 FROM degree_types WHERE name = $1::varchar);`, [deg]);
+        }
+
         await query(`CREATE TABLE IF NOT EXISTS semesters (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, university_id INTEGER REFERENCES universities(id), is_active BOOLEAN DEFAULT TRUE);`);
+        try { await query(`ALTER TABLE semesters ADD CONSTRAINT unique_semester_university UNIQUE (university_id, name);`); } catch (e) { console.log('Constraint unique_semester_university already exists'); }
+
+        await query(`CREATE TABLE IF NOT EXISTS papers_stages (id SERIAL PRIMARY KEY, name VARCHAR(500) NOT NULL, category_id INTEGER REFERENCES categories(id), is_active BOOLEAN DEFAULT TRUE);`);
+        try { await query(`ALTER TABLE papers_stages ADD CONSTRAINT unique_paper_category UNIQUE (category_id, name);`); } catch (e) { console.log('Constraint unique_paper_category already exists'); }
 
         // Auto-create Classes
         const defaultClasses = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
@@ -143,50 +216,225 @@ const initDB = async () => {
             await query(`INSERT INTO streams (name) SELECT $1::varchar WHERE NOT EXISTS (SELECT 1 FROM streams WHERE name = $1::varchar);`, [stm]);
         }
 
-        await query(`CREATE TABLE IF NOT EXISTS subjects (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, board_id INTEGER REFERENCES boards(id), class_id INTEGER REFERENCES classes(id), stream_id INTEGER REFERENCES streams(id), semester_id INTEGER REFERENCES semesters(id), is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`CREATE TABLE IF NOT EXISTS chapters (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, subject_id INTEGER REFERENCES subjects(id), is_active BOOLEAN DEFAULT TRUE);`);
+        await query(`CREATE TABLE IF NOT EXISTS subjects (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(500) NOT NULL, 
+            category_id INTEGER REFERENCES categories(id), 
+            board_id INTEGER REFERENCES boards(id), 
+            university_id INTEGER REFERENCES universities(id), 
+            class_id INTEGER REFERENCES classes(id), 
+            stream_id INTEGER REFERENCES streams(id), 
+            semester_id INTEGER REFERENCES semesters(id), 
+            degree_type_id INTEGER REFERENCES degree_types(id), 
+            paper_stage_id INTEGER REFERENCES papers_stages(id), 
+            is_active BOOLEAN DEFAULT TRUE,
+            CONSTRAINT unique_subject_hierarchy UNIQUE (board_id, class_id, name)
+        );`);
+        //-- Migration to update constraint for subjects (Handles NULL stream_id correctly in Postgres)
+        try {
+            await query(`ALTER TABLE subjects DROP CONSTRAINT IF EXISTS unique_subject_hierarchy;`);
+            await query(`DROP INDEX IF EXISTS idx_unique_subject_with_stream;`);
+            await query(`DROP INDEX IF EXISTS idx_unique_subject_no_stream;`);
+            await query(`CREATE UNIQUE INDEX idx_unique_subject_with_stream ON subjects (board_id, class_id, stream_id, name) WHERE stream_id IS NOT NULL;`);
+            await query(`CREATE UNIQUE INDEX idx_unique_subject_no_stream ON subjects (board_id, class_id, name) WHERE stream_id IS NULL;`);
+        } catch (e) { console.log('Subject index migration: Handled.'); }
+        try {
+            await query(`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);`);
+            await query(`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS university_id INTEGER REFERENCES universities(id);`);
+            await query(`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS semester_id INTEGER REFERENCES semesters(id);`);
+            await query(`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS degree_type_id INTEGER REFERENCES degree_types(id);`);
+            await query(`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS paper_stage_id INTEGER REFERENCES papers_stages(id);`);
+        } catch (e) { }
+
+        await query(`CREATE TABLE IF NOT EXISTS chapters (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(500) NOT NULL, 
+            subject_id INTEGER REFERENCES subjects(id), 
+            description TEXT, 
+            sort_order INTEGER DEFAULT 0, 
+            is_active BOOLEAN DEFAULT TRUE,
+            CONSTRAINT unique_chapter_per_subject UNIQUE (subject_id, name)
+        );`);
+        try {
+            await query(`ALTER TABLE chapters ADD COLUMN IF NOT EXISTS description TEXT;`);
+            await query(`ALTER TABLE chapters ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;`);
+        } catch (e) { }
+
+        // --- MIGRATION: Ensure 'is_active' exists on all legacy tables ---
+        const tablesToMigrate = [
+            'categories', 'boards', 'classes', 'streams', 'board_classes',
+            'universities', 'degree_types', 'semesters', 'papers_stages',
+            'subjects', 'chapters'
+        ];
+        for (const tableName of tablesToMigrate) {
+            try {
+                await query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+            } catch (e) {
+                console.log(`Migration for ${tableName}.is_active: Handled or skipped.`);
+            }
+        }
+        // ----------------------------------------------------------------
 
         // Other System Tables
         await query(`CREATE TABLE IF NOT EXISTS subscription_plans (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, duration_hours INTEGER NOT NULL, price DECIMAL(10, 2) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`INSERT INTO subscription_plans (name, duration_hours, price) VALUES ('1 Hour Pass', 1, 10), ('3 Hour Pass', 3, 25) ON CONFLICT DO NOTHING;`);
+
+        // Clean up duplicates and add unique constraint
+        try {
+            await query(`DELETE FROM subscription_plans a USING subscription_plans b WHERE a.id < b.id AND a.name = b.name;`);
+            await query(`ALTER TABLE subscription_plans ADD CONSTRAINT unique_plan_name UNIQUE (name);`);
+        } catch (e) { console.log('Constraint unique_plan_name already exists'); }
+
+        await query(`INSERT INTO subscription_plans (name, duration_hours, price) VALUES ('1 Hour Pass', 1, 10), ('3 Hour Pass', 3, 25) ON CONFLICT (name) DO NOTHING;`);
         await query(`CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), razorpay_order_id VARCHAR(100), razorpay_payment_id VARCHAR(100), amount DECIMAL(10, 2), status VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await query(`CREATE TABLE IF NOT EXISTS referrals (id SERIAL PRIMARY KEY, referrer_id INTEGER REFERENCES users(id), referred_user_id INTEGER REFERENCES users(id), status VARCHAR(20) DEFAULT 'pending', reward_given BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-        await query(`CREATE TABLE IF NOT EXISTS ai_providers (id SERIAL PRIMARY KEY, name VARCHAR(100), base_url TEXT, api_key TEXT, model_name TEXT, is_active BOOLEAN DEFAULT TRUE);`);
-        await query(`
-            INSERT INTO ai_providers (name, base_url, api_key, model_name, is_active) 
-            VALUES ($1, $2, $3, $4, $5) 
-            ON CONFLICT DO NOTHING
-        `, ['Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/models', process.env.GEMINI_API_KEY || '', 'gemini-1.5-flash', true]);
-        await query(`CREATE TABLE IF NOT EXISTS ai_fetch_logs (id SERIAL PRIMARY KEY, fetch_type VARCHAR(100), reference_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-        await query(`CREATE TABLE IF NOT EXISTS ads_settings (id SERIAL PRIMARY KEY, location VARCHAR(50), script_content TEXT, is_active BOOLEAN DEFAULT TRUE);`);
 
-        // NEW: Admin Dashboard Tables
-        await query(`CREATE TABLE IF NOT EXISTS legal_pages (id SERIAL PRIMARY KEY, slug VARCHAR(50) UNIQUE NOT NULL, title VARCHAR(200) NOT NULL, content TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
-        const legals = ['about-us', 'contact-us', 'privacy-policy', 'terms-conditions', 'refund-policy'];
-        for (const slug of legals) {
-            await query(`INSERT INTO legal_pages (slug, title, content) VALUES ($1, $2, $3) ON CONFLICT (slug) DO NOTHING;`, [slug, slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 'Content coming soon...']);
+        // Legal Pages Table (Requirement 7)
+        await query(`CREATE TABLE IF NOT EXISTS legal_pages (
+            id SERIAL PRIMARY KEY,
+            slug VARCHAR(50) UNIQUE NOT NULL,
+            title VARCHAR(100) NOT NULL,
+            content TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );`);
+        const defaultLegal = [
+            ['privacy-policy', 'Privacy Policy'],
+            ['terms-conditions', 'Terms & Conditions'],
+            ['refund-policy', 'Refund Policy'],
+            ['about-us', 'About Us'],
+            ['contact-us', 'Contact Us']
+        ];
+        for (const [slug, title] of defaultLegal) {
+            await query(`INSERT INTO legal_pages (slug, title) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING;`, [slug, title]);
+        }
+        // Free Limit Control Table (Requirement 4)
+        await query(`CREATE TABLE IF NOT EXISTS free_limit_settings (
+            id SERIAL PRIMARY KEY,
+            key VARCHAR(50) UNIQUE NOT NULL,
+            value TEXT NOT NULL,
+            description TEXT
+        );`);
+        const limitDefaults = {
+            'FREE_SESSIONS_COUNT': '2',
+            'FREE_SESSION_MCQS': '10',
+            'FREE_SESSION_MINUTES': '15',
+            'POPUP_HEADING': 'Free Limit Reached!',
+            'POPUP_TEXT': 'Master your exams with Prime. Get unlimited practice now!',
+            'RENEWAL_WINDOW_HOURS': '24'
+        };
+        for (const [key, value] of Object.entries(limitDefaults)) {
+            await query(`INSERT INTO free_limit_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, value]);
         }
 
-        await query(`CREATE TABLE IF NOT EXISTS payment_gateway_settings (id SERIAL PRIMARY KEY, provider VARCHAR(50) UNIQUE NOT NULL, api_key TEXT, api_secret TEXT, is_active BOOLEAN DEFAULT FALSE);`);
+        // AI Provider Enhanced Table (Requirement 7)
+        await query(`CREATE TABLE IF NOT EXISTS ai_providers (
+            id SERIAL PRIMARY KEY, 
+            name VARCHAR(100), 
+            base_url TEXT, 
+            api_key TEXT, 
+            model_name TEXT, 
+            is_active BOOLEAN DEFAULT FALSE
+        );`);
+        try {
+            // Sanitize duplicates before adding constraint
+            await query(`DELETE FROM ai_providers a USING ai_providers b WHERE a.id < b.id AND a.name = b.name;`);
+            await query(`ALTER TABLE ai_providers ADD CONSTRAINT unique_ai_provider_name UNIQUE (name);`);
+        } catch (e) { }
+
+        // Seed default AI providers — only insert if NOT exists, never overwrite admin changes
+        const geminiKey = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
+        console.log(`AI Provider Sync: Gemini Key detected? ${!!geminiKey}`);
+
+        // Google Gemini — insert only if not already present. If AI_API_KEY is set, update the key.
+        if (geminiKey) {
+            await query(`INSERT INTO ai_providers (name, base_url, api_key, model_name, is_active) 
+                VALUES ('Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/models', $1, 'gemini-1.5-flash', FALSE) 
+                ON CONFLICT (name) DO UPDATE SET api_key = EXCLUDED.api_key WHERE ai_providers.api_key IS NULL OR ai_providers.api_key = '';`,
+                [geminiKey]);
+        } else {
+            await query(`INSERT INTO ai_providers (name, base_url, api_key, model_name, is_active) 
+                VALUES ('Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/models', '', 'gemini-1.5-flash', FALSE) 
+                ON CONFLICT (name) DO NOTHING;`);
+        }
+
+        // OpenRouter — always seed the row, never overwrite if already configured
+        await query(`INSERT INTO ai_providers (name, base_url, api_key, model_name, is_active) 
+            VALUES ('OpenRouter', 'https://openrouter.ai/api/v1', '', 'meta-llama/llama-3.1-8b-instruct:free', FALSE) 
+            ON CONFLICT (name) DO NOTHING;`);
+
+        console.log('✅ AI Providers seeded (existing config preserved).');
+
+        // Payment Gateway Settings (Requirement 6)
+        await query(`CREATE TABLE IF NOT EXISTS payment_gateway_settings (
+            id SERIAL PRIMARY KEY,
+            provider VARCHAR(50) UNIQUE NOT NULL,
+            api_key TEXT,
+            api_secret TEXT,
+            is_active BOOLEAN DEFAULT FALSE
+        );`);
         await query(`INSERT INTO payment_gateway_settings (provider) VALUES ('razorpay'), ('stripe') ON CONFLICT (provider) DO NOTHING;`);
 
-        await query(`CREATE TABLE IF NOT EXISTS revenue_logs (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), amount DECIMAL(10, 2), source VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+        // Hierarchy Tables - Adding is_approved (Requirements 2, 3, 9)
+        const hierarchyTables = ['boards', 'universities', 'subjects', 'chapters', 'papers_stages', 'degree_types', 'semesters'];
+        for (const table of hierarchyTables) {
+            try {
+                await query(`ALTER TABLE ${table} ALTER COLUMN name TYPE VARCHAR(500);`);
+                await query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;`);
+                await query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+            } catch (e) { }
+        }
 
-        // Extend system_settings with SEO and Site Config
+        // --- SCHEMA REPAIR: Dupe Cleanup & UNIQUE Constraints for ON CONFLICT ---
+        const repairConfigs = [
+            { table: 'boards', cols: ['state_id', 'name'], name: 'unique_board_per_state' },
+            { table: 'universities', cols: ['state_id', 'name'], name: 'unique_university_state' },
+            { table: 'papers_stages', cols: ['category_id', 'name'], name: 'unique_paper_category' },
+            { table: 'chapters', cols: ['subject_id', 'name'], name: 'unique_chapter_per_subject' }
+        ];
+
+        for (const cfg of repairConfigs) {
+            try {
+                console.log(`Repairing schema for ${cfg.table}...`);
+                // 1. Delete duplicates based on the target columns
+                const colA = cfg.cols[0];
+                const colB = cfg.cols[1];
+                await query(`DELETE FROM ${cfg.table} a USING ${cfg.table} b 
+                             WHERE a.id < b.id 
+                             AND (a.${colA} = b.${colA} OR (a.${colA} IS NULL AND b.${colA} IS NULL)) 
+                             AND a.${colB} = b.${colB};`);
+
+                // 2. Add the UNIQUE constraint
+                await query(`ALTER TABLE ${cfg.table} ADD CONSTRAINT ${cfg.name} UNIQUE (${cfg.cols.join(', ')});`);
+                console.log(`✅ Constraint ${cfg.name} enforced on ${cfg.table}.`);
+            } catch (e) {
+                // If it already exists, this will fail silently which is fine
+            }
+        }
+
+        // SEO and Site Config (Requirement 8)
         const siteDefaults = {
             'SITE_TITLE': 'ExamRedy - AI MCQ Practice',
-            'SITE_LOGO_URL': '',
-            'HOME_BANNER_TEXT': 'Master Your Exams with AI-Powered MCQ Practice',
-            'SUPPORT_EMAIL': 'support@examredy.in',
-            'WHATSAPP_NUMBER': '',
+            'META_DESCRIPTION': 'Master your exams with AI-powered personalized MCQ sets.',
+            'META_KEYWORDS': 'MCQ, Exam Practice, AI, School, University, India',
             'GOOGLE_ANALYTICS_ID': '',
             'GOOGLE_SEARCH_CONSOLE_CODE': '',
-            'FOOTER_CONTENT': '© 2026 ExamRedy. All rights reserved.',
-            'META_TAGS': 'MCQ, Exam Practice, AI, Study'
+            'FOOTER_TEXT': '© 2026 ExamRedy. All rights reserved.',
+            'SUPPORT_EMAIL': 'support@examredy.in',
+            'WHATSAPP_NUMBER': ''
         };
         for (const [key, value] of Object.entries(siteDefaults)) {
             await query(`INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`, [key, value]);
         }
+
+        // AI Fetch Logs (Requirement 6)
+        await query(`CREATE TABLE IF NOT EXISTS ai_fetch_logs (
+            id SERIAL PRIMARY KEY,
+            type VARCHAR(50) NOT NULL,
+            context TEXT,
+            status VARCHAR(20),
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );`);
 
         // MCQ Pool
         await query(`
@@ -228,9 +476,9 @@ const initDB = async () => {
             );
             console.log('✅ Default Admin Created (admin@examredy.in / Admin@123)');
         } else {
-            console.log('Ensuring admin security and credentials...');
-            await query('UPDATE users SET password = $1, role = $2 WHERE email = $3', [hashedDefaultPass, 'admin', adminEmail]);
-            console.log('✅ Admin credentials synchronized (Admin@123)');
+            console.log('Admin user verified. Ensuring role integrity...');
+            await query('UPDATE users SET role = $1 WHERE email = $2', ['admin', adminEmail]);
+            console.log('✅ Admin role synchronized.');
         }
 
         if (!process.env.JWT_SECRET) {
@@ -248,6 +496,14 @@ const initDB = async () => {
         await query(`CREATE INDEX IF NOT EXISTS idx_user_usage ON user_daily_usage(user_id);`);
 
         console.log('✅ All Database Tables Verified/Created & Indexes Applied');
+
+        // --- DATA HYGIENE (Requirement 2 & 4) ---
+        // Purge any pre-existing dummy/sample data to avoid confusion with real AI data
+        console.log('Running Data Hygiene: Purging Sample/Dummy records...');
+        await query(`DELETE FROM chapters WHERE name ILIKE '%SAMPLE%' OR name ILIKE '%TEST%' OR name ILIKE '%DUMMY%';`);
+        await query(`DELETE FROM subjects WHERE name ILIKE '%SAMPLE%' OR name ILIKE '%TEST%' OR name ILIKE '%DUMMY%';`);
+        await query(`DELETE FROM boards WHERE name ILIKE '%SAMPLE%' OR name ILIKE '%TEST%' OR name ILIKE '%DUMMY%' OR name ILIKE 'DEBUG_%' OR name ILIKE '%FIX-V1%' OR name ILIKE '%REQUEST FAILED%';`);
+        console.log('✅ Data Hygiene Complete: Only Real Data remains.');
 
         // Run Preload after DB init
         await preloadData();

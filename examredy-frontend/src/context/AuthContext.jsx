@@ -9,7 +9,8 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const loadUser = async () => {
-            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+            // Prioritize adminToken over regular token
+            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
             if (token) {
                 try {
                     // This endpoint should verify the token and return user data regardless of role
@@ -28,8 +29,13 @@ export const AuthProvider = ({ children }) => {
 
     const setAuthData = (data) => {
         if (data.token) {
-            const storageKey = data.role === 'admin' ? 'adminToken' : 'token';
-            localStorage.setItem(storageKey, data.token);
+            if (data.role === 'admin') {
+                localStorage.setItem('adminToken', data.token);
+                localStorage.removeItem('token'); // Clear regular user session
+            } else {
+                localStorage.setItem('token', data.token);
+                localStorage.removeItem('adminToken'); // Clear admin session
+            }
         }
         setUser(data.user || data);
     };
@@ -52,8 +58,14 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const googleLogin = async (credential, referrerId = null) => {
+        const res = await api.post('/auth/google', { credential, referrer_id: referrerId });
+        setAuthData(res.data);
+        return res.data;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, setAuthData }}>
+        <AuthContext.Provider value={{ user, login, register, googleLogin, logout, loading, setAuthData }}>
             {children}
         </AuthContext.Provider>
     );
