@@ -191,7 +191,7 @@ const Practice = () => {
             const res = await api.post('/mcq/generate-practice', {
                 topic: topicName,
                 language: language,
-                limit: 10
+                limit: 5 // Reduced from 10 to halve AI processing time
             });
 
             if (res.data.length === 0) {
