@@ -77,6 +77,7 @@ export function SchoolCentral() {
 
     const load = useCallback(async () => {
         try {
+            console.log("DEBUG: SchoolCentral load() starting...");
             const [st, bo, cl, str, sub, ch, catRes] = await Promise.all([
                 api.get('/admin/states'),
                 api.get('/admin/boards'),
@@ -86,22 +87,43 @@ export function SchoolCentral() {
                 api.get('/admin/chapters'),
                 api.get('/structure/categories')
             ]);
+            console.log("DEBUG: SchoolCentral load() success", {
+                states: st.data.length,
+                boards: bo.data.length,
+                subjects: sub.data.length
+            });
             setStates(st.data); setBoards(bo.data);
             setStreams(str.data); setSubjects(sub.data); setChapters(ch.data);
             const foundCat = catRes.data.find(c => c.name.toLowerCase().includes('school'));
             if (foundCat) setCatId(foundCat.id);
-        } catch (e) { showToast('Load error: ' + (e.response?.data?.error || e.message), 'error'); }
+        } catch (e) {
+            console.error("DEBUG: SchoolCentral load() failed", e);
+            showToast('Load error: ' + (e.response?.data?.error || e.message), 'error');
+        }
     }, []);
 
     useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
         if (selBoard) {
-            api.get(`/admin/classes/${selBoard.id}`).then(res => setClasses(res.data));
+            api.get(`/admin/classes/${selBoard.id}`).then(res => {
+                console.log("DEBUG: Classes fetched for board", selBoard.id, res.data);
+                setClasses(res.data);
+            });
         } else {
             setClasses([]);
         }
     }, [selBoard]);
+
+    useEffect(() => {
+        console.log("DEBUG: SchoolCentral Data State", {
+            boards: boards.length,
+            classes: classes.length,
+            subjects: subjects.length,
+            selBoard: selBoard?.id,
+            selClass: selClass?.id || selClass?.class_id
+        });
+    }, [boards, classes, subjects, selBoard, selClass]);
 
     // -- AI Fetch boards (syncMode=true: deletes existing boards for state first)
     const aiFetchBoards = async (syncMode = false) => {
@@ -307,7 +329,8 @@ export function SchoolCentral() {
             const bMatch = s.board_id == selBoard.id;
             const cMatch = s.class_id == (selClass.class_id || selClass.id);
             const sMatch = selStream ? s.stream_id == selStream.id : true;
-            return bMatch && cMatch && sMatch;
+            const match = bMatch && cMatch && sMatch;
+            return match;
         })
         : [];
 
@@ -739,7 +762,10 @@ export function UniversityHub() {
 
     const filtUnis = selState ? universities.filter(u => u.state_id == selState.id) : [];
     const filtSubjects = selUni && selDegree
-        ? subjects.filter(s => s.university_id == selUni.id && s.degree_type_id == selDegree.id && (selSemester ? s.semester_id == selSemester.id : true))
+        ? subjects.filter(s =>
+            s.university_id == selUni.id && s.degree_type_id == selDegree.id &&
+            (selSemester ? s.semester_id == selSemester.id : !s.semester_id)
+        )
         : [];
     const filtChapters = selSubject ? chapters.filter(c => c.subject_id == selSubject.id) : [];
 
