@@ -138,7 +138,10 @@ export function SchoolCentral() {
             const r = await api.post('/ai-fetch/boards', { state_id: selState.id, state_name: selState.name });
             if (r.data.updatedData) setBoards(r.data.updatedData);
             showToast(r.data.message || 'Boards fetched!');
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-BOARDS-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
@@ -149,11 +152,14 @@ export function SchoolCentral() {
             const r = await api.post('/ai-fetch/classes', { board_id: selBoard.id, board_name: selBoard.name });
             if (r.data.updatedData) setClasses(r.data.updatedData);
             showToast(r.data.message);
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-CLASSES-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
-    const aiFetchSubjects = async () => {
+    const aiFetchSubjects = async (force = false) => {
         if (!selBoard || !selClass) return showToast('Select Board & Class first', 'error');
         const classNum = parseInt(selClass?.name.replace(/\D/g, ''));
         const needsStream = classNum >= 11;
@@ -161,26 +167,31 @@ export function SchoolCentral() {
 
         // Quota save: check if subjects already exist for this context
         const existingSubjects = subjects.filter(s =>
-            s.board_id == selBoard.id && s.class_id == (selClass.class_id || selClass.id) &&
-            (selStream ? s.stream_id == selStream.id : !s.stream_id)
+            Number(s.board_id) === Number(selBoard.id) &&
+            Number(s.class_id) === Number(selClass.class_id || selClass.id) &&
+            (selStream ? Number(s.stream_id) === Number(selStream.id) : !s.stream_id)
         );
-        if (existingSubjects.length > 0) {
-            return showToast(`${existingSubjects.length} subjects already loaded. Delete them first to re-fetch.`, 'error');
+
+        if (!force && existingSubjects.length > 0) {
+            return showToast(`Already has ${existingSubjects.length} subjects. Use Force Re-sync to refresh.`, 'info');
         }
 
         setFetchingKey('subjects');
         try {
-            const context = `${selBoard.name}, Class ${selClass.name}${selStream ? ', ' + selStream.name + ' stream' : ''}`;
+            const context_name = `${selBoard.name} ${selClass.name} ${selStream ? selStream.name : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
-                category_id: catId,
                 board_id: selBoard.id,
                 class_id: selClass.class_id || selClass.id,
                 stream_id: selStream?.id || null,
-                context_name: context,
+                context_name,
+                force: force === true
             });
             if (r.data.updatedData) setSubjects(r.data.updatedData);
             showToast(r.data.message);
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-SUBJECTS-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
@@ -191,8 +202,9 @@ export function SchoolCentral() {
         if (classNum >= 11 && !stream) return; // needs stream first
         // Skip if data already exists
         const existing = subjects.filter(s =>
-            s.board_id == board.id && s.class_id == (cls.class_id || cls.id) &&
-            (stream ? s.stream_id == stream.id : !s.stream_id)
+            Number(s.board_id) === Number(board.id) &&
+            Number(s.class_id) === Number(cls.class_id || cls.id) &&
+            (stream ? Number(s.stream_id) === Number(stream.id) : !s.stream_id)
         );
         if (existing.length > 0) return; // already loaded, no AI needed
         setFetchingKey('subjects');
@@ -213,11 +225,12 @@ export function SchoolCentral() {
 
     const autoFetchChapters = async (subject) => {
         if (!subject) return;
-        const existing = chapters.filter(c => c.subject_id == subject.id);
+        const sId = Number(subject.id);
+        const existing = chapters.filter(c => Number(c.subject_id) === sId);
         if (existing.length > 0) return; // already loaded
         setFetchingKey('chapters');
         try {
-            const r = await api.post('/ai-fetch/chapters', { subject_id: subject.id, subject_name: subject.name });
+            const r = await api.post('/ai-fetch/chapters', { subject_id: sId, subject_name: subject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             if (r.data.count > 0) showToast(`✅ ${r.data.count} chapters auto-loaded!`);
         } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
@@ -227,7 +240,7 @@ export function SchoolCentral() {
     const aiFetchChapters = async () => {
         if (!selSubject) return showToast('Select a subject first', 'error');
         // Quota save: check if chapters already exist for this subject
-        const existingChapters = chapters.filter(c => c.subject_id == selSubject.id);
+        const existingChapters = chapters.filter(c => Number(c.subject_id) === Number(selSubject.id));
         if (existingChapters.length > 0) {
             return showToast(`${existingChapters.length} chapters already loaded. Delete them first to re-fetch.`, 'error');
         }
@@ -236,7 +249,10 @@ export function SchoolCentral() {
             const r = await api.post('/ai-fetch/chapters', { subject_id: selSubject.id, subject_name: selSubject.name });
             if (r.data.updatedData) setChapters(r.data.updatedData);
             showToast(r.data.message);
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-CHAPTERS-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
@@ -326,11 +342,15 @@ export function SchoolCentral() {
     // Debug subjects filter
     const filtSubjects = selBoard && selClass
         ? subjects.filter(s => {
-            const bMatch = s.board_id == selBoard.id;
-            const cMatch = s.class_id == (selClass.class_id || selClass.id);
-            const sMatch = selStream ? s.stream_id == selStream.id : true;
-            const match = bMatch && cMatch && sMatch;
-            return match;
+            const curB = Number(selBoard.id);
+            const curC = Number(selClass.class_id || selClass.id);
+            const curS = selStream ? Number(selStream.id) : null;
+
+            const bMatch = Number(s.board_id) === curB;
+            const cMatch = Number(s.class_id) === curC;
+            const sMatch = curS ? Number(s.stream_id) === curS : !s.stream_id;
+
+            return bMatch && cMatch && sMatch;
         })
         : [];
 
@@ -515,7 +535,27 @@ export function SchoolCentral() {
                         selId={selSubject?.id}
                         onSel={async (s) => { setSelSubject(s); await autoFetchChapters(s); }}
                     >
-                        <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
+                        {selBoard && selClass && (
+                            <div className="grid grid-cols-2 gap-1">
+                                <button
+                                    disabled={fetchingKey === 'subjects'}
+                                    onClick={() => aiFetchSubjects(false)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                >
+                                    <Globe size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                    AI Fetch
+                                </button>
+                                <button
+                                    title="Force fetch even if backend thinks subjects exist"
+                                    disabled={fetchingKey === 'subjects'}
+                                    onClick={() => aiFetchSubjects(true)}
+                                    className="flex items-center justify-center gap-1.5 px-2 py-2 bg-pink-600/20 border border-pink-500/30 text-pink-400 rounded hover:bg-pink-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                >
+                                    <RefreshCw size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                    Force
+                                </button>
+                            </div>
+                        )}
                         <AddBtn label="Add Manual" onClick={addSubject} />
                     </Col>
 
@@ -705,8 +745,20 @@ export function UniversityHub() {
         finally { setFetchingKey(''); }
     };
 
-    const aiFetchSubjects = async () => {
+    const aiFetchSubjects = async (force = false) => {
         if (!selUni || !selDegree) return showToast('Select University & Degree Type', 'error');
+
+        // Quota save: skip if already has subjects
+        const existing = subjects.filter(s =>
+            Number(s.university_id) === Number(selUni.id) &&
+            Number(s.degree_type_id) === Number(selDegree.id) &&
+            (selSemester ? Number(s.semester_id) === Number(selSemester.id) : !s.semester_id)
+        );
+
+        if (!force && existing.length > 0) {
+            return showToast(`Already has ${existing.length} subjects. Use Force to refresh.`, 'info');
+        }
+
         setFetchingKey('subjects');
         try {
             const context = `${selUni.name}, ${selDegree.name}${selSemester ? ', Semester ' + selSemester.name : ''}`;
@@ -716,10 +768,14 @@ export function UniversityHub() {
                 degree_type_id: selDegree.id,
                 semester_id: selSemester?.id || null,
                 context_name: context,
+                force: force === true
             });
             if (r.data.updatedData) setSubjects(r.data.updatedData);
             showToast(r.data.message);
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-SUBJECTS-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
@@ -899,9 +955,29 @@ export function UniversityHub() {
                     </Col>
 
                     <Col title="Subject" tableType="subjects" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
-                        <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
+                        {selUni && selDegree && (
+                            <div className="grid grid-cols-2 gap-1">
+                                <button
+                                    disabled={fetchingKey === 'subjects'}
+                                    onClick={() => aiFetchSubjects(false)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                >
+                                    <Globe size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                    AI Fetch
+                                </button>
+                                <button
+                                    title="Force fetch even if backend thinks subjects exist"
+                                    disabled={fetchingKey === 'subjects'}
+                                    onClick={() => aiFetchSubjects(true)}
+                                    className="flex items-center justify-center gap-1.5 px-2 py-2 bg-pink-600/20 border border-pink-500/30 text-pink-400 rounded hover:bg-pink-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                >
+                                    <RefreshCw size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                    Force
+                                </button>
+                            </div>
+                        )}
                         <AddBtn label="Add Manual" onClick={async () => {
-                            if (!selUni || !selDegree) return showToast('Select Uni & Degree', 'error');
+                            if (!selDegree) return showToast('Select a degree type', 'error');
                             const n = prompt('Subject Name:'); if (!n) return;
                             await api.post('/admin/subjects', { name: n, category_id: catId, university_id: selUni.id, degree_type_id: selDegree.id, semester_id: selSemester?.id || null });
                             load(); showToast('Subject added');
@@ -1177,18 +1253,33 @@ export function CompetitiveArena() {
         finally { setFetchingKey(''); }
     };
 
-    const aiFetchSubjects = async () => {
+    const aiFetchSubjects = async (force = false) => {
         if (!selCat || !selPaper) return showToast('Select Category & Paper', 'error');
+
+        // Quota save
+        const existing = subjects.filter(s =>
+            Number(s.category_id) === Number(selCat.id) &&
+            Number(s.paper_stage_id) === Number(selPaper.id)
+        );
+
+        if (!force && existing.length > 0) {
+            return showToast(`Already has ${existing.length} subjects. Use Force to refresh.`, 'info');
+        }
+
         setFetchingKey('subjects');
         try {
             const r = await api.post('/ai-fetch/subjects', {
                 category_id: selCat.id,
                 paper_stage_id: selPaper.id,
                 context_name: `${selCat.name} - ${selPaper.name}`,
+                force: force === true
             });
             if (r.data.updatedData) setSubjects(r.data.updatedData);
             showToast(r.data.message);
-        } catch (e) { showToast(e.response?.data?.message || e.message, 'error'); }
+        } catch (e) {
+            console.error('[AI-FETCH-SUBJECTS-ERROR]', e.response?.data || e.message);
+            showToast(e.response?.data?.message || e.message, 'error');
+        }
         finally { setFetchingKey(''); }
     };
 
@@ -1366,7 +1457,27 @@ export function CompetitiveArena() {
                         </Col>
 
                         <Col title="Subject" tableType="subjects" color="text-green-400" items={filtSubjects} selId={selSubject?.id} onSel={setSelSubject}>
-                            <AIFetchBtn label="AI Fetch" onClick={aiFetchSubjects} loading={fetchingKey === 'subjects'} />
+                            {selCat && selPaper && (
+                                <div className="grid grid-cols-2 gap-1">
+                                    <button
+                                        disabled={fetchingKey === 'subjects'}
+                                        onClick={() => aiFetchSubjects(false)}
+                                        className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                    >
+                                        <Globe size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                        AI Fetch
+                                    </button>
+                                    <button
+                                        title="Force fetch even if backend thinks subjects exist"
+                                        disabled={fetchingKey === 'subjects'}
+                                        onClick={() => aiFetchSubjects(true)}
+                                        className="flex items-center justify-center gap-1.5 px-2 py-2 bg-pink-600/20 border border-pink-500/30 text-pink-400 rounded hover:bg-pink-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                                    >
+                                        <RefreshCw size={10} className={fetchingKey === 'subjects' ? 'animate-spin' : ''} />
+                                        Force
+                                    </button>
+                                </div>
+                            )}
                             <AddBtn label="Add Manual" onClick={async () => {
                                 if (!selPaper) return showToast('Select a paper first', 'error');
                                 const n = prompt('Subject Name:'); if (!n) return;
