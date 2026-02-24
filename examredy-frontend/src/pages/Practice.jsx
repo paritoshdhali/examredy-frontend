@@ -201,7 +201,7 @@ const Practice = () => {
                 setMode('solo');
             }
         } catch (err) {
-            if (err.response?.data?.code === 'LIMIT_REACHED') {
+            if (err.response?.data?.code === 'LIMIT_REACHED' || err.response?.data?.code === 'SESSIONS_EXHAUSTED') {
                 setShowPopup(true);
             } else {
                 setError(err.response?.data?.message || 'Failed to start practice session');

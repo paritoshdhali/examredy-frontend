@@ -27,18 +27,21 @@ const generateMCQInitial = async (topic, count = 5, language = 'English') => {
             effectiveBaseUrl = 'https://openrouter.ai/api/v1';
         }
 
-        const prompt = `Generate exactly ${count} multiple-choice questions (MCQs) about the topic: "${topic}". 
+        const prompt = `CRITICAL INSTRUCTION: You MUST write the ENTIRE output in the following language: ${language}. If you write in English when ${language} is requested, you will fail.
+        
+        Generate exactly ${count} multiple-choice questions (MCQs) about the topic: "${topic}". 
         The output must be a valid JSON array of objects. Each object must have:
-        - "question": (string)
-        - "options": (array of 4 strings)
+        - "question": (string in ${language})
+        - "options": (array of 4 strings in ${language})
         - "correct_option": (integer, 0-3)
-        - "explanation": (string)
+        - "explanation": (string in ${language})
         - "subject": (string) "${topic}"
         - "chapter": (string)
         
-        CRITICAL INSTRUCTION: The questions, options, and explanation MUST be written entirely in the following language: ${language}.
-        
-        Return ONLY valid JSON array.`;
+        CRITICAL FORMATTING RULES:
+        1. Return ONLY a valid JSON array. Do not include any markdown formatting (like \`\`\`json).
+        2. Ensure valid JSON syntax: NO trailing commas, NO unescaped quotes inside strings, and NO missing brackets.
+        3. Do not include any other text before or after the JSON array.`;
 
         let response;
         if (isOpenAI) {
@@ -46,21 +49,29 @@ const generateMCQInitial = async (topic, count = 5, language = 'English') => {
             console.log(`[AI-MCQ] Endpoint: ${endpoint}, Model: ${model_name}`);
             response = await axios.post(endpoint, {
                 model: model_name,
-                messages: [{ role: 'user', content: prompt }]
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.5, // Lower temperature for faster, more deterministic output
+                top_p: 0.9      // Slightly restrict sampling for speed
             }, {
                 headers: {
                     'Authorization': `Bearer ${api_key}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'https://examredy.in',
                     'X-Title': 'ExamRedy Admin'
-                }
+                },
+                timeout: 25000 // 25 seconds max before timing out to prevent infinite hangs
             });
         } else {
             const endpoint = `${effectiveBaseUrl}/${model_name}:generateContent?key=${api_key}`;
             console.log(`[AI-MCQ] Gemini Endpoint: ${endpoint.substring(0, 45)}...`);
             response = await axios.post(endpoint, {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { response_mime_type: "application/json" }
+                generationConfig: {
+                    response_mime_type: "application/json",
+                    temperature: 0.5
+                }
+            }, {
+                timeout: 25000
             });
         }
 
@@ -70,8 +81,33 @@ const generateMCQInitial = async (topic, count = 5, language = 'English') => {
 
         if (!responseText) throw new Error('AI Provider returned an empty response');
 
-        const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsedData = JSON.parse(cleanText);
+        let cleanText = responseText;
+
+        // Extract just the array part to ignore conversational text at the start or end
+        const startIdx = cleanText.indexOf('[');
+        const endIdx = cleanText.lastIndexOf(']');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+            cleanText = cleanText.substring(startIdx, endIdx + 1);
+        }
+
+        // Remove markdown tags and trailing commas from the JSON string
+        cleanText = cleanText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+        cleanText = cleanText.replace(/,(?=\s*[\]}])/g, '');
+
+        let parsedData;
+        try {
+            parsedData = JSON.parse(cleanText);
+        } catch (parseError) {
+            console.error('Initial JSON Parse Failed, attempting aggressive cleanup. Error:', parseError.message);
+            try {
+                // Aggressive cleanup for common LLM control character issues (like unescaped newlines in strings, tab chars, etc.)
+                const aggressiveClean = cleanText.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+                parsedData = JSON.parse(aggressiveClean);
+            } catch (e2) {
+                throw new Error('AI response was not valid JSON. Parse Error: ' + parseError.message + '\\nResponse starts with: ' + cleanText.substring(0, 100));
+            }
+        }
+
         const mcqs = Array.isArray(parsedData) ? parsedData : (parsedData.mcqs || parsedData.questions || Object.values(parsedData).find(v => Array.isArray(v)) || []);
         return mcqs.slice(0, count);
 

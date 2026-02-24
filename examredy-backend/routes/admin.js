@@ -93,13 +93,15 @@ router.put('/users/:id/role', async (req, res) => {
 });
 
 router.put('/users/:id/subscription', async (req, res) => {
-    const { action, hours, expiry } = req.body;
+    const { action, hours, expiry, sessions } = req.body;
     if (expiry) {
         await query('UPDATE users SET premium_expiry = $1, is_premium = $2 WHERE id = $3', [expiry, new Date(expiry) > new Date(), req.params.id]);
     } else if (action === 'extend' || action === 'reduce') {
         const interval = `${hours || 24} hours`;
         const operator = action === 'extend' ? '+' : '-';
         await query(`UPDATE users SET premium_expiry = COALESCE(premium_expiry, CURRENT_TIMESTAMP) ${operator} $1::interval, is_premium = TRUE WHERE id = $2`, [interval, req.params.id]);
+    } else if (action === 'sessions') {
+        await query('UPDATE users SET sessions_left = sessions_left + $1, is_premium = TRUE WHERE id = $2', [parseInt(sessions) || 0, req.params.id]);
     } else if (action === 'cancel') {
         await query('UPDATE users SET is_premium = FALSE, premium_expiry = NULL WHERE id = $1', [req.params.id]);
     }
@@ -558,7 +560,10 @@ router.post('/ai-providers/fetch-models', async (req, res) => {
     const { base_url, api_key } = req.body;
     if (!base_url) return res.status(400).json({ error: 'base_url is required', models: [] });
     const axios = require('axios');
-    const cleanUrl = base_url.replace(/\/$/, '');
+    let cleanUrl = base_url.replace(/\/$/, '');
+    if (cleanUrl.endsWith('/models')) {
+        cleanUrl = cleanUrl.slice(0, -7);
+    }
 
     try {
         // Try OpenAI-compatible /models endpoint (OpenAI, OpenRouter, Groq, Together, etc.)
@@ -639,23 +644,25 @@ router.get('/plans', async (req, res) => {
 
 router.post('/plans', async (req, res) => {
     try {
-        const { name, duration_hours, price, is_active } = req.body;
-        await query(
-            'INSERT INTO subscription_plans (name, duration_hours, price, is_active) VALUES ($1,$2,$3,$4)',
-            [name, parseInt(duration_hours), parseFloat(price), is_active !== undefined ? is_active : true]
+        const { name, price, is_active, sessions_limit, referral_bonus_sessions } = req.body;
+        const result = await query(
+            'INSERT INTO subscription_plans (name, duration_hours, price, is_active, sessions_limit, referral_bonus_sessions) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [name, 1, price, is_active !== undefined ? is_active : true, parseInt(sessions_limit) || 0, parseInt(referral_bonus_sessions) || 0]
         );
-        res.json({ success: true, message: 'Plan added' });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+        res.status(201).json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 router.put('/plans/:id', async (req, res) => {
     try {
-        const { name, duration_hours, price, is_active } = req.body;
-        console.log(`[ADMIN-PLANS] Updating plan ${req.params.id}:`, { name, duration_hours, price, is_active });
+        const { name, price, is_active, sessions_limit, referral_bonus_sessions } = req.body;
+        console.log(`[ADMIN-PLANS] Updating plan ${req.params.id}:`, { name, price, is_active, sessions_limit, referral_bonus_sessions });
 
         const result = await query(
-            'UPDATE subscription_plans SET name=$1, duration_hours=$2, price=$3, is_active=$4 WHERE id=$5',
-            [name, parseInt(duration_hours) || 0, parseFloat(price) || 0, is_active === true, parseInt(req.params.id)]
+            'UPDATE subscription_plans SET name=$1, price=$2, is_active=$3, sessions_limit=$4, referral_bonus_sessions=$5 WHERE id=$6 RETURNING *',
+            [name, parseFloat(price) || 0, is_active === true, parseInt(sessions_limit) || 0, parseInt(referral_bonus_sessions) || 0, parseInt(req.params.id)]
         );
 
         if (result.rowCount === 0) {

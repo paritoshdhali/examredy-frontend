@@ -43,13 +43,17 @@ const Prime = () => {
         }
 
         try {
+            // 0. Get Public Config (Key ID)
+            const configRes = await api.get('/subscription/config');
+            const { key_id } = configRes.data;
+
             // 1. Create Order
             const orderRes = await api.post('/subscription/create-order', { planId });
             const order = orderRes.data;
 
             // 2. Initialize Razorpay
             const options = {
-                key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+                key: key_id,
                 amount: order.amount,
                 currency: order.currency,
                 name: "ExamRedy",
@@ -84,7 +88,8 @@ const Prime = () => {
 
         } catch (err) {
             console.error("Payment initiation failed", err);
-            alert('Failed to start payment');
+            const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unknown error';
+            alert(`Failed to start payment: ${msg}`);
         }
     };
 
@@ -115,8 +120,7 @@ const Prime = () => {
                                 <div className="p-8 text-center flex flex-col h-full">
                                     <h3 className="text-2xl font-bold text-gray-800 mb-4">{plan.name}</h3>
                                     <div className="text-5xl font-extrabold text-blue-600 mb-2">₹{plan.price}</div>
-                                    <p className="text-emerald-600 font-bold mb-1">{plan.sessions_limit} Premium Sessions</p>
-                                    <p className="text-gray-500 mb-8">Valid for {plan.duration_hours} Hours Access</p>
+                                    <p className="text-emerald-600 font-bold mb-8">{plan.sessions_limit} Premium Sessions</p>
 
                                     <ul className="text-gray-600 text-left space-y-3 mb-8 flex-1">
                                         <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> {plan.sessions_limit} AI-Powered Sessions</li>

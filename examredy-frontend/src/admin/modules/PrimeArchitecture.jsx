@@ -154,9 +154,6 @@ export const PrimeArchitecture = () => {
                                 </div>
 
                                 <h4 className="text-white text-xl font-black uppercase tracking-tight mb-2">{plan.name}</h4>
-                                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest flex items-center gap-2 mb-2">
-                                    <Clock size={14} /> {plan.duration_hours} HOURS ACCESS
-                                </p>
                                 <p className="text-pink-500 text-sm font-bold uppercase tracking-widest flex items-center gap-2 mb-8">
                                     <TrendingUp size={14} /> {plan.sessions_limit} PREMIUM SESSIONS
                                 </p>
@@ -205,12 +202,21 @@ export const PrimeArchitecture = () => {
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] ml-1">Duration (Hours)</label>
+                                    <label className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] ml-1">Sessions Limit</label>
                                     <input
                                         className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
                                         type="number"
-                                        value={planForm.duration_hours}
-                                        onChange={e => setPlanForm({ ...planForm, duration_hours: parseInt(e.target.value) || 0 })}
+                                        value={planForm.sessions_limit}
+                                        onChange={e => setPlanForm({ ...planForm, sessions_limit: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] ml-1">Referral Bonus (Sessions)</label>
+                                    <input
+                                        className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
+                                        type="number"
+                                        value={planForm.referral_bonus_sessions}
+                                        onChange={e => setPlanForm({ ...planForm, referral_bonus_sessions: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -222,28 +228,8 @@ export const PrimeArchitecture = () => {
                                         onChange={e => setPlanForm({ ...planForm, price: parseFloat(e.target.value) || 0 })}
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] ml-1">Sessions Limit</label>
-                                        <input
-                                            className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
-                                            type="number"
-                                            value={planForm.sessions_limit}
-                                            onChange={e => setPlanForm({ ...planForm, sessions_limit: parseInt(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] ml-1">Referral Bonus (Sessions)</label>
-                                        <input
-                                            className="w-full bg-gray-950 border border-gray-800 rounded-2xl py-4 px-6 text-white font-black text-sm focus:ring-2 focus:ring-pink-500/20 outline-none"
-                                            type="number"
-                                            value={planForm.referral_bonus_sessions}
-                                            onChange={e => setPlanForm({ ...planForm, referral_bonus_sessions: parseInt(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="flex items-center gap-4 p-4 bg-gray-800/40 rounded-2xl border border-gray-700/50 mt-4">
+                                <div className="flex items-center gap-4 p-4 bg-gray-800/40 rounded-2xl border border-gray-700/50">
                                     <input
                                         id="plan-active"
                                         type="checkbox"
@@ -251,22 +237,22 @@ export const PrimeArchitecture = () => {
                                         checked={planForm.is_active}
                                         onChange={e => setPlanForm({ ...planForm, is_active: e.target.checked })}
                                     />
-                                    <label htmlFor="plan-active" className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer">Immediate Deployment</label>
+                                    <label htmlFor="plan-active" className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer">Active</label>
                                 </div>
-
-                                <button
-                                    onClick={handleSavePlan}
-                                    disabled={loading}
-                                    className={`w-full py-5 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-pink-500/20 mt-6 transition-transform active:scale-95 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
-                                >
-                                    {loading ? 'PROCESSING...' : (
-                                        <>
-                                            <CheckCircle2 size={18} />
-                                            {editingPlan ? 'SAVE CHANGES' : 'FINALIZE CONFIGURATION'}
-                                        </>
-                                    )}
-                                </button>
                             </div>
+
+                            <button
+                                onClick={handleSavePlan}
+                                disabled={loading}
+                                className={`w-full py-5 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-pink-500/20 mt-6 transition-transform active:scale-95 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
+                            >
+                                {loading ? 'PROCESSING...' : (
+                                    <>
+                                        <CheckCircle2 size={18} />
+                                        {editingPlan ? 'SAVE CHANGES' : 'CREATE PLAN'}
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

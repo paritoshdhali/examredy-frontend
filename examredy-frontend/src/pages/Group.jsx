@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import MCQSession from '../components/MCQSession';
+import PrimePopup from '../components/PrimePopup';
 
 const Group = () => {
     const [step, setStep] = useState('menu'); // 'menu', 'lobby', 'active', 'results'
@@ -11,6 +12,7 @@ const Group = () => {
     const [loading, setLoading] = useState(false);
     const [isHost, setIsHost] = useState(false);
     const [battleQuestions, setBattleQuestions] = useState([]);
+    const [showPopup, setShowPopup] = useState(false);
 
     // Hierarchy States
     const [categories, setCategories] = useState([]);
@@ -140,7 +142,11 @@ const Group = () => {
             setStep('lobby');
             setParticipants([{ username: 'You (Host)', isHost: true }]);
         } catch (err) {
-            setError('Failed to create session. Please try again.');
+            if (err.response?.data?.code === 'SESSIONS_EXHAUSTED') {
+                setShowPopup(true);
+            } else {
+                setError('Failed to create session. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -185,7 +191,11 @@ const Group = () => {
             setBattleQuestions(res.data.questions);
             setStep('active');
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to start battle. Ensure questions are available for this selection.');
+            if (err.response?.data?.code === 'SESSIONS_EXHAUSTED') {
+                setShowPopup(true);
+            } else {
+                setError(err.response?.data?.message || 'Failed to start battle. Ensure questions are available for this selection.');
+            }
         } finally {
             setLoading(false);
         }
@@ -426,6 +436,7 @@ const Group = () => {
                     </div>
                 </div>
             </div>
+            {showPopup && <PrimePopup onClose={() => setShowPopup(false)} />}
         </div>
     );
 };

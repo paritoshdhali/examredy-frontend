@@ -139,8 +139,8 @@ export function SchoolCentral() {
 
         // Quota save: check if subjects already exist for this context
         const existingSubjects = subjects.filter(s =>
-            s.board_id === selBoard.id && s.class_id === selClass.id &&
-            (selStream ? s.stream_id === selStream.id : !s.stream_id)
+            s.board_id == selBoard.id && s.class_id == selClass.id &&
+            (selStream ? s.stream_id == selStream.id : !s.stream_id)
         );
         if (existingSubjects.length > 0) {
             return showToast(`${existingSubjects.length} subjects already loaded. Delete them first to re-fetch.`, 'error');
@@ -169,8 +169,8 @@ export function SchoolCentral() {
         if (classNum >= 11 && !stream) return; // needs stream first
         // Skip if data already exists
         const existing = subjects.filter(s =>
-            s.board_id === board.id && s.class_id === cls.id &&
-            (stream ? s.stream_id === stream.id : !s.stream_id)
+            s.board_id == board.id && s.class_id == cls.id &&
+            (stream ? s.stream_id == stream.id : !s.stream_id)
         );
         if (existing.length > 0) return; // already loaded, no AI needed
         setFetchingKey('subjects');
@@ -191,7 +191,7 @@ export function SchoolCentral() {
 
     const autoFetchChapters = async (subject) => {
         if (!subject) return;
-        const existing = chapters.filter(c => c.subject_id === subject.id);
+        const existing = chapters.filter(c => c.subject_id == subject.id);
         if (existing.length > 0) return; // already loaded
         setFetchingKey('chapters');
         try {
@@ -205,7 +205,7 @@ export function SchoolCentral() {
     const aiFetchChapters = async () => {
         if (!selSubject) return showToast('Select a subject first', 'error');
         // Quota save: check if chapters already exist for this subject
-        const existingChapters = chapters.filter(c => c.subject_id === selSubject.id);
+        const existingChapters = chapters.filter(c => c.subject_id == selSubject.id);
         if (existingChapters.length > 0) {
             return showToast(`${existingChapters.length} chapters already loaded. Delete them first to re-fetch.`, 'error');
         }
@@ -299,11 +299,20 @@ export function SchoolCentral() {
     };
 
     // -- Derived filtered lists
-    const filtBoards = selState ? boards.filter(b => b.state_id === selState.id) : [];
+    const filtBoards = selState ? boards.filter(b => b.state_id == selState.id) : [];
+
+    // Debug subjects filter
     const filtSubjects = selBoard && selClass
-        ? subjects.filter(s => s.board_id === selBoard.id && s.class_id === selClass.id && (selStream ? s.stream_id === selStream.id : true))
+        ? subjects.filter(s => {
+            const bMatch = s.board_id == selBoard.id;
+            const cMatch = s.class_id == selClass.id;
+            const sMatch = selStream ? s.stream_id == selStream.id : true;
+            return bMatch && cMatch && sMatch;
+        })
         : [];
-    const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
+
+    const filtChapters = selSubject ? chapters.filter(c => c.subject_id == selSubject.id) : [];
+
     // Fix: parseInt('Class 11') = NaN bug — extract number properly
     const needsStream = selClass && parseInt(selClass.name.replace(/\D/g, '')) >= 11;
 
@@ -421,7 +430,7 @@ export function SchoolCentral() {
                             setSelState(s);
                             setSelBoard(null); setSelClass(null); setSelStream(null); setSelSubject(null);
                             // Auto-fetch boards for selected state
-                            const existing = boards.filter(b => b.state_id === s.id);
+                            const existing = boards.filter(b => b.state_id == s.id);
                             if (existing.length === 0) {
                                 setFetchingKey('boards');
                                 try {
@@ -626,7 +635,7 @@ export function UniversityHub() {
     const autoFetchSemesters = async (uni, deg) => {
         if (!uni || !deg) return;
         // Check if semesters already exist for this university
-        const existing = semesters.filter(s => s.university_id === uni.id);
+        const existing = semesters.filter(s => s.university_id == uni.id);
         if (existing.length > 0) return; // already loaded
 
         setFetchingKey('semesters');
@@ -650,7 +659,7 @@ export function UniversityHub() {
 
     const aiFetchSemesters = async () => {
         if (!selUni || !selDegree) return showToast('Select University & Degree Type', 'error');
-        const existing = semesters.filter(s => s.university_id === selUni.id);
+        const existing = semesters.filter(s => s.university_id == selUni.id);
         if (existing.length > 0) {
             return showToast(`${existing.length} terms already loaded.`, 'error');
         }
@@ -728,11 +737,11 @@ export function UniversityHub() {
         }
     };
 
-    const filtUnis = selState ? universities.filter(u => u.state_id === selState.id) : [];
+    const filtUnis = selState ? universities.filter(u => u.state_id == selState.id) : [];
     const filtSubjects = selUni && selDegree
-        ? subjects.filter(s => s.university_id === selUni.id && s.degree_type_id === selDegree.id && (selSemester ? s.semester_id === selSemester.id : true))
+        ? subjects.filter(s => s.university_id == selUni.id && s.degree_type_id == selDegree.id && (selSemester ? s.semester_id == selSemester.id : true))
         : [];
-    const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
+    const filtChapters = selSubject ? chapters.filter(c => c.subject_id == selSubject.id) : [];
 
     const Col = ({ title, tableType, color, items, selId, onSel, children }) => {
         const isTableValid = !!tableType && !['states', 'classes', 'streams', 'degree_types', 'semesters'].includes(tableType);
@@ -788,10 +797,10 @@ export function UniversityHub() {
                                 <button
                                     onClick={() => onSel(item)}
                                     title={item.name}
-                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-violet-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId == item.id ? 'bg-violet-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
                                 >
                                     <span className="truncate">{item.name}</span>
-                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
+                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId == item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
                                 </button>
                                 {isTableValid && (
                                     <div className="flex items-center justify-between px-2 pt-1">
@@ -857,7 +866,7 @@ export function UniversityHub() {
                         onSel={(d) => { setSelDegree(d); setSelSemester(null); setSelSubject(null); autoFetchSemesters(selUni, d); }}
                     />
 
-                    <Col title="Semester" tableType="semesters" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id === selUni?.id) : []} selId={selSemester?.id}
+                    <Col title="Semester" tableType="semesters" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id == selUni?.id) : []} selId={selSemester?.id}
                         onSel={(s) => { setSelSemester(s); setSelSubject(null); }}
                     >
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchSemesters} loading={fetchingKey === 'semesters'} />
@@ -1194,11 +1203,11 @@ export function CompetitiveArena() {
         }
     };
 
-    const filtPapers = selCat ? papers.filter(p => p.category_id === selCat.id) : [];
+    const filtPapers = selCat ? papers.filter(p => p.category_id == selCat.id) : [];
     const filtSubjects = selCat && selPaper
-        ? subjects.filter(s => s.category_id === selCat.id && s.paper_stage_id === selPaper.id)
+        ? subjects.filter(s => s.category_id == selCat.id && s.paper_stage_id == selPaper.id)
         : [];
-    const filtChapters = selSubject ? chapters.filter(c => c.subject_id === selSubject.id) : [];
+    const filtChapters = selSubject ? chapters.filter(c => c.subject_id == selSubject.id) : [];
 
     const Col = ({ title, tableType, color, items, selId, onSel, children }) => {
         const isTableValid = !!tableType && !['states', 'classes', 'streams', 'degree_types', 'semesters'].includes(tableType);
@@ -1253,10 +1262,10 @@ export function CompetitiveArena() {
                                 <button
                                     onClick={() => onSel(item)}
                                     title={item.name}
-                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId === item.id ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
+                                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-all flex items-center justify-between group ${selId == item.id ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} ${!item.is_active ? 'opacity-50 line-through decoration-red-500/50' : ''}`}
                                 >
                                     <span className="truncate">{item.name}</span>
-                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId === item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
+                                    <ChevronRight size={11} className={`flex-shrink-0 ${selId == item.id ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`} />
                                 </button>
                                 {isTableValid && (
                                     <div className="flex items-center justify-between px-2 pt-1">
@@ -1304,7 +1313,7 @@ export function CompetitiveArena() {
                         <div key={cat.id} className="relative group">
                             <button
                                 onClick={() => { setSelCat(cat); setSelPaper(null); setSelSubject(null); }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border transition-all ${selCat?.id === cat.id
+                                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide border transition-all ${selCat?.id == cat.id
                                     ? 'bg-yellow-500 text-black border-yellow-400'
                                     : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-yellow-500/50 hover:text-yellow-400'} ${!cat.is_active ? 'opacity-50 line-through' : ''}`}
                             >
