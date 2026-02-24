@@ -57,7 +57,14 @@ const Header = () => {
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
                                             <User size={16} />
                                         </div>
-                                        <span className="text-sm font-black text-gray-700">{user.username}</span>
+                                        <div className="flex flex-col items-start leading-tight">
+                                            <span className="text-sm font-black text-gray-700">{user.username}</span>
+                                            {user.is_premium && (
+                                                <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                                                    👑 {user.sessions_left || 0} SESSIONS
+                                                </span>
+                                            )}
+                                        </div>
                                     </Link>
                                     <button onClick={handleLogout} className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all" title="Logout">
                                         <LogOut size={20} />

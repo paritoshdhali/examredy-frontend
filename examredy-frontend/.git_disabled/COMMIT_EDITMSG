@@ -1,1 +1,1 @@
-feat(group): implement lobby polling, host controls, and synchronized battle start
+fix(group): add AI loading states and language selection for synchronized battles

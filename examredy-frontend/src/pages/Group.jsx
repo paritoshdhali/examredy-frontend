@@ -162,6 +162,8 @@ const Group = () => {
         }
     };
 
+    const [selectedLanguage, setSelectedLanguage] = useState('English');
+
     const handleStart = async () => {
         if (!selectedCat) return;
         setLoading(true);
@@ -177,7 +179,8 @@ const Group = () => {
                 universityId: selectedUniversity,
                 paperStageId: selectedPaperStage,
                 subjectId: selectedSubject,
-                chapterId: selectedChapter
+                chapterId: selectedChapter,
+                language: selectedLanguage
             });
             setBattleQuestions(res.data.questions);
             setStep('active');
@@ -306,6 +309,30 @@ const Group = () => {
                                     </select>
                                 </div>
                             )}
+
+                            {selectedCat && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Exam Language</label>
+                                    <select value={selectedLanguage} onChange={e => setSelectedLanguage(e.target.value)} className="w-full border-2 border-blue-50 bg-blue-50 text-blue-900 rounded-xl px-4 py-3 outline-none font-bold">
+                                        <option value="English">English</option>
+                                        <option value="Bengali">Bengali (বাংলা)</option>
+                                        <option value="Hindi">Hindi (हिंदी)</option>
+                                        <option value="Urdu">Urdu (اردو)</option>
+                                        <option value="Assamese">Assamese (অসমীয়া)</option>
+                                        <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                                        <option value="Marathi">Marathi (मরাঠী)</option>
+                                        <option value="Tamil">Tamil (தமிழ்)</option>
+                                        <option value="Telugu">Telugu (తెలుగు)</option>
+                                    </select>
+                                    <p className="text-[10px] text-blue-400 mt-1 font-medium">* AI will generate synchronized questions in this language.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {participants.length >= 15 && (
+                        <div className="mb-6 p-4 bg-orange-50 border-2 border-orange-100 rounded-2xl text-orange-700 text-sm font-bold flex items-center justify-center gap-2">
+                            ⚠️ Group is full (Maximum 15 players)
                         </div>
                     )}
 
@@ -315,7 +342,12 @@ const Group = () => {
                             disabled={loading || !selectedCat}
                             className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg transition transform hover:-translate-y-1 disabled:opacity-50"
                         >
-                            {loading ? 'Starting...' : 'Start Competition 🚀'}
+                            {loading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                                    Generating AI Competition...
+                                </span>
+                            ) : 'Start Competition 🚀'}
                         </button>
                     ) : (
                         <div className="bg-blue-50 text-blue-700 p-4 rounded-xl font-medium flex items-center justify-center animate-pulse">
