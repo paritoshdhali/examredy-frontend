@@ -802,15 +802,19 @@ export function UniversityHub() {
         }
 
         try {
-            for (const tableType in checkedItems) {
-                const ids = Array.from(checkedItems[tableType]);
+            const payloadPromises = [];
+            for (const [tableType, idsSet] of Object.entries(checkedItems)) {
+                const ids = Array.from(idsSet);
                 if (ids.length > 0) {
-                    await api.put('/admin/bulk-approve', { type: tableType, ids });
+                    payloadPromises.push(api.put('/admin/bulk-approve', { type: tableType, ids }));
                 }
             }
-            showToast('Selected items enabled successfully!');
-            setCheckedItems({});
-            load();
+            if (payloadPromises.length > 0) {
+                await Promise.all(payloadPromises);
+                showToast('Selected items enabled successfully!');
+                setCheckedItems({});
+                load();
+            }
         } catch (e) {
             showToast(e.response?.data?.message || e.message, 'error');
         }
@@ -1306,15 +1310,20 @@ export function CompetitiveArena() {
         }
 
         try {
-            for (const tableType in checkedItems) {
-                const ids = Array.from(checkedItems[tableType]);
+            const payloadPromises = [];
+            for (const [tableType, idsSet] of Object.entries(checkedItems)) {
+                const ids = Array.from(idsSet);
                 if (ids.length > 0) {
-                    await api.post(`/admin/bulk-update/${tableType}`, { ids, is_active: true });
+                    // Fix: Use correct backend endpoint and method
+                    payloadPromises.push(api.put('/admin/bulk-approve', { type: tableType, ids }));
                 }
             }
-            showToast('Selected items enabled successfully!');
-            setCheckedItems({});
-            load();
+            if (payloadPromises.length > 0) {
+                await Promise.all(payloadPromises);
+                showToast('Selected items enabled successfully!');
+                setCheckedItems({});
+                load();
+            }
         } catch (e) {
             showToast(e.response?.data?.message || e.message, 'error');
         }
@@ -1496,6 +1505,20 @@ export function CompetitiveArena() {
                             }} />
                         </Col>
                     </div>
+                </div>
+            )}
+
+            {/* Bulk Actions Floating Bar */}
+            {Object.values(checkedItems).some(set => set.size > 0) && (
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl p-4 z-50 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="text-green-400" size={20} />
+                        <span className="text-white font-bold text-sm">{Object.values(checkedItems).reduce((sum, set) => sum + set.size, 0)} items selected</span>
+                    </div>
+                    <button onClick={handleBulkApprove} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                        <Save size={16} /> Save & Enable Selected
+                    </button>
+                    <button onClick={() => setCheckedItems({})} className="text-gray-400 hover:text-white px-3 text-sm">Cancel</button>
                 </div>
             )}
 
