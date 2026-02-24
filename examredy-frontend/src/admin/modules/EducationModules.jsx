@@ -139,7 +139,7 @@ export function SchoolCentral() {
 
         // Quota save: check if subjects already exist for this context
         const existingSubjects = subjects.filter(s =>
-            s.board_id == selBoard.id && s.class_id == selClass.id &&
+            s.board_id == selBoard.id && s.class_id == (selClass.class_id || selClass.id) &&
             (selStream ? s.stream_id == selStream.id : !s.stream_id)
         );
         if (existingSubjects.length > 0) {
@@ -169,7 +169,7 @@ export function SchoolCentral() {
         if (classNum >= 11 && !stream) return; // needs stream first
         // Skip if data already exists
         const existing = subjects.filter(s =>
-            s.board_id == board.id && s.class_id == cls.id &&
+            s.board_id == board.id && s.class_id == (cls.class_id || cls.id) &&
             (stream ? s.stream_id == stream.id : !s.stream_id)
         );
         if (existing.length > 0) return; // already loaded, no AI needed
@@ -305,7 +305,7 @@ export function SchoolCentral() {
     const filtSubjects = selBoard && selClass
         ? subjects.filter(s => {
             const bMatch = s.board_id == selBoard.id;
-            const cMatch = s.class_id == selClass.id;
+            const cMatch = s.class_id == (selClass.class_id || selClass.id);
             const sMatch = selStream ? s.stream_id == selStream.id : true;
             return bMatch && cMatch && sMatch;
         })
