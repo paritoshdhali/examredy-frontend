@@ -38,8 +38,9 @@ api.interceptors.response.use(
     (error) => {
         console.error('[API-ERROR]', error.response?.status, error.response?.data || error.message);
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            // Check if it's the custom LIMIT_REACHED error (which is also a 403 but shouldn't log the user out)
-            if (error.response.data?.code === 'LIMIT_REACHED') {
+            // Check if it's a known business-logic error that shouldn't log the user out
+            const code = error.response.data?.code;
+            if (code === 'LIMIT_REACHED' || code === 'SESSIONS_EXHAUSTED') {
                 return Promise.reject(error);
             }
 
