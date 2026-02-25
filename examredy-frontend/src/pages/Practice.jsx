@@ -229,6 +229,19 @@ const Practice = () => {
                 await api.post('/structure/fetch-out-boards', { state_id: s.id, state_name: s.name });
                 const res = await api.get(`/structure/boards/${selectedState}`);
                 setBoards(res.data);
+            } else if (type === 'classes') {
+                const b = boards.find(x => x.id == selectedBoard);
+                if (!b) return;
+                await api.post('/structure/fetch-out-classes', { board_id: b.id, board_name: b.name });
+                const res = await api.get(`/structure/classes/${selectedBoard}`);
+                setClasses(res.data);
+            } else if (type === 'streams') {
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
+                if (!b || !c) return;
+                await api.post('/structure/fetch-out-streams', { board_name: b.name, class_name: c.name });
+                const res = await api.get(`/structure/streams`);
+                setStreams(res.data);
             } else if (type === 'subjects') {
                 const b = boards.find(x => x.id == selectedBoard);
                 const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
@@ -322,18 +335,30 @@ const Practice = () => {
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard}>
-                                    <option value="">Choose Class</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard || isFetchingAI === 'classes'}>
+                                    <option value="">{isFetchingAI === 'classes' ? 'Processing...' : 'Choose Class'}</option>
                                     {classes.map(c => <option key={c.id} value={c.class_id || c.id}>{c.name}</option>)}
                                 </select>
+                                {selectedBoard && classes.length === 0 && (
+                                    <button onClick={() => handleAIFetch('classes')} disabled={isFetchingAI === 'classes'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'classes' ? 'Building Structure...' : 'Fetch Official Classes via Neural Engine'}
+                                    </button>
+                                )}
                             </div>
                             {needsStream ? (
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
-                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass}>
-                                        <option value="">Choose Stream</option>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass || isFetchingAI === 'streams'}>
+                                        <option value="">{isFetchingAI === 'streams' ? 'Processing...' : 'Choose Stream'}</option>
                                         {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
+                                    {selectedClass && streams.length === 0 && (
+                                        <button onClick={() => handleAIFetch('streams')} disabled={isFetchingAI === 'streams'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'streams' ? 'Discovering Branches...' : 'Fetch Official Streams via Neural Engine'}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div>

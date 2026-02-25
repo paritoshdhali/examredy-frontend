@@ -13,6 +13,7 @@ const Group = () => {
     const [isHost, setIsHost] = useState(false);
     const [battleQuestions, setBattleQuestions] = useState([]);
     const [showPopup, setShowPopup] = useState(false);
+    const [isFetchingAI, setIsFetchingAI] = useState('');
 
     // Hierarchy States
     const [categories, setCategories] = useState([]);
@@ -170,6 +171,62 @@ const Group = () => {
 
     const [selectedLanguage, setSelectedLanguage] = useState('English');
 
+    // ── USER AI FETCH HANDLER ──
+    const handleAIFetch = async (type) => {
+        setIsFetchingAI(type);
+        try {
+            if (type === 'boards') {
+                const s = states.find(x => x.id == selectedState);
+                if (!s) return;
+                await api.post('/structure/fetch-out-boards', { state_id: s.id, state_name: s.name });
+                const res = await api.get(`/structure/boards/${selectedState}`);
+                setBoards(res.data);
+            } else if (type === 'classes') {
+                const b = boards.find(x => x.id == selectedBoard);
+                if (!b) return;
+                await api.post('/structure/fetch-out-classes', { board_id: b.id, board_name: b.name });
+                const res = await api.get(`/structure/classes/${selectedBoard}`);
+                setClasses(res.data);
+            } else if (type === 'streams') {
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                if (!b || !c) return;
+                await api.post('/structure/fetch-out-streams', { board_name: b.name, class_name: c.name });
+                const res = await api.get(`/structure/streams`);
+                setStreams(res.data);
+            } else if (type === 'subjects') {
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                const st = streams.find(x => x.id == selectedStream);
+                if (!b || !c) return;
+                await api.post('/structure/fetch-out-subjects', {
+                    board_id: b.id, board_name: b.name,
+                    class_id: c.class_id || c.id, class_name: c.name,
+                    stream_id: st?.id, stream_name: st?.name
+                });
+                let url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
+                if (selectedStream) url += `&stream_id=${selectedStream}`;
+                const res = await api.get(url);
+                setSubjects(res.data);
+            } else if (type === 'chapters') {
+                const s = subjects.find(x => x.id == selectedSubject);
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                if (!s || !b || !c) return;
+                await api.post('/structure/fetch-out-chapters', {
+                    subject_id: s.id, subject_name: s.name,
+                    board_name: b.name, class_name: c.name
+                });
+                const res = await api.get(`/structure/chapters/${selectedSubject}`);
+                setChapters(res.data);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || err.response?.data?.error || `Failed to fetch ${type} via AI`);
+        } finally {
+            setIsFetchingAI('');
+        }
+    };
+
     const handleStart = async () => {
         if (!selectedCat) return;
         setLoading(true);
@@ -260,23 +317,46 @@ const Group = () => {
 
                             {flowType === 'school' && selectedCat && (
                                 <div className="grid grid-cols-2 gap-4">
-                                    <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                        <option value="">State</option>
-                                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <select value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                        <option value="">Board</option>
-                                        {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                    </select>
-                                    <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                        <option value="">Class</option>
-                                        {classes.map(c => <option key={c.id} value={c.class_id || c.id}>{c.name}</option>)}
-                                    </select>
-                                    {needsStream && (
-                                        <select value={selectedStream} onChange={e => setSelectedStream(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                            <option value="">Stream</option>
-                                            {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
+                                            <option value="">State</option>
+                                            {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                         </select>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <select value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState || isFetchingAI === 'boards'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                            <option value="">{isFetchingAI === 'boards' ? 'AI fetching...' : 'Board'}</option>
+                                            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                        </select>
+                                        {selectedState && boards.length === 0 && (
+                                            <button onClick={() => handleAIFetch('boards')} disabled={isFetchingAI === 'boards'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                ✨ Fetch Boards
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard || isFetchingAI === 'classes'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                            <option value="">{isFetchingAI === 'classes' ? 'AI fetching...' : 'Class'}</option>
+                                            {classes.map(c => <option key={c.id} value={c.class_id || c.id}>{c.name}</option>)}
+                                        </select>
+                                        {selectedBoard && classes.length === 0 && (
+                                            <button onClick={() => handleAIFetch('classes')} disabled={isFetchingAI === 'classes'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                ✨ Fetch Classes
+                                            </button>
+                                        )}
+                                    </div>
+                                    {needsStream && (
+                                        <div className="col-span-2 sm:col-span-1">
+                                            <select value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass || isFetchingAI === 'streams'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                                <option value="">{isFetchingAI === 'streams' ? 'AI fetching...' : 'Stream'}</option>
+                                                {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                            {selectedClass && streams.length === 0 && (
+                                                <button onClick={() => handleAIFetch('streams')} disabled={isFetchingAI === 'streams'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                    ✨ Fetch Streams
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -309,14 +389,28 @@ const Group = () => {
 
                             {selectedCat && (
                                 <div className="grid grid-cols-2 gap-4">
-                                    <select value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                        <option value="">Subject</option>
-                                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <select value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} className="border-2 border-gray-100 rounded-xl px-2 py-3 outline-none">
-                                        <option value="">Chapter (Opt)</option>
-                                        {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <select value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={(flowType === 'school' && !selectedClass) || isFetchingAI === 'subjects'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                            <option value="">{isFetchingAI === 'subjects' ? 'AI fetching...' : 'Subject'}</option>
+                                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                        {flowType === 'school' && selectedClass && subjects.length === 0 && (
+                                            <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                ✨ Fetch Subjects
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <select value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                            <option value="">{isFetchingAI === 'chapters' ? 'AI fetching...' : 'Chapter (Opt)'}</option>
+                                            {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                        {flowType === 'school' && selectedSubject && chapters.length === 0 && (
+                                            <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                ✨ Fetch Chapters
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
