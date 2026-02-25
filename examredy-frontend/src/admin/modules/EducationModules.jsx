@@ -933,7 +933,7 @@ export function UniversityHub() {
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <h2 className="text-xl font-black text-white uppercase tracking-tight">University Hub</h2>
-                    <p className="text-gray-500 text-xs mt-0.5">University → Degree Type → Semester → Subject → Chapter</p>
+                    <p className="text-gray-500 text-xs mt-0.5">University → Course / Degree → Semester → Subject → Chapter</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={async () => {
@@ -969,9 +969,15 @@ export function UniversityHub() {
                         }} />
                     </Col>
 
-                    <Col title="Degree Type" tableType="degree_types" color="text-pink-400" items={selUni ? degreeTypes : []} selId={selDegree?.id}
+                    <Col title="Course / Degree" tableType="degree_types" color="text-pink-400" items={selUni ? degreeTypes : []} selId={selDegree?.id}
                         onSel={(d) => { setSelDegree(d); setSelSemester(null); setSelSubject(null); autoFetchSemesters(selUni, d); }}
-                    />
+                    >
+                        <AddBtn label="Add Course" onClick={async () => {
+                            const n = prompt('Course Name (e.g. B.A. Honours, B.Sc. Pass):'); if (!n) return;
+                            await api.post('/admin/degree-types', { name: n });
+                            load(); showToast('Course added');
+                        }} />
+                    </Col>
 
                     <Col title="Semester" tableType="semesters" color="text-yellow-400" items={selDegree ? semesters.filter(s => s.university_id == selUni?.id) : []} selId={selSemester?.id}
                         onSel={(s) => { setSelSemester(s); setSelSubject(null); }}
