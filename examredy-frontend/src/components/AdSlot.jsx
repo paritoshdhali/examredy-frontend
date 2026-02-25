@@ -31,6 +31,8 @@ const AdSlot = ({ type, className = "" }) => {
     if (type === 'top') adCode = settings.ADS_TOP_BANNER;
     if (type === 'mid') adCode = settings.ADS_MID_CONTENT;
     if (type === 'bottom') adCode = settings.ADS_BOTTOM_BANNER;
+    if (type === 'left') adCode = settings.ADS_LEFT_SIDEBAR;
+    if (type === 'right') adCode = settings.ADS_RIGHT_SIDEBAR;
 
     if (!adCode) return null;
 

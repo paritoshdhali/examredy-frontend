@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Target } from 'lucide-react';
+import AdSlot from '../components/AdSlot';
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
@@ -23,6 +24,8 @@ const Home = () => {
 
     return (
         <div className="font-sans text-gray-900 min-h-screen bg-gray-50 pt-10">
+            <AdSlot type="top" />
+
             {/* 1. Main Category Display (Layer 3) */}
             <section className="py-20 bg-gray-50 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 mb-10">
@@ -79,12 +82,15 @@ const Home = () => {
                         </div>
                     )}
                 </div>
+                <AdSlot type="mid" />
                 <style dangerouslySetInnerHTML={{
                     __html: `
                     .hide-scroll-bar::-webkit-scrollbar { display: none; }
                     .hide-scroll-bar { -ms-overflow-style: none; scrollbar-width: none; }
                 `}} />
             </section>
+
+            <AdSlot type="bottom" />
         </div>
     );
 };

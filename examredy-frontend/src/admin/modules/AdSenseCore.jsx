@@ -65,6 +65,8 @@ export const AdSenseCore = () => {
         ADS_TOP_BANNER: '',
         ADS_MID_CONTENT: '',
         ADS_BOTTOM_BANNER: '',
+        ADS_LEFT_SIDEBAR: '',
+        ADS_RIGHT_SIDEBAR: '',
         ADS_FOR_PREMIUM: 'false'
     });
     const [loading, setLoading] = useState(false);
@@ -88,6 +90,8 @@ export const AdSenseCore = () => {
                 ADS_TOP_BANNER: sys.ADS_TOP_BANNER || '',
                 ADS_MID_CONTENT: sys.ADS_MID_CONTENT || '',
                 ADS_BOTTOM_BANNER: sys.ADS_BOTTOM_BANNER || '',
+                ADS_LEFT_SIDEBAR: sys.ADS_LEFT_SIDEBAR || '',
+                ADS_RIGHT_SIDEBAR: sys.ADS_RIGHT_SIDEBAR || '',
                 ADS_FOR_PREMIUM: sys.ADS_FOR_PREMIUM || 'false'
             });
         } catch (e) {
@@ -219,6 +223,18 @@ export const AdSenseCore = () => {
                         description="Sticky footer placement • Persistent visibility"
                         value={config.ADS_BOTTOM_BANNER}
                         onChange={val => setConfig({ ...config, ADS_BOTTOM_BANNER: val })}
+                    />
+                    <SlotEditor
+                        label="Left Sidebar" icon={Monitor} color="pink-400"
+                        description="Vertical skyscraper • Left side of main content"
+                        value={config.ADS_LEFT_SIDEBAR}
+                        onChange={val => setConfig({ ...config, ADS_LEFT_SIDEBAR: val })}
+                    />
+                    <SlotEditor
+                        label="Right Sidebar" icon={Monitor} color="teal-400"
+                        description="Vertical skyscraper • Right side of main content"
+                        value={config.ADS_RIGHT_SIDEBAR}
+                        onChange={val => setConfig({ ...config, ADS_RIGHT_SIDEBAR: val })}
                     />
                 </div>
 

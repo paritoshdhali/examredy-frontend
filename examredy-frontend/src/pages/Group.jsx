@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import MCQSession from '../components/MCQSession';
 import PrimePopup from '../components/PrimePopup';
+import AdSlot from '../components/AdSlot';
 
 const Group = () => {
     const [step, setStep] = useState('menu'); // 'menu', 'lobby', 'active', 'results'
@@ -326,8 +327,13 @@ const Group = () => {
 
     if (step === 'lobby') {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+            <div className="min-h-screen bg-gray-50 flex flex-col xl:flex-row gap-8 items-center xl:items-start justify-center p-4 w-full max-w-[1400px] mx-auto xl:py-12">
+                {/* Left Ad Sidebar */}
+                <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                    <AdSlot type="left" />
+                </div>
+
+                <div className="flex-1 w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center mx-auto">
                     <div className="inline-block bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold mb-6">
                         🟢 Lobby Active
                     </div>
@@ -542,7 +548,12 @@ const Group = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-900 flex flex-col xl:flex-row gap-8 items-center justify-center p-4 w-full">
+            {/* Left Ad Sidebar */}
+            <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                <AdSlot type="left" />
+            </div>
+
             <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8">
 
                 {/* Intro Side */}
@@ -607,6 +618,12 @@ const Group = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Right Ad Sidebar */}
+            <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                <AdSlot type="right" />
+            </div>
+
             {showPopup && <PrimePopup onClose={() => setShowPopup(false)} />}
         </div>
     );

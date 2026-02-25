@@ -352,146 +352,186 @@ const Practice = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-12 max-w-4xl">
-            <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Ready to Practice?</h1>
-            <AdSlot type="mid" />
+        <div className="container mx-auto px-4 py-12 w-full max-w-[1400px] flex flex-col xl:flex-row gap-8 justify-center items-start">
+            {/* Left Ad Sidebar */}
+            <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                <AdSlot type="left" />
+            </div>
 
-            {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
+            {/* Main Content Area */}
+            <div className="flex-1 w-full max-w-4xl mx-auto">
+                <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Ready to Practice?</h1>
+                <AdSlot type="mid" />
 
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 space-y-6">
+                {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-8 text-center">{error}</div>}
 
-                {/* 1. Category Identifier - Global for all flows */}
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Category</label>
-                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold text-indigo-900"
-                        value={selectedCat} onChange={e => setSelectedCat(e.target.value)}>
-                        <option value="">Choose Category</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
+                <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 space-y-6">
 
-                {/* ── FLOW SPECIFIC UIs ── */}
+                    {/* 1. Category Identifier - Global for all flows */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Category</label>
+                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold text-indigo-900"
+                            value={selectedCat} onChange={e => setSelectedCat(e.target.value)}>
+                            <option value="">Choose Category</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
 
-                {/* SCHOOL FLOW */}
-                {flowType === 'school' && selectedCat && (
-                    <>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
-                                    <option value="">Choose State</option>
-                                    {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState || isFetchingAI === 'boards'}>
-                                    <option value="">{isFetchingAI === 'boards' ? 'Generating by AI...' : 'Choose Board'}</option>
-                                    {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                </select>
-                                {selectedState && boards.length === 0 && (
-                                    <button onClick={() => handleAIFetch('boards')} disabled={isFetchingAI === 'boards'}
-                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                        ✨ {isFetchingAI === 'boards' ? 'Searching Internet...' : 'Fetch Official Boards via Neural Engine'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                    {/* ── FLOW SPECIFIC UIs ── */}
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard || isFetchingAI === 'classes'}>
-                                    <option value="">{isFetchingAI === 'classes' ? 'Processing...' : 'Choose Class'}</option>
-                                    {classes.map(c => <option key={c.id} value={c.class_id || c.id}>{c.name}</option>)}
-                                </select>
-                                {selectedBoard && classes.length === 0 && (
-                                    <button onClick={() => handleAIFetch('classes')} disabled={isFetchingAI === 'classes'}
-                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                        ✨ {isFetchingAI === 'classes' ? 'Building Structure...' : 'Fetch Official Classes via Neural Engine'}
-                                    </button>
-                                )}
-                            </div>
-                            {needsStream ? (
+                    {/* SCHOOL FLOW */}
+                    {flowType === 'school' && selectedCat && (
+                        <>
+                            <div className="grid md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
-                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass || isFetchingAI === 'streams'}>
-                                        <option value="">{isFetchingAI === 'streams' ? 'Processing...' : 'Choose Stream'}</option>
-                                        {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
+                                        <option value="">Choose State</option>
+                                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
-                                    {selectedClass && streams.length === 0 && (
-                                        <button onClick={() => handleAIFetch('streams')} disabled={isFetchingAI === 'streams'}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState || isFetchingAI === 'boards'}>
+                                        <option value="">{isFetchingAI === 'boards' ? 'Generating by AI...' : 'Choose Board'}</option>
+                                        {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    {selectedState && boards.length === 0 && (
+                                        <button onClick={() => handleAIFetch('boards')} disabled={isFetchingAI === 'boards'}
                                             className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                            ✨ {isFetchingAI === 'streams' ? 'Discovering Branches...' : 'Fetch Official Streams via Neural Engine'}
+                                            ✨ {isFetchingAI === 'boards' ? 'Searching Internet...' : 'Fetch Official Boards via Neural Engine'}
                                         </button>
                                     )}
                                 </div>
-                            ) : (
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Class</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedStream(''); setSelectedSubject(''); }} disabled={!selectedBoard || isFetchingAI === 'classes'}>
+                                        <option value="">{isFetchingAI === 'classes' ? 'Processing...' : 'Choose Class'}</option>
+                                        {classes.map(c => <option key={c.id} value={c.class_id || c.id}>{c.name}</option>)}
+                                    </select>
+                                    {selectedBoard && classes.length === 0 && (
+                                        <button onClick={() => handleAIFetch('classes')} disabled={isFetchingAI === 'classes'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'classes' ? 'Building Structure...' : 'Fetch Official Classes via Neural Engine'}
+                                        </button>
+                                    )}
+                                </div>
+                                {needsStream ? (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Stream</label>
+                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedStream} onChange={e => { setSelectedStream(e.target.value); setSelectedSubject(''); }} disabled={!selectedClass || isFetchingAI === 'streams'}>
+                                            <option value="">{isFetchingAI === 'streams' ? 'Processing...' : 'Choose Stream'}</option>
+                                            {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                        {selectedClass && streams.length === 0 && (
+                                            <button onClick={() => handleAIFetch('streams')} disabled={isFetchingAI === 'streams'}
+                                                className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                                ✨ {isFetchingAI === 'streams' ? 'Discovering Branches...' : 'Fetch Official Streams via Neural Engine'}
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass || isFetchingAI === 'subjects'}>
+                                            <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
+                                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                        {selectedClass && subjects.length === 0 && (
+                                            <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                                className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                                ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {/* UNIVERSITY FLOW */}
+                    {flowType === 'university' && selectedCat && (
+                        <>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
+                                        <option value="">Choose State</option>
+                                        {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select University</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedUniversity} onChange={e => setSelectedUniversity(e.target.value)} disabled={!selectedState || isFetchingAI === 'universities'}>
+                                        <option value="">{isFetchingAI === 'universities' ? 'Generating...' : 'Choose University'}</option>
+                                        {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                    {selectedState && universities.length === 0 && (
+                                        <button onClick={() => handleAIFetch('universities')} disabled={isFetchingAI === 'universities'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'universities' ? 'Fetching Universities...' : 'Fetch Official Universities via Neural Engine'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Degree Type</label>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedDegreeType} onChange={e => { setSelectedDegreeType(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity || isFetchingAI === 'degreeTypes'}>
+                                        <option value="">{isFetchingAI === 'degreeTypes' ? 'Generating Degrees...' : 'Choose Degree Type'}</option>
+                                        {degreeTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                    {selectedUniversity && degreeTypes.length === 0 && (
+                                        <button onClick={() => handleAIFetch('degreeTypes')} disabled={isFetchingAI === 'degreeTypes'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'degreeTypes' ? 'Fetching Degrees...' : 'Fetch Official Degree Types via Neural Engine'}
+                                        </button>
+                                    )}
+                                </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass || isFetchingAI === 'subjects'}>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedDegreeType || isFetchingAI === 'subjects'}>
                                         <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
                                         {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
-                                    {selectedClass && subjects.length === 0 && (
+                                    {selectedDegreeType && subjects.length === 0 && (
                                         <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
                                             className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
                                             ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
                                         </button>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    </>
-                )}
+                            </div>
+                        </>
+                    )}
 
-                {/* UNIVERSITY FLOW */}
-                {flowType === 'university' && selectedCat && (
-                    <>
+                    {/* COMPETITIVE FLOW */}
+                    {flowType === 'competitive' && selectedCat && (
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select State</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedState} onChange={e => setSelectedState(e.target.value)}>
-                                    <option value="">Choose State</option>
-                                    {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Exam Stage / Paper</label>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedPaperStage} onChange={e => { setSelectedPaperStage(e.target.value); setSelectedSubject(''); }} disabled={!selectedCat || isFetchingAI === 'papersStages'}>
+                                    <option value="">{isFetchingAI === 'papersStages' ? 'Generating...' : 'Choose Exam Stage'}</option>
+                                    {papersStages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select University</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedUniversity} onChange={e => setSelectedUniversity(e.target.value)} disabled={!selectedState || isFetchingAI === 'universities'}>
-                                    <option value="">{isFetchingAI === 'universities' ? 'Generating...' : 'Choose University'}</option>
-                                    {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
-                                {selectedState && universities.length === 0 && (
-                                    <button onClick={() => handleAIFetch('universities')} disabled={isFetchingAI === 'universities'}
+                                {selectedCat && papersStages.length === 0 && (
+                                    <button onClick={() => handleAIFetch('papersStages')} disabled={isFetchingAI === 'papersStages'}
                                         className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                        ✨ {isFetchingAI === 'universities' ? 'Fetching Universities...' : 'Fetch Official Universities via Neural Engine'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Degree Type</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedDegreeType} onChange={e => { setSelectedDegreeType(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity || isFetchingAI === 'degreeTypes'}>
-                                    <option value="">{isFetchingAI === 'degreeTypes' ? 'Generating Degrees...' : 'Choose Degree Type'}</option>
-                                    {degreeTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                {selectedUniversity && degreeTypes.length === 0 && (
-                                    <button onClick={() => handleAIFetch('degreeTypes')} disabled={isFetchingAI === 'degreeTypes'}
-                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                        ✨ {isFetchingAI === 'degreeTypes' ? 'Fetching Degrees...' : 'Fetch Official Degree Types via Neural Engine'}
+                                        ✨ {isFetchingAI === 'papersStages' ? 'Fetching Stages...' : 'Fetch Official Exam Stages'}
                                     </button>
                                 )}
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedDegreeType || isFetchingAI === 'subjects'}>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedPaperStage || isFetchingAI === 'subjects'}>
                                     <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
                                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
-                                {selectedDegreeType && subjects.length === 0 && (
+                                {selectedPaperStage && subjects.length === 0 && (
                                     <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
                                         className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
                                         ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
@@ -499,130 +539,105 @@ const Practice = () => {
                                 )}
                             </div>
                         </div>
-                    </>
-                )}
-
-                {/* COMPETITIVE FLOW */}
-                {flowType === 'competitive' && selectedCat && (
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Exam Stage / Paper</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedPaperStage} onChange={e => { setSelectedPaperStage(e.target.value); setSelectedSubject(''); }} disabled={!selectedCat || isFetchingAI === 'papersStages'}>
-                                <option value="">{isFetchingAI === 'papersStages' ? 'Generating...' : 'Choose Exam Stage'}</option>
-                                {papersStages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
-                            {selectedCat && papersStages.length === 0 && (
-                                <button onClick={() => handleAIFetch('papersStages')} disabled={isFetchingAI === 'papersStages'}
-                                    className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                    ✨ {isFetchingAI === 'papersStages' ? 'Fetching Stages...' : 'Fetch Official Exam Stages'}
-                                </button>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedPaperStage || isFetchingAI === 'subjects'}>
-                                <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
-                                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            {selectedPaperStage && subjects.length === 0 && (
-                                <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
-                                    className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                    ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
+                    )}
 
 
-                {/* ── COMMON CHAPTER SELECTOR & ACTION BUTTON ── */}
+                    {/* ── COMMON CHAPTER SELECTOR & ACTION BUTTON ── */}
 
-                {selectedCat && (
-                    <>
-                        {/* If it's School Stream mode we need a different layout to match the original, but let's just use grid logic */}
-                        {((flowType === 'school' && needsStream) || flowType !== 'school') && selectedSubject !== false && (
-                            <div className={`grid md:grid-cols-2 gap-6 ${(flowType === 'competitive' || flowType === 'university') ? 'mt-0' : 'mt-0'}`}>
-                                {flowType === 'school' && needsStream && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream || isFetchingAI === 'subjects'}>
-                                            <option value="">{isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Choose Subject'}</option>
-                                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {selectedCat && (
+                        <>
+                            {/* If it's School Stream mode we need a different layout to match the original, but let's just use grid logic */}
+                            {((flowType === 'school' && needsStream) || flowType !== 'school') && selectedSubject !== false && (
+                                <div className={`grid md:grid-cols-2 gap-6 ${(flowType === 'competitive' || flowType === 'university') ? 'mt-0' : 'mt-0'}`}>
+                                    {flowType === 'school' && needsStream && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
+                                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream || isFetchingAI === 'subjects'}>
+                                                <option value="">{isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Choose Subject'}</option>
+                                                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                            {selectedStream && subjects.length === 0 && (
+                                                <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                                    className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                                    ✨ {isFetchingAI === 'subjects' ? 'Deep AI Search...' : 'Fetch Missing Subjects'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className={flowType !== 'school' || !needsStream ? 'col-span-1' : ''}>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
+                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'}>
+                                            <option value="">{isFetchingAI === 'chapters' ? 'Reading Books...' : 'Choose Chapter'}</option>
+                                            {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
-                                        {selectedStream && subjects.length === 0 && (
-                                            <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                        {selectedSubject && chapters.length === 0 && (
+                                            <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'}
                                                 className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                                ✨ {isFetchingAI === 'subjects' ? 'Deep AI Search...' : 'Fetch Missing Subjects'}
+                                                ✨ {isFetchingAI === 'chapters' ? 'Extracting Chapters...' : 'Fetch Official Chapters via NCERT/Board Logic'}
                                             </button>
                                         )}
                                     </div>
-                                )}
-                                <div className={flowType !== 'school' || !needsStream ? 'col-span-1' : ''}>
+                                </div>
+                            )}
+
+                            {flowType === 'school' && !needsStream && (
+                                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
                                     <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'}>
-                                        <option value="">{isFetchingAI === 'chapters' ? 'Reading Books...' : 'Choose Chapter'}</option>
+                                        <option value="">{isFetchingAI === 'chapters' ? 'Loading Chapters...' : 'Choose Chapter'}</option>
                                         {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                     {selectedSubject && chapters.length === 0 && (
                                         <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'}
                                             className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                            ✨ {isFetchingAI === 'chapters' ? 'Extracting Chapters...' : 'Fetch Official Chapters via NCERT/Board Logic'}
+                                            ✨ {isFetchingAI === 'chapters' ? 'Compiling Texts...' : 'Fetch Official Chapters via NCERT/Board Logic'}
                                         </button>
                                     )}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {flowType === 'school' && !needsStream && (
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'}>
-                                    <option value="">{isFetchingAI === 'chapters' ? 'Loading Chapters...' : 'Choose Chapter'}</option>
-                                    {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Exam Language</label>
+                                <select className="w-full p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold" value={language} onChange={e => setLanguage(e.target.value)}>
+                                    <option value="English">English</option>
+                                    <option value="Bengali">Bengali (বাংলা)</option>
+                                    <option value="Hindi">Hindi (हिंदी)</option>
+                                    <option value="Urdu">Urdu (اردو)</option>
+                                    <option value="Assamese">Assamese (অসমীয়া)</option>
+                                    <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                                    <option value="Marathi">Marathi (मराठी)</option>
+                                    <option value="Tamil">Tamil (தமிழ்)</option>
+                                    <option value="Telugu">Telugu (తెలుగు)</option>
                                 </select>
-                                {selectedSubject && chapters.length === 0 && (
-                                    <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'}
-                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                                        ✨ {isFetchingAI === 'chapters' ? 'Compiling Texts...' : 'Fetch Official Chapters via NCERT/Board Logic'}
-                                    </button>
-                                )}
+                                <p className="text-xs text-indigo-500 font-medium mt-2">* Exam MCQs will be instantly generated by AI in your chosen language.</p>
                             </div>
-                        )}
 
-                        <div className="pt-4 border-t border-gray-100">
-                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Exam Language</label>
-                            <select className="w-full p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold" value={language} onChange={e => setLanguage(e.target.value)}>
-                                <option value="English">English</option>
-                                <option value="Bengali">Bengali (বাংলা)</option>
-                                <option value="Hindi">Hindi (हिंदी)</option>
-                                <option value="Urdu">Urdu (اردو)</option>
-                                <option value="Assamese">Assamese (অসমীয়া)</option>
-                                <option value="Gujarati">Gujarati (ગુજરાતી)</option>
-                                <option value="Marathi">Marathi (मराठी)</option>
-                                <option value="Tamil">Tamil (தமிழ்)</option>
-                                <option value="Telugu">Telugu (తెలుగు)</option>
-                            </select>
-                            <p className="text-xs text-indigo-500 font-medium mt-2">* Exam MCQs will be instantly generated by AI in your chosen language.</p>
-                        </div>
+                            <button
+                                onClick={startSoloPractice}
+                                disabled={!selectedChapter || loading}
+                                className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 block text-center mt-6 disabled:opacity-50 disabled:hover:translate-y-0 relative overflow-hidden"
+                            >
+                                {loading ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                                        Generating AI Exam in {language}...
+                                    </span>
+                                ) : 'Start Practice Now'}
+                            </button>
+                        </>
+                    )}
+                </div>
 
-                        <button
-                            onClick={startSoloPractice}
-                            disabled={!selectedChapter || loading}
-                            className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:shadow-indigo-200 transition-all hover:-translate-y-1 block text-center mt-6 disabled:opacity-50 disabled:hover:translate-y-0 relative overflow-hidden"
-                        >
-                            {loading ? (
-                                <span className="flex items-center justify-center gap-2">
-                                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                                    Generating AI Exam in {language}...
-                                </span>
-                            ) : 'Start Practice Now'}
-                        </button>
-                    </>
-                )}
+                <div className="mt-12 text-center text-gray-400 mb-8">
+                    <p className="text-sm">Want to compete with friends? <button onClick={() => navigate('/group')} className="text-secondary font-bold hover:underline">Launch Group Mode</button></p>
+                </div>
+
+                <AdSlot type="bottom" />
             </div>
 
-            <div className="mt-12 text-center text-gray-400">
-                <p className="text-sm">Want to compete with friends? <button onClick={() => navigate('/group')} className="text-secondary font-bold hover:underline">Launch Group Mode</button></p>
+            {/* Right Ad Sidebar */}
+            <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                <AdSlot type="right" />
             </div>
 
             {showPopup && <PrimePopup onClose={() => setShowPopup(false)} />}
