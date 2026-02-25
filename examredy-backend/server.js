@@ -16,15 +16,6 @@ app.set('trust proxy', 1);
 // Security Middleware
 app.use(helmet());
 
-// Rate Limiting
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-app.use(globalLimiter);
-
 // CORS Configuration
 const allowedOrigins = [
     process.env.FRONTEND_URL,         // Production frontend URL (set in Railway env)
@@ -58,6 +49,15 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
+
+// Rate Limiting
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5000, // Increased for local development and dashboard usage
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use(globalLimiter);
 
 app.use(express.json());
 app.use(morgan('combined'));

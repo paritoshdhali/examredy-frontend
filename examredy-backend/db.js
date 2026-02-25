@@ -194,7 +194,7 @@ const initDB = async () => {
         try { await query(`ALTER TABLE universities ADD COLUMN IF NOT EXISTS logo_url TEXT;`); } catch (e) { }
 
         await query(`CREATE TABLE IF NOT EXISTS degree_types (id SERIAL PRIMARY KEY, name VARCHAR(500) NOT NULL, is_active BOOLEAN DEFAULT TRUE);`);
-        const defaultDegrees = ['Pass', 'Honours'];
+        const defaultDegrees = ['B.A. Honours', 'B.Sc. Honours', 'B.Com. Honours', 'B.A. General/Pass', 'B.Sc. General/Pass', 'B.Com. General/Pass', 'B.E. / B.Tech', 'M.A.', 'M.Sc.', 'M.Com.'];
         for (const deg of defaultDegrees) {
             await query(`INSERT INTO degree_types (name) SELECT $1::varchar WHERE NOT EXISTS (SELECT 1 FROM degree_types WHERE name = $1::varchar);`, [deg]);
         }
@@ -482,6 +482,7 @@ const initDB = async () => {
             status VARCHAR(20) DEFAULT 'lobby', 
             category_id INTEGER REFERENCES categories(id),
             mcq_ids JSONB,
+            mcq_data JSONB,
             is_active BOOLEAN DEFAULT TRUE, 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );`);
@@ -491,6 +492,7 @@ const initDB = async () => {
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'lobby';`);
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);`);
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS mcq_ids JSONB;`);
+            await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS mcq_data JSONB;`);
         } catch (e) { console.log('Group sessions migration: Handled.'); }
 
         await query(`CREATE TABLE IF NOT EXISTS group_participants (id SERIAL PRIMARY KEY, session_id VARCHAR(50) REFERENCES group_sessions(id), user_id INTEGER REFERENCES users(id), score INTEGER DEFAULT 0, joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);

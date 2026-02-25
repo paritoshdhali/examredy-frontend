@@ -60,7 +60,8 @@ router.post('/boards', verifyToken, admin, async (req, res) => {
         // Strictly fetch school education boards only (Class 1-12 level)
         const boards = await fetchAIStructure(
             'School Education Boards',
-            `State of ${state_name}, India. List ONLY boards that govern school education (Class 1 to Class 12), such as state secondary boards, CBSE, ICSE/CISCE, NIOS. DO NOT include university boards, entrance exam boards (JEE/NEET/WBJEE), council of higher education, technical boards, or any board not related to school-level (Class 1-12) education.`
+            `State of ${state_name}, India. List ONLY boards that govern school education (Class 1 to Class 12), such as state secondary boards, CBSE, ICSE/CISCE, NIOS. DO NOT include university boards, entrance exam boards (JEE/NEET/WBJEE), council of higher education, technical boards, or any board not related to school-level (Class 1-12) education.`,
+            30
         );
         const saved = [];
         let existingCount = 0;
@@ -170,7 +171,7 @@ router.post('/classes', verifyToken, admin, async (req, res) => {
 router.post('/universities', verifyToken, admin, async (req, res) => {
     const { state_id, state_name } = req.body;
     try {
-        const universities = await fetchAIStructure('Universities', `State of ${state_name}, India.Strictly provide original names only.`);
+        const universities = await fetchAIStructure('Universities', `State of ${state_name}, India.Strictly provide original names only.`, 30);
         const saved = [];
         let existingCount = 0;
 
@@ -178,7 +179,7 @@ router.post('/universities', verifyToken, admin, async (req, res) => {
         try {
             for (const item of universities) {
                 const name = (item.name || '').substring(0, 200);
-                if (name.toLowerCase().includes('university ') || name.toLowerCase().includes('placeholder') || name.startsWith('DEBUG_ERROR')) continue;
+                if (name.toLowerCase().includes('placeholder') || name.startsWith('DEBUG_ERROR')) continue;
                 const result = await query('INSERT INTO universities (name, state_id, is_active) VALUES ($1, $2, $3) ON CONFLICT (state_id, name) DO NOTHING RETURNING *', [name, state_id, false]);
                 if (result.rows[0]) {
                     saved.push(result.rows[0]);
@@ -208,7 +209,7 @@ router.post('/universities', verifyToken, admin, async (req, res) => {
 router.post('/papers', verifyToken, admin, async (req, res) => {
     const { category_id, category_name } = req.body;
     try {
-        const papers = await fetchAIStructure('Papers/Stages', `Exam Category: ${category_name}. Strictly original names.`);
+        const papers = await fetchAIStructure('Papers/Stages', `Exam Category: ${category_name}. Strictly original names.`, 30);
         const saved = [];
         let existingCount = 0;
         await query('BEGIN');
@@ -248,7 +249,8 @@ router.post('/streams', verifyToken, admin, async (req, res) => {
         // Ask AI which streams are relevant for this board+class
         const aiStreams = await fetchAIStructure(
             'Streams',
-            `Board: "${board_name}", ${class_name} (India).List ONLY the academic streams / branches offered at this class level by this board.Typical values: Science, Commerce, Arts / Humanities, Vocational.Return only what this board actually offers.`
+            `Board: "${board_name}", ${class_name} (India).List ONLY the academic streams / branches offered at this class level by this board.Typical values: Science, Commerce, Arts / Humanities, Vocational.Return only what this board actually offers.`,
+            20
         );
 
         // Upsert streams into DB (or match existing)
@@ -293,7 +295,8 @@ router.post('/semesters', verifyToken, admin, async (req, res) => {
     try {
         const aiItems = await fetchAIStructure(
             'Terms',
-            `University: "${university_name}", Degree: "${degree_type_name}"(India).List the academic terms used(e.g., "Semester 1", "Semester 2", or "1st Year", "2nd Year").Return only the names of the terms.`
+            `University: "${university_name}", Degree: "${degree_type_name}"(India).List the academic terms used(e.g., "Semester 1", "Semester 2", or "1st Year", "2nd Year").Return only the names of the terms.`,
+            20
         );
 
         const resultSemesters = [];
@@ -335,9 +338,12 @@ router.post('/semesters', verifyToken, admin, async (req, res) => {
 router.post('/subjects', verifyToken, admin, async (req, res) => {
     const { category_id, board_id, university_id, class_id, stream_id, semester_id, degree_type_id, paper_stage_id, context_name } = req.body;
     try {
-        const subjects = await fetchAIStructure('Subjects', `Context: ${context_name}. Strictly original syllabus subject names only.No placeholders.`);
+        const subjects = await fetchAIStructure('Subjects', `Context: ${context_name}. Strictly original syllabus subject names only. No placeholders.`, 30);
         const saved = [];
         let existingCount = 0;
+
+        // Default to category_id 1 (School) if board_id and class_id are provided but category_id is missing
+        const finalCategoryId = category_id || (board_id && class_id ? 1 : null);
 
         await query('BEGIN');
         try {
@@ -364,9 +370,9 @@ router.post('/subjects', verifyToken, admin, async (req, res) => {
                 const result = await query(
                     `INSERT INTO subjects(
             name, category_id, board_id, university_id, class_id, stream_id,
-            semester_id, degree_type_id, paper_stage_id, is_active
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE) RETURNING * `,
-                    [name, category_id, board_id, university_id, class_id, stream_id, semester_id, degree_type_id, paper_stage_id]
+            semester_id, degree_type_id, paper_stage_id, is_active, is_approved
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, TRUE) RETURNING * `,
+                    [name, finalCategoryId, board_id, university_id, class_id, stream_id, semester_id, degree_type_id, paper_stage_id]
                 );
                 if (result.rows[0]) {
                     saved.push(result.rows[0]);
@@ -394,7 +400,7 @@ router.post('/subjects', verifyToken, admin, async (req, res) => {
 router.post('/chapters', verifyToken, admin, async (req, res) => {
     const { subject_id, subject_name } = req.body;
     try {
-        const chapters = await fetchAIStructure('Chapters', `Subject: ${subject_name}. Strictly original syllabus chapter names only.`);
+        const chapters = await fetchAIStructure('Chapters', `Subject: ${subject_name}. Strictly original syllabus chapter names only.`, 30);
         const saved = [];
         let existingCount = 0;
 

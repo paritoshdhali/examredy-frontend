@@ -242,29 +242,88 @@ const Practice = () => {
                 await api.post('/structure/fetch-out-streams', { board_name: b.name, class_name: c.name });
                 const res = await api.get(`/structure/streams`);
                 setStreams(res.data);
+            } else if (type === 'universities') {
+                const s = states.find(x => x.id == selectedState);
+                if (!s) return;
+                await api.post('/structure/fetch-out-universities', { state_id: s.id, state_name: s.name });
+                const res = await api.get(`/structure/universities/${selectedState}`);
+                setUniversities(res.data);
+            } else if (type === 'semesters') {
+                const u = universities.find(x => x.id == selectedUniversity);
+                if (!u) return;
+                await api.post('/structure/fetch-out-semesters', { university_id: u.id, university_name: u.name });
+                const res = await api.get(`/structure/semesters`);
+                setSemesters(res.data);
+            } else if (type === 'papersStages') {
+                const c = categories.find(x => x.id == selectedCat);
+                if (!c) return;
+                await api.post('/structure/fetch-out-papers-stages', { category_id: c.id, category_name: c.name });
+                const res = await api.get(`/structure/papers-stages/${selectedCat}`);
+                setPapersStages(res.data);
             } else if (type === 'subjects') {
-                const b = boards.find(x => x.id == selectedBoard);
-                const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
-                const st = streams.find(x => x.id == selectedStream);
-                if (!b || !c) return;
-                await api.post('/structure/fetch-out-subjects', {
-                    board_id: b.id, board_name: b.name,
-                    class_id: c.class_id || c.id, class_name: c.name,
-                    stream_id: st?.id, stream_name: st?.name
-                });
-                let url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
-                if (selectedStream) url += `&stream_id=${selectedStream}`;
+                let payload = {};
+                let url = '';
+                if (flowType === 'school') {
+                    const b = boards.find(x => x.id == selectedBoard);
+                    const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                    const st = streams.find(x => x.id == selectedStream);
+                    if (!b || !c) return;
+                    payload = {
+                        board_id: b.id, board_name: b.name,
+                        class_id: c.class_id || c.id, class_name: c.name,
+                        stream_id: st?.id, stream_name: st?.name
+                    };
+                    url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
+                    if (selectedStream) url += `&stream_id=${selectedStream}`;
+                } else if (flowType === 'university') {
+                    const u = universities.find(x => x.id == selectedUniversity);
+                    const sem = semesters.find(x => x.id == selectedSemester);
+                    if (!u || !sem) return;
+                    payload = {
+                        university_id: u.id, university_name: u.name,
+                        semester_id: sem.id, semester_name: sem.name,
+                        category_id: selectedCat
+                    };
+                    url = `/structure/subjects?category_id=${selectedCat}&university_id=${selectedUniversity}&semester_id=${selectedSemester}`;
+                } else if (flowType === 'competitive') {
+                    const ps = papersStages.find(x => x.id == selectedPaperStage);
+                    const cat = categories.find(x => x.id == selectedCat);
+                    if (!ps || !cat) return;
+                    payload = {
+                        paper_stage_id: ps.id, paper_stage_name: ps.name,
+                        category_id: cat.id, category_name: cat.name
+                    };
+                    url = `/structure/subjects?category_id=${selectedCat}&paper_stage_id=${selectedPaperStage}`;
+                }
+                await api.post('/structure/fetch-out-subjects', payload);
                 const res = await api.get(url);
                 setSubjects(res.data);
             } else if (type === 'chapters') {
                 const s = subjects.find(x => x.id == selectedSubject);
-                const b = boards.find(x => x.id == selectedBoard);
-                const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
-                if (!s || !b || !c) return;
-                await api.post('/structure/fetch-out-chapters', {
-                    subject_id: s.id, subject_name: s.name,
-                    board_name: b.name, class_name: c.name
-                });
+                if (!s) return;
+                let payload = { subject_id: s.id, subject_name: s.name };
+
+                if (flowType === 'school') {
+                    const b = boards.find(x => x.id == selectedBoard);
+                    const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                    if (!b || !c) return;
+                    payload.board_name = b.name;
+                    payload.class_name = c.name;
+                } else if (flowType === 'university') {
+                    const u = universities.find(x => x.id == selectedUniversity);
+                    const sem = semesters.find(x => x.id == selectedSemester);
+                    if (!u || !sem) return;
+                    payload.university_name = u.name;
+                    payload.semester_name = sem.name;
+                } else if (flowType === 'competitive') {
+                    const ps = papersStages.find(x => x.id == selectedPaperStage);
+                    const cat = categories.find(x => x.id == selectedCat);
+                    if (!ps || !cat) return;
+                    payload.paper_stage_name = ps.name;
+                    payload.category_name = cat.name;
+                }
+
+                await api.post('/structure/fetch-out-chapters', payload);
                 const res = await api.get(`/structure/chapters/${selectedSubject}`);
                 setChapters(res.data);
             }
@@ -392,27 +451,45 @@ const Practice = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select University</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedUniversity} onChange={e => setSelectedUniversity(e.target.value)} disabled={!selectedState}>
-                                    <option value="">Choose University</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedUniversity} onChange={e => setSelectedUniversity(e.target.value)} disabled={!selectedState || isFetchingAI === 'universities'}>
+                                    <option value="">{isFetchingAI === 'universities' ? 'Generating...' : 'Choose University'}</option>
                                     {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                 </select>
+                                {selectedState && universities.length === 0 && (
+                                    <button onClick={() => handleAIFetch('universities')} disabled={isFetchingAI === 'universities'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'universities' ? 'Fetching Universities...' : 'Fetch Official Universities via Neural Engine'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Semester</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity}>
-                                    <option value="">Choose Semester</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity || isFetchingAI === 'semesters'}>
+                                    <option value="">{isFetchingAI === 'semesters' ? 'Processing...' : 'Choose Semester'}</option>
                                     {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
+                                {selectedUniversity && semesters.length === 0 && (
+                                    <button onClick={() => handleAIFetch('semesters')} disabled={isFetchingAI === 'semesters'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'semesters' ? 'Building Terms...' : 'Fetch Official Semesters via Neural Engine'}
+                                    </button>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedSemester}>
-                                    <option value="">Choose Subject</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedSemester || isFetchingAI === 'subjects'}>
+                                    <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
                                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
+                                {selectedSemester && subjects.length === 0 && (
+                                    <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </>
@@ -423,17 +500,29 @@ const Practice = () => {
                     <div className="grid md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Exam Stage / Paper</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedPaperStage} onChange={e => { setSelectedPaperStage(e.target.value); setSelectedSubject(''); }}>
-                                <option value="">Choose Exam Stage</option>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedPaperStage} onChange={e => { setSelectedPaperStage(e.target.value); setSelectedSubject(''); }} disabled={!selectedCat || isFetchingAI === 'papersStages'}>
+                                <option value="">{isFetchingAI === 'papersStages' ? 'Generating...' : 'Choose Exam Stage'}</option>
                                 {papersStages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
+                            {selectedCat && papersStages.length === 0 && (
+                                <button onClick={() => handleAIFetch('papersStages')} disabled={isFetchingAI === 'papersStages'}
+                                    className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                    ✨ {isFetchingAI === 'papersStages' ? 'Fetching Stages...' : 'Fetch Official Exam Stages'}
+                                </button>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedPaperStage}>
-                                <option value="">Choose Subject</option>
+                            <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedPaperStage || isFetchingAI === 'subjects'}>
+                                <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
                                 {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
+                            {selectedPaperStage && subjects.length === 0 && (
+                                <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                    className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                    ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

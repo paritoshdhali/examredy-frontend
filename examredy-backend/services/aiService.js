@@ -129,7 +129,7 @@ const fallbackMock = (topic, count, language, errorMsg = '') => {
     }));
 };
 
-const fetchAIStructure = async (type, context) => {
+const fetchAIStructure = async (type, context, count = 10) => {
     const providerRes = await query('SELECT * FROM ai_providers WHERE is_active = TRUE LIMIT 1');
     if (providerRes.rows.length === 0 || !providerRes.rows[0].api_key) {
         throw new Error('No active AI provider found. Please configure one in Neural Hub.');
@@ -158,7 +158,7 @@ const fetchAIStructure = async (type, context) => {
         }
     }
 
-    const prompt = `List exactly 10 ${type} for: "${context}".
+    const prompt = `List exactly ${count} ${type} for: "${context}".
 Return ONLY a valid JSON array of objects with a "name" key.
 Example: [{"name":"Item 1"},{"name":"Item 2"}]
 Do NOT include markdown, code blocks, or any explanation. Return ONLY the JSON array.`;
@@ -337,11 +337,11 @@ Rules:
 - Include only REAL, officially recognized boards
 - Include both central boards (CBSE, ICSE, NIOS) and state board(s)  
 - Do NOT include placeholders, duplicates, or made-up names
-- Return 3 to 8 real boards maximum
+- Return 3 to 15 real boards maximum
 Return ONLY JSON. NO MARKDOWN.`;
 
     try {
-        const result = await fetchAIStructure('school boards', prompt);
+        const result = await fetchAIStructure('school boards', prompt, 30);
         // Validate: filter out anything that looks like an error or placeholder
         const valid = result.filter(b =>
             b.name &&
@@ -367,10 +367,10 @@ Return ONLY a valid JSON array of objects with a "name" key.
 Example: [{"name":"Mathematics"},{"name":"Physics"},{"name":"English"}]
 Rules:
 - Use exact official subject names
-- Include 5-10 core subjects
+- Include 5-20 core subjects
 - No placeholders or duplicates
 Return ONLY JSON. NO MARKDOWN.`;
-    return await fetchAIStructure('subjects', prompt);
+    return await fetchAIStructure('subjects', prompt, 30);
 };
 
 const generateSchoolChapters = async (subjectName, boardName, className) => {
@@ -386,10 +386,64 @@ Example: [{"name":"Real Numbers"},{"name":"Polynomials"},{"name":"Triangles"}]
 Rules:
 - Use exact chapter names from the official NCERT or state board textbook
 - Do NOT use placeholders like "Chapter 1"
-- Include all major chapters (8-18 expected)
+- Include all major chapters (8-30 expected)
 Return ONLY JSON. NO MARKDOWN.`;
-    return await fetchAIStructure('chapters', prompt);
+    return await fetchAIStructure('chapters', prompt, 30);
 };
 
-module.exports = { generateMCQInitial, fetchAIStructure, generateSchoolBoards, generateSchoolSubjects, generateSchoolChapters };
+const generateSchoolClasses = async (boardName) => {
+    const prompt = `You are an Indian school curriculum expert.
+For ${boardName} (India):
+List ALL official classes governed by this specific board.
+For example, CBSE covers Class 1 to Class 12. Some state boards only cover Class 9 to Class 12. Some might only be Class 11 and 12.
 
+Return ONLY a valid JSON array of objects with a "name" key.
+Example: [{"name":"Class 1"},{"name":"Class 2"}] up to {"name":"Class 12"} (only what is officially offered).
+Rules:
+- Format strictly as "Class X" where X is the number (1 to 12).
+- Return ONLY the exact sequence of classes this board officially offers.
+- NO extra text. NO markdown. ONLY JSON array.`;
+    return await fetchAIStructure('classes', prompt, 12);
+};
+
+const generateSchoolStreams = async (boardName, className) => {
+    const prompt = `You are an Indian school curriculum expert.
+For ${boardName}, ${className} (India):
+List ALL the official academic streams or branches offered at this class level by this specific board.
+
+Return ONLY a valid JSON array of objects with a "name" key.
+Example: [{"name":"Science"},{"name":"Commerce"},{"name":"Arts/Humanities"},{"name":"Vocational"}]
+Rules:
+- Usually only Class 11 and 12 have streams in India. If the class doesn't have streams (like Class 10), return an empty array [].
+- Return ONLY what this board ACTUALLY offers.
+- NO extra text. NO markdown. ONLY JSON array.`;
+    return await fetchAIStructure('streams', prompt, 10);
+};
+
+const generateUniversities = async (stateName) => {
+    const prompt = `State of ${stateName}, India. Strictly provide original names only. Return ONLY a valid JSON array of objects with a "name" key. Example: [{"name":"University of Calcutta"},{"name":"Jadavpur University"}]`;
+    return await fetchAIStructure('universities', prompt, 30);
+};
+
+const generateSemesters = async (universityName, degreeTypeName = "General Curriculum") => {
+    const prompt = `University: "${universityName}", Degree: "${degreeTypeName}" (India). List the academic terms used (e.g., "Semester 1", "Semester 2", or "1st Year", "2nd Year"). Return ONLY a valid JSON array of objects with a "name" key. Example: [{"name":"Semester 1"},{"name":"Semester 2"}]`;
+    return await fetchAIStructure('semesters', prompt, 20);
+};
+
+const generatePapersStages = async (categoryName) => {
+    const prompt = `Exam Category: ${categoryName}. Strictly original names. Return ONLY a valid JSON array of objects with a "name" key. Example: [{"name":"Prelims"},{"name":"Mains"}]`;
+    return await fetchAIStructure('papers stages', prompt, 30);
+};
+
+module.exports = {
+    generateMCQInitial,
+    fetchAIStructure,
+    generateSchoolBoards,
+    generateSchoolClasses,
+    generateSchoolStreams,
+    generateSchoolSubjects,
+    generateSchoolChapters,
+    generateUniversities,
+    generateSemesters,
+    generatePapersStages
+};
