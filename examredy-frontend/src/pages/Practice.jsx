@@ -56,6 +56,9 @@ const Practice = () => {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
 
+    // User AI Fetch State
+    const [isFetchingAI, setIsFetchingAI] = useState('');
+
     // Flow Detection
     useEffect(() => {
         if (!selectedCat || categories.length === 0) return;
@@ -216,6 +219,48 @@ const Practice = () => {
         setQuestions([]);
     };
 
+    // ── USER AI FETCH HANDLER ──
+    const handleAIFetch = async (type) => {
+        setIsFetchingAI(type);
+        try {
+            if (type === 'boards') {
+                const s = states.find(x => x.id == selectedState);
+                if (!s) return;
+                await api.post('/structure/fetch-out-boards', { state_id: s.id, state_name: s.name });
+                const res = await api.get(`/structure/boards/${selectedState}`);
+                setBoards(res.data);
+            } else if (type === 'subjects') {
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
+                const st = streams.find(x => x.id == selectedStream);
+                if (!b || !c) return;
+                await api.post('/structure/fetch-out-subjects', {
+                    board_id: b.id, board_name: b.name,
+                    class_id: c.class_id || c.id, class_name: c.name,
+                    stream_id: st?.id, stream_name: st?.name
+                });
+                let url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
+                if (selectedStream) url += `&stream_id=${selectedStream}`;
+                const res = await api.get(url);
+                setSubjects(res.data);
+            } else if (type === 'chapters') {
+                const s = subjects.find(x => x.id == selectedSubject);
+                const b = boards.find(x => x.id == selectedBoard);
+                const c = classes.find(x => x.class_id == selectedClass || x.id == selectedClass);
+                if (!s || !b || !c) return;
+                await api.post('/structure/fetch-out-chapters', {
+                    subject_id: s.id, subject_name: s.name,
+                    board_name: b.name, class_name: c.name
+                });
+                const res = await api.get(`/structure/chapters/${selectedSubject}`);
+                setChapters(res.data);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || err.response?.data?.error || `Failed to fetch ${type} via AI`);
+        } finally {
+            setIsFetchingAI('');
+        }
+    };
 
     // ── RENDERERS ──
 
@@ -261,10 +306,16 @@ const Practice = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Board</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState}>
-                                    <option value="">Choose Board</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedBoard} onChange={e => setSelectedBoard(e.target.value)} disabled={!selectedState || isFetchingAI === 'boards'}>
+                                    <option value="">{isFetchingAI === 'boards' ? 'Generating by AI...' : 'Choose Board'}</option>
                                     {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                 </select>
+                                {selectedState && boards.length === 0 && (
+                                    <button onClick={() => handleAIFetch('boards')} disabled={isFetchingAI === 'boards'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'boards' ? 'Searching Internet...' : 'Fetch Official Boards via Neural Engine'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -287,10 +338,16 @@ const Practice = () => {
                             ) : (
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass}>
-                                        <option value="">Choose Subject</option>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedClass || isFetchingAI === 'subjects'}>
+                                        <option value="">{isFetchingAI === 'subjects' ? 'Generating Syllabus...' : 'Choose Subject'}</option>
                                         {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
+                                    {selectedClass && subjects.length === 0 && (
+                                        <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Fetch Missing Subjects'}
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -367,18 +424,30 @@ const Practice = () => {
                                 {flowType === 'school' && needsStream && (
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Subject</label>
-                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream}>
-                                            <option value="">Choose Subject</option>
+                                        <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedSubject} onChange={e => { setSelectedSubject(e.target.value); setSelectedChapter(''); }} disabled={!selectedStream || isFetchingAI === 'subjects'}>
+                                            <option value="">{isFetchingAI === 'subjects' ? 'Fetching Syllabus...' : 'Choose Subject'}</option>
                                             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                         </select>
+                                        {selectedStream && subjects.length === 0 && (
+                                            <button onClick={() => handleAIFetch('subjects')} disabled={isFetchingAI === 'subjects'}
+                                                className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                                ✨ {isFetchingAI === 'subjects' ? 'Deep AI Search...' : 'Fetch Missing Subjects'}
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                                 <div className={flowType !== 'school' || !needsStream ? 'col-span-1' : ''}>
                                     <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
-                                        <option value="">Choose Chapter</option>
+                                    <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'}>
+                                        <option value="">{isFetchingAI === 'chapters' ? 'Reading Books...' : 'Choose Chapter'}</option>
                                         {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
+                                    {selectedSubject && chapters.length === 0 && (
+                                        <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'}
+                                            className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                            ✨ {isFetchingAI === 'chapters' ? 'Extracting Chapters...' : 'Fetch Official Chapters via NCERT/Board Logic'}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -386,10 +455,16 @@ const Practice = () => {
                         {flowType === 'school' && !needsStream && (
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Select Chapter</label>
-                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject}>
-                                    <option value="">Choose Chapter</option>
+                                <select className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary" value={selectedChapter} onChange={e => setSelectedChapter(e.target.value)} disabled={!selectedSubject || isFetchingAI === 'chapters'}>
+                                    <option value="">{isFetchingAI === 'chapters' ? 'Loading Chapters...' : 'Choose Chapter'}</option>
                                     {chapters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
+                                {selectedSubject && chapters.length === 0 && (
+                                    <button onClick={() => handleAIFetch('chapters')} disabled={isFetchingAI === 'chapters'}
+                                        className="mt-2 w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-2 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                                        ✨ {isFetchingAI === 'chapters' ? 'Compiling Texts...' : 'Fetch Official Chapters via NCERT/Board Logic'}
+                                    </button>
+                                )}
                             </div>
                         )}
 
