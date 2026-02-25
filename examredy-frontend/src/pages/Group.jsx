@@ -322,7 +322,23 @@ const Group = () => {
     }
 
     if (step === 'results') {
-        return <Leaderboard sessionId={sessionCode} />;
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col xl:flex-row gap-8 items-center justify-center p-4 w-full max-w-[1400px] mx-auto xl:py-12">
+                {/* Left Ad Sidebar */}
+                <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                    <AdSlot type="left" />
+                </div>
+
+                <div className="flex-1 w-full max-w-lg mx-auto">
+                    <Leaderboard sessionId={sessionCode} />
+                </div>
+
+                {/* Right Ad Sidebar */}
+                <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                    <AdSlot type="right" />
+                </div>
+            </div>
+        );
     }
 
     if (step === 'lobby') {
@@ -543,6 +559,11 @@ const Group = () => {
                     )}
 
                 </div>
+
+                {/* Right Ad Sidebar */}
+                <div className="hidden xl:block w-[160px] shrink-0 sticky top-24">
+                    <AdSlot type="right" />
+                </div>
             </div>
         );
     }
@@ -649,29 +670,27 @@ const Leaderboard = ({ sessionId }) => {
     }, [sessionId]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-xl p-8 max-w-lg w-full">
-                <div className="text-center mb-8">
-                    <div className="text-5xl mb-4">🏆</div>
-                    <h2 className="text-3xl font-bold text-gray-900">Final Leaderboard</h2>
-                </div>
-
-                <div className="space-y-4">
-                    {results.map((r, i) => (
-                        <div key={i} className={`flex items-center p-4 rounded-xl border-2 ${i === 0 ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100 bg-white'}`}>
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-4 ${i === 0 ? 'bg-yellow-400 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                                {i + 1}
-                            </div>
-                            <div className="flex-1 font-bold text-gray-800 text-lg">{r.username}</div>
-                            <div className="font-mono font-bold text-blue-600 text-xl">{r.score} pts</div>
-                        </div>
-                    ))}
-                </div>
-
-                <button onClick={() => window.location.href = '/practice'} className="w-full mt-8 bg-gray-100 text-gray-700 py-4 rounded-xl font-bold hover:bg-gray-200 transition">
-                    Back to Practice
-                </button>
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-lg w-full mx-auto border border-gray-100">
+            <div className="text-center mb-8">
+                <div className="text-5xl mb-4">🏆</div>
+                <h2 className="text-3xl font-bold text-gray-900">Final Leaderboard</h2>
             </div>
+
+            <div className="space-y-4">
+                {results.map((r, i) => (
+                    <div key={i} className={`flex items-center p-4 rounded-xl border-2 ${i === 0 ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100 bg-white'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-4 ${i === 0 ? 'bg-yellow-400 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                            {i + 1}
+                        </div>
+                        <div className="flex-1 font-bold text-gray-800 text-lg">{r.username}</div>
+                        <div className="font-mono font-bold text-blue-600 text-xl">{r.score} pts</div>
+                    </div>
+                ))}
+            </div>
+
+            <button onClick={() => window.location.href = '/practice'} className="w-full mt-8 bg-gray-100 text-gray-700 py-4 rounded-xl font-bold hover:bg-gray-200 transition">
+                Back to Practice
+            </button>
         </div>
     );
 };
