@@ -167,11 +167,12 @@ export function SchoolCentral() {
         if (needsStream && !selStream) return showToast('Select Stream first', 'error');
 
         // Quota save: check if subjects already exist for this context
-        const existingSubjects = subjects.filter(s =>
-            Number(s.board_id) === Number(selBoard.id) &&
-            Number(s.class_id) === Number(selClass.class_id || selClass.id) &&
-            (selStream ? Number(s.stream_id) === Number(selStream.id) : !s.stream_id)
-        );
+        const existingSubjects = subjects.filter(s => {
+            const isStreamEmpty = !s.stream_id || s.stream_id === 'null' || Number(s.stream_id) === 0;
+            return Number(s.board_id) === Number(selBoard.id) &&
+                Number(s.class_id) === Number(selClass.class_id || selClass.id) &&
+                (selStream ? Number(s.stream_id) === Number(selStream.id) : isStreamEmpty);
+        });
 
         if (!force && existingSubjects.length > 0) {
             return showToast(`Already has ${existingSubjects.length} subjects. Use Force Re-sync to refresh.`, 'info');
@@ -204,11 +205,12 @@ export function SchoolCentral() {
         const classNum = classNumStr ? parseInt(classNumStr) : 0;
         if (classNum >= 11 && !stream) return; // needs stream first
         // Skip if data already exists
-        const existing = subjects.filter(s =>
-            Number(s.board_id) === Number(board.id) &&
-            Number(s.class_id) === Number(cls.class_id || cls.id) &&
-            (stream ? Number(s.stream_id) === Number(stream.id) : !s.stream_id)
-        );
+        const existing = subjects.filter(s => {
+            const isStreamEmpty = !s.stream_id || s.stream_id === 'null' || Number(s.stream_id) === 0;
+            return Number(s.board_id) === Number(board.id) &&
+                Number(s.class_id) === Number(cls.class_id || cls.id) &&
+                (stream ? Number(s.stream_id) === Number(stream.id) : isStreamEmpty);
+        });
         if (existing.length > 0) return; // already loaded, no AI needed
         setFetchingKey('subjects');
         try {
@@ -359,9 +361,12 @@ export function SchoolCentral() {
             const curC = Number(selClass.class_id || selClass.id);
             const curS = selStream ? Number(selStream.id) : null;
 
-            const bMatch = Number(s.board_id) == curB;
-            const cMatch = Number(s.class_id) == curC;
-            const sMatch = curS ? Number(s.stream_id) == curS : !s.stream_id;
+            const bMatch = Number(s.board_id) === curB;
+            const cMatch = Number(s.class_id) === curC;
+
+            // Handle cases where stream_id might be null, undefined, 0, or the string 'null'
+            const isStreamEmpty = !s.stream_id || s.stream_id === 'null' || Number(s.stream_id) === 0;
+            const sMatch = curS ? Number(s.stream_id) === curS : isStreamEmpty;
 
             return bMatch && cMatch && sMatch;
         })
