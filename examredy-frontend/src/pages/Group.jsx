@@ -22,7 +22,7 @@ const Group = () => {
     const [classes, setClasses] = useState([]);
     const [streams, setStreams] = useState([]);
     const [universities, setUniversities] = useState([]);
-    const [semesters, setSemesters] = useState([]);
+    const [degreeTypes, setDegreeTypes] = useState([]);
     const [papersStages, setPapersStages] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [chapters, setChapters] = useState([]);
@@ -34,7 +34,7 @@ const Group = () => {
     const [selectedUniversity, setSelectedUniversity] = useState('');
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedStream, setSelectedStream] = useState('');
-    const [selectedSemester, setSelectedSemester] = useState('');
+    const [selectedDegreeType, setSelectedDegreeType] = useState('');
     const [selectedPaperStage, setSelectedPaperStage] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
@@ -51,21 +51,19 @@ const Group = () => {
         else setFlowType('competitive');
         // Reset lower cascade
         setSelectedState(''); setSelectedBoard(''); setSelectedUniversity(''); setSelectedClass('');
-        setSelectedStream(''); setSelectedSemester(''); setSelectedPaperStage(''); setSelectedSubject(''); setSelectedChapter('');
+        setSelectedStream(''); setSelectedDegreeType(''); setSelectedPaperStage(''); setSelectedSubject(''); setSelectedChapter('');
     }, [selectedCat, categories]);
 
     // Initial Load
     useEffect(() => {
         const loadInitial = async () => {
             try {
-                const [catRes, stateRes, semRes] = await Promise.all([
+                const [catRes, stateRes] = await Promise.all([
                     api.get('/structure/categories'),
                     api.get('/structure/states'),
-                    api.get('/structure/semesters')
                 ]);
                 setCategories(catRes.data);
                 setStates(stateRes.data);
-                setSemesters(semRes.data);
             } catch (err) { console.error('Failed to load initial data', err); }
         };
         loadInitial();
@@ -85,6 +83,14 @@ const Group = () => {
     }, [selectedBoard, flowType]);
 
     useEffect(() => {
+        if (selectedUniversity && flowType === 'university') {
+            api.get(`/structure/degree-types/${selectedUniversity}`).then(res => setDegreeTypes(res.data)).catch(() => setDegreeTypes([]));
+        } else {
+            setDegreeTypes([]);
+        }
+    }, [selectedUniversity, flowType]);
+
+    useEffect(() => {
         if (selectedCat && flowType === 'competitive') api.get(`/structure/papers-stages/${selectedCat}`).then(res => setPapersStages(res.data));
     }, [selectedCat, flowType]);
 
@@ -95,15 +101,15 @@ const Group = () => {
             url += `&board_id=${selectedBoard}&class_id=${selectedClass}`;
             if (selectedStream) url += `&stream_id=${selectedStream}`;
             shouldFetch = true;
-        } else if (flowType === 'university' && selectedUniversity && selectedSemester) {
-            url += `&university_id=${selectedUniversity}&semester_id=${selectedSemester}`;
+        } else if (flowType === 'university' && selectedUniversity && selectedDegreeType) {
+            url += `&university_id=${selectedUniversity}&degree_type_id=${selectedDegreeType}`;
             shouldFetch = true;
         } else if (flowType === 'competitive' && selectedPaperStage) {
             url += `&paper_stage_id=${selectedPaperStage}`;
             shouldFetch = true;
         }
         if (shouldFetch) api.get(url).then(res => setSubjects(res.data));
-    }, [selectedCat, flowType, selectedClass, selectedBoard, selectedStream, selectedUniversity, selectedSemester, selectedPaperStage]);
+    }, [selectedCat, flowType, selectedClass, selectedBoard, selectedStream, selectedUniversity, selectedDegreeType, selectedPaperStage]);
 
     useEffect(() => {
         if (selectedSubject) api.get(`/structure/chapters/${selectedSubject}`).then(res => setChapters(res.data));
@@ -200,12 +206,12 @@ const Group = () => {
                 await api.post('/structure/fetch-out-universities', { state_id: st.id, state_name: st.name });
                 const res = await api.get(`/structure/universities/${selectedState}`);
                 setUniversities(res.data);
-            } else if (type === 'semesters') {
+            } else if (type === 'degreeTypes') {
                 const u = universities.find(x => x.id == selectedUniversity);
                 if (!u) return;
-                await api.post('/structure/fetch-out-semesters', { university_id: u.id, university_name: u.name });
-                const res = await api.get(`/structure/semesters`);
-                setSemesters(res.data);
+                await api.post('/structure/fetch-out-degree-types', { university_id: u.id, university_name: u.name });
+                const res = await api.get(`/structure/degree-types/${selectedUniversity}`);
+                setDegreeTypes(res.data);
             } else if (type === 'papersStages') {
                 const cat = categories.find(x => x.id == selectedCat);
                 if (!cat) return;
@@ -225,10 +231,10 @@ const Group = () => {
                     if (selectedStream) url += `&stream_id=${selectedStream}`;
                 } else if (flowType === 'university') {
                     const u = universities.find(x => x.id == selectedUniversity);
-                    const sem = semesters.find(x => x.id == selectedSemester);
-                    if (!u || !sem) return;
-                    payload = { university_id: u.id, university_name: u.name, semester_id: sem.id, semester_name: sem.name, category_id: selectedCat };
-                    url = `/structure/subjects?category_id=${selectedCat}&university_id=${selectedUniversity}&semester_id=${selectedSemester}`;
+                    const dt = degreeTypes.find(x => x.id == selectedDegreeType);
+                    if (!u || !dt) return;
+                    payload = { university_id: u.id, university_name: u.name, degree_type_id: dt.id, degree_type_name: dt.name, category_id: selectedCat };
+                    url = `/structure/subjects?category_id=${selectedCat}&university_id=${selectedUniversity}&degree_type_id=${selectedDegreeType}`;
                 } else if (flowType === 'competitive') {
                     const ps = papersStages.find(x => x.id == selectedPaperStage);
                     const cat = categories.find(x => x.id == selectedCat);
@@ -250,9 +256,9 @@ const Group = () => {
                     payload.board_name = b.name; payload.class_name = c.name;
                 } else if (flowType === 'university') {
                     const u = universities.find(x => x.id == selectedUniversity);
-                    const sem = semesters.find(x => x.id == selectedSemester);
-                    if (!u || !sem) return;
-                    payload.university_name = u.name; payload.semester_name = sem.name;
+                    const dt = degreeTypes.find(x => x.id == selectedDegreeType);
+                    if (!u || !dt) return;
+                    payload.university_name = u.name; payload.degree_type_name = dt.name;
                 } else if (flowType === 'competitive') {
                     const ps = papersStages.find(x => x.id == selectedPaperStage);
                     const cat = categories.find(x => x.id == selectedCat);
@@ -424,13 +430,13 @@ const Group = () => {
                                         )}
                                     </div>
                                     <div className="col-span-2">
-                                        <select value={selectedSemester} onChange={e => { setSelectedSemester(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity || isFetchingAI === 'semesters'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
-                                            <option value="">{isFetchingAI === 'semesters' ? 'AI fetching...' : 'Semester'}</option>
-                                            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        <select value={selectedDegreeType} onChange={e => { setSelectedDegreeType(e.target.value); setSelectedSubject(''); }} disabled={!selectedUniversity || isFetchingAI === 'degreeTypes'} className="w-full border-2 border-gray-100 rounded-xl px-2 py-3 outline-none disabled:bg-gray-50">
+                                            <option value="">{isFetchingAI === 'degreeTypes' ? 'AI fetching...' : 'Degree Type'}</option>
+                                            {degreeTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
-                                        {selectedUniversity && semesters.length === 0 && (
-                                            <button onClick={() => handleAIFetch('semesters')} disabled={isFetchingAI === 'semesters'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
-                                                ✨ Fetch Semesters
+                                        {selectedUniversity && degreeTypes.length === 0 && (
+                                            <button onClick={() => handleAIFetch('degreeTypes')} disabled={isFetchingAI === 'degreeTypes'} className="mt-1 w-full text-[10px] sm:text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 py-1 rounded hover:bg-indigo-100 disabled:opacity-50">
+                                                ✨ Fetch Degree Types
                                             </button>
                                         )}
                                     </div>
