@@ -161,7 +161,8 @@ export function SchoolCentral() {
 
     const aiFetchSubjects = async (force = false) => {
         if (!selBoard || !selClass) return showToast('Select Board & Class first', 'error');
-        const classNum = parseInt(selClass?.name.replace(/\D/g, ''));
+        const classNumStr = selClass?.name.replace(/\D/g, '');
+        const classNum = classNumStr ? parseInt(classNumStr) : 0;
         const needsStream = classNum >= 11;
         if (needsStream && !selStream) return showToast('Select Stream first', 'error');
 
@@ -180,6 +181,7 @@ export function SchoolCentral() {
         try {
             const context_name = `${selBoard.name} ${selClass.name} ${selStream ? selStream.name : ''}`;
             const r = await api.post('/ai-fetch/subjects', {
+                category_id: catId,
                 board_id: selBoard.id,
                 class_id: selClass.class_id || selClass.id,
                 stream_id: selStream?.id || null,
@@ -198,7 +200,8 @@ export function SchoolCentral() {
     // ── Auto-cascade helpers ───────────────────────────────────────────────
     const autoFetchSubjects = async (board, cls, stream) => {
         if (!board || !cls) return;
-        const classNum = parseInt(cls.name.replace(/\D/g, ''));
+        const classNumStr = cls.name.replace(/\D/g, '');
+        const classNum = classNumStr ? parseInt(classNumStr) : 0;
         if (classNum >= 11 && !stream) return; // needs stream first
         // Skip if data already exists
         const existing = subjects.filter(s =>
@@ -322,6 +325,16 @@ export function SchoolCentral() {
         load(); showToast('Board added');
     };
 
+    const addClass = async () => {
+        if (!selBoard) return showToast('Select a board first', 'error');
+        const name = prompt('Class Name (e.g. Class 7):');
+        if (!name) return;
+        try {
+            await api.post('/admin/classes', { name, board_id: selBoard.id });
+            load(); showToast('Class added and linked to board');
+        } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+    };
+
     const addSubject = async () => {
         if (!selBoard || !selClass) return showToast('Select Board & Class', 'error');
         const name = prompt('Subject Name:'); if (!name) return;
@@ -346,9 +359,9 @@ export function SchoolCentral() {
             const curC = Number(selClass.class_id || selClass.id);
             const curS = selStream ? Number(selStream.id) : null;
 
-            const bMatch = Number(s.board_id) === curB;
-            const cMatch = Number(s.class_id) === curC;
-            const sMatch = curS ? Number(s.stream_id) === curS : !s.stream_id;
+            const bMatch = Number(s.board_id) == curB;
+            const cMatch = Number(s.class_id) == curC;
+            const sMatch = curS ? Number(s.stream_id) == curS : !s.stream_id;
 
             return bMatch && cMatch && sMatch;
         })
@@ -357,7 +370,8 @@ export function SchoolCentral() {
     const filtChapters = selSubject ? chapters.filter(c => c.subject_id == selSubject.id) : [];
 
     // Fix: parseInt('Class 11') = NaN bug — extract number properly
-    const needsStream = selClass && parseInt(selClass.name.replace(/\D/g, '')) >= 11;
+    const classNumStr = selClass?.name.replace(/\D/g, '');
+    const needsStream = selClass && classNumStr && parseInt(classNumStr) >= 11;
 
     // -- Column selector component with Multi-Check support
     const Col = ({ title, tableType, icon: Icon, color, items, selId, onSel, children }) => {
@@ -513,11 +527,13 @@ export function SchoolCentral() {
                         onSel={async (c) => {
                             setSelClass(c); setSelStream(null); setSelSubject(null);
                             // Auto-fetch subjects if no stream needed
-                            const classNum = parseInt(c.name.replace(/\D/g, ''));
+                            const classNumStr = c.name.replace(/\D/g, '');
+                            const classNum = classNumStr ? parseInt(classNumStr) : 0;
                             if (classNum < 11) await autoFetchSubjects(selBoard, c, null);
                         }}
                     >
                         <AIFetchBtn label="AI Fetch" onClick={aiFetchClasses} loading={fetchingKey === 'classes'} />
+                        <AddBtn label="Add Manual" onClick={addClass} />
                     </Col>
 
                     {/* STREAM (only for Class 11-12) */}
