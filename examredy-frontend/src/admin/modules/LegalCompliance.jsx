@@ -69,7 +69,8 @@ export const LegalCompliance = () => {
             showToast('Document saved successfully');
             fetchPages(); // refresh the list to update "Last Updated" timestamps
         } catch (e) {
-            showToast('Failed to save document', 'error');
+            const errorMsg = e.response?.data?.error || e.response?.data?.message || e.message || 'Unknown error';
+            showToast(`Error: ${errorMsg}`, 'error');
         } finally {
             setSaving(false);
         }
@@ -108,8 +109,8 @@ export const LegalCompliance = () => {
                                 key={page.id}
                                 onClick={() => handlePageSwitch(page)}
                                 className={`w-full text-left p-6 rounded-[2rem] border transition-all duration-300 relative overflow-hidden group ${activePageId === page.id
-                                        ? 'bg-emerald-500/10 border-emerald-500/30'
-                                        : 'bg-gray-900/40 border-gray-800 hover:bg-gray-800/60'
+                                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                                    : 'bg-gray-900/40 border-gray-800 hover:bg-gray-800/60'
                                     }`}
                             >
                                 {activePageId === page.id && (
