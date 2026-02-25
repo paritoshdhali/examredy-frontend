@@ -194,29 +194,72 @@ const Group = () => {
                 await api.post('/structure/fetch-out-streams', { board_name: b.name, class_name: c.name });
                 const res = await api.get(`/structure/streams`);
                 setStreams(res.data);
+            } else if (type === 'universities') {
+                const st = states.find(x => x.id == selectedState);
+                if (!st) return;
+                await api.post('/structure/fetch-out-universities', { state_id: st.id, state_name: st.name });
+                const res = await api.get(`/structure/universities/${selectedState}`);
+                setUniversities(res.data);
+            } else if (type === 'semesters') {
+                const u = universities.find(x => x.id == selectedUniversity);
+                if (!u) return;
+                await api.post('/structure/fetch-out-semesters', { university_id: u.id, university_name: u.name });
+                const res = await api.get(`/structure/semesters`);
+                setSemesters(res.data);
+            } else if (type === 'papersStages') {
+                const cat = categories.find(x => x.id == selectedCat);
+                if (!cat) return;
+                await api.post('/structure/fetch-out-papers-stages', { category_id: cat.id, category_name: cat.name });
+                const res = await api.get(`/structure/papers-stages/${selectedCat}`);
+                setPapersStages(res.data);
             } else if (type === 'subjects') {
-                const b = boards.find(x => x.id == selectedBoard);
-                const c = classes.find(x => (x.class_id || x.id) == selectedClass);
-                const st = streams.find(x => x.id == selectedStream);
-                if (!b || !c) return;
-                await api.post('/structure/fetch-out-subjects', {
-                    board_id: b.id, board_name: b.name,
-                    class_id: c.class_id || c.id, class_name: c.name,
-                    stream_id: st?.id, stream_name: st?.name
-                });
-                let url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
-                if (selectedStream) url += `&stream_id=${selectedStream}`;
+                let payload = {};
+                let url = '';
+                if (flowType === 'school') {
+                    const b = boards.find(x => x.id == selectedBoard);
+                    const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                    const st = streams.find(x => x.id == selectedStream);
+                    if (!b || !c) return;
+                    payload = { board_id: b.id, board_name: b.name, class_id: c.class_id || c.id, class_name: c.name, stream_id: st?.id, stream_name: st?.name };
+                    url = `/structure/subjects?category_id=${selectedCat}&board_id=${selectedBoard}&class_id=${selectedClass}`;
+                    if (selectedStream) url += `&stream_id=${selectedStream}`;
+                } else if (flowType === 'university') {
+                    const u = universities.find(x => x.id == selectedUniversity);
+                    const sem = semesters.find(x => x.id == selectedSemester);
+                    if (!u || !sem) return;
+                    payload = { university_id: u.id, university_name: u.name, semester_id: sem.id, semester_name: sem.name, category_id: selectedCat };
+                    url = `/structure/subjects?category_id=${selectedCat}&university_id=${selectedUniversity}&semester_id=${selectedSemester}`;
+                } else if (flowType === 'competitive') {
+                    const ps = papersStages.find(x => x.id == selectedPaperStage);
+                    const cat = categories.find(x => x.id == selectedCat);
+                    if (!ps || !cat) return;
+                    payload = { paper_stage_id: ps.id, paper_stage_name: ps.name, category_id: cat.id, category_name: cat.name };
+                    url = `/structure/subjects?category_id=${selectedCat}&paper_stage_id=${selectedPaperStage}`;
+                }
+                await api.post('/structure/fetch-out-subjects', payload);
                 const res = await api.get(url);
                 setSubjects(res.data);
             } else if (type === 'chapters') {
                 const s = subjects.find(x => x.id == selectedSubject);
-                const b = boards.find(x => x.id == selectedBoard);
-                const c = classes.find(x => (x.class_id || x.id) == selectedClass);
-                if (!s || !b || !c) return;
-                await api.post('/structure/fetch-out-chapters', {
-                    subject_id: s.id, subject_name: s.name,
-                    board_name: b.name, class_name: c.name
-                });
+                if (!s) return;
+                let payload = { subject_id: s.id, subject_name: s.name };
+                if (flowType === 'school') {
+                    const b = boards.find(x => x.id == selectedBoard);
+                    const c = classes.find(x => (x.class_id || x.id) == selectedClass);
+                    if (!b || !c) return;
+                    payload.board_name = b.name; payload.class_name = c.name;
+                } else if (flowType === 'university') {
+                    const u = universities.find(x => x.id == selectedUniversity);
+                    const sem = semesters.find(x => x.id == selectedSemester);
+                    if (!u || !sem) return;
+                    payload.university_name = u.name; payload.semester_name = sem.name;
+                } else if (flowType === 'competitive') {
+                    const ps = papersStages.find(x => x.id == selectedPaperStage);
+                    const cat = categories.find(x => x.id == selectedCat);
+                    if (!ps || !cat) return;
+                    payload.paper_stage_name = ps.name; payload.category_name = cat.name;
+                }
+                await api.post('/structure/fetch-out-chapters', payload);
                 const res = await api.get(`/structure/chapters/${selectedSubject}`);
                 setChapters(res.data);
             }
