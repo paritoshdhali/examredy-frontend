@@ -11,6 +11,8 @@ import Group from './pages/Group';
 import AdminDashboard from './admin/AdminDashboard';
 import AdminLogin from './admin/AdminLogin';
 import Prime from './pages/Prime';
+import LegalPage from './pages/LegalPage';
+import Footer from './components/Footer';
 
 // ── Admin-only protected route ──────────────────────────────────────
 const AdminRoute = ({ children }) => {
@@ -49,12 +51,7 @@ const MainLayout = () => (
         <main className="flex-grow">
             <Outlet />
         </main>
-        <div className="container mx-auto">
-            <AdSlot type="bottom" />
-        </div>
-        <footer className="bg-white border-t py-6 text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} ExamRedy. All rights reserved.
-        </footer>
+        <Footer />
     </div>
 );
 
@@ -89,6 +86,9 @@ function AppRoutes() {
                 <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
                 <Route path="/group" element={<ProtectedRoute><Group /></ProtectedRoute>} />
                 <Route path="/prime" element={<ProtectedRoute><Prime /></ProtectedRoute>} />
+                <Route path="/legal/:slug" element={<LegalPage />} />
+                <Route path="/about-us" element={<Navigate to="/legal/about-us" replace />} />
+                <Route path="/contact-us" element={<Navigate to="/legal/contact-us" replace />} />
             </Route>
         </Routes>
     );
