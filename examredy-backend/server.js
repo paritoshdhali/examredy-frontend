@@ -13,41 +13,21 @@ const app = express();
 // Required for Railway/Reverse Proxy Rate Limiting
 app.set('trust proxy', 1);
 
-// Security Middleware
-app.use(helmet());
-
-// CORS Configuration
-const allowedOrigins = [
-    process.env.FRONTEND_URL,         // Production frontend URL (set in Railway env)
-    'http://localhost:5173',           // Vite dev server default
-    'http://localhost:3000',           // CRA / alternate dev server
-    'http://localhost:4173',           // Vite preview
-].filter(Boolean);
-
+// 1. CORS FIRST (Essential for preflight OPTIONS checks)
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, server-to-server)
-        if (!origin) {
-            return callback(null, true);
-        }
-        // Allow any localhost origin for local development
-        if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-            return callback(null, true);
-        }
-        // Allow configured origins (production frontend, Vercel previews, etc.)
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            return callback(null, true);
-        }
-        // Allow any Vercel deployment for this project
-        if (origin.includes('vercel.app')) {
-            return callback(null, true);
-        }
-        console.warn(`[CORS] Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-    },
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    credentials: true,
+    maxAge: 86400
+}));
+
+// Handle preflight for all routes
+app.options('*', cors());
+
+// Security Middleware
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Rate Limiting
@@ -59,7 +39,8 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(morgan('combined'));
 
 // 1. Root Route

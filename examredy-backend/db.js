@@ -9,22 +9,21 @@ const pool = new Pool({
     }
 });
 
-pool.on('connect', () => {
-    console.log('PostgreSQL Connected');
-});
+// In-memory log buffer for diagnostics
+const logBuffer = [];
+const addToLog = (msg, level = 'INFO') => {
+    const entry = `[${new Date().toISOString()}] [${level}] ${msg}`;
+    logBuffer.unshift(entry);
+    if (logBuffer.length > 200) logBuffer.pop();
+    console.log(entry);
+};
 
-pool.on('error', (err) => {
-    console.error('Database Error:', err);
-    process.exit(1);
-});
-
-// Helper for running queries
 // Helper for running queries
 const query = async (text, params) => {
     try {
         return await pool.query(text, params);
     } catch (err) {
-        console.error('Database Query Error:', err.message);
+        addToLog(`Database Query Error: ${err.message} | SQL: ${text.substring(0, 50)}...`, 'ERROR');
         throw err; // Re-throw to let the route handler deal with the specific response
     }
 };
@@ -266,7 +265,7 @@ const initDB = async () => {
         const tablesToMigrate = [
             'categories', 'boards', 'classes', 'streams', 'board_classes',
             'universities', 'degree_types', 'semesters', 'papers_stages',
-            'subjects', 'chapters'
+            'subjects', 'chapters', 'legal_pages'
         ];
         for (const tableName of tablesToMigrate) {
             try {
@@ -427,6 +426,30 @@ const initDB = async () => {
             }
         }
 
+        // --- Class Name Unique Constraint Repair ---
+        try {
+            console.log('Synchronizing classes table unique constraint...');
+            // Delete duplicates if any
+            await query(`DELETE FROM classes a USING classes b WHERE a.id < b.id AND LOWER(a.name) = LOWER(b.name);`);
+            // Add unique constraint if not exists
+            await query(`ALTER TABLE classes ADD CONSTRAINT unique_class_name UNIQUE (name);`);
+            console.log('✅ Class unique constraint enforced.');
+        } catch (e) {
+            // Fails if exists or other issues, usually fine
+        }
+
+        // --- Chapter Unique Constraint Repair ---
+        try {
+            console.log('Synchronizing chapters table unique constraint...');
+            // Delete duplicates if any (same subject and name)
+            await query(`DELETE FROM chapters a USING chapters b WHERE a.id < b.id AND a.subject_id = b.subject_id AND LOWER(a.name) = LOWER(b.name);`);
+            // Add unique constraint if not exists
+            await query(`ALTER TABLE chapters ADD CONSTRAINT unique_chapter_per_subject UNIQUE (subject_id, name);`);
+            console.log('✅ Chapter unique constraint enforced.');
+        } catch (e) {
+            // Fails if exists, which is fine
+        }
+
         // SEO and Site Config (Requirement 8)
         const siteDefaults = {
             'SITE_TITLE': 'ExamRedy - AI MCQ Practice',
@@ -455,6 +478,20 @@ const initDB = async () => {
             error_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );`);
+
+        // Ads Settings (Dynamic Ads Control)
+        await query(`CREATE TABLE IF NOT EXISTS ads_settings (
+            id SERIAL PRIMARY KEY,
+            platform VARCHAR(20) NOT NULL,
+            ad_type VARCHAR(50) NOT NULL,
+            ad_unit_id TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_ad_type_per_platform UNIQUE (platform, ad_type)
+        );`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_ads_platform ON ads_settings(platform);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_ads_active ON ads_settings(is_active);`);
 
         // MCQ Pool
         await query(`
@@ -551,4 +588,5 @@ const initDB = async () => {
     }
 };
 
-module.exports = { pool, query, initDB };
+// [AI-FETCH-DEBUG] Manual export if needed
+module.exports = { pool, query, initDB, logBuffer, addToLog };
