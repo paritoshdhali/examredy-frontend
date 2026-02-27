@@ -4,6 +4,6 @@
     "scripts": {
         "frontend-install": "npm install --prefix examredy-frontend",
         "frontend-build": "npm run build --prefix examredy-frontend",
-        "build": "npm run frontend-install && npm run frontend-build"
+        "build": "npm run frontend-install && npm run frontend-build && mv examredy-frontend/dist ./dist"
     }
 }
