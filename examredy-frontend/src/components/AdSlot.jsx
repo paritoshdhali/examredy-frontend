@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useAds } from '../context/AdContext';
 
 const AdSlot = ({ type, className = "" }) => {
-    const { settings, showAds, loading } = useAds();
+    const { settings, dynamicAds, showAds, loading } = useAds();
     const adRef = useRef(null);
 
     useEffect(() => {
@@ -23,16 +23,30 @@ const AdSlot = ({ type, className = "" }) => {
                 // Ignore "adsbygoogle push already called" errors
             }
         }
-    }, [showAds, type, settings]);
+    }, [showAds, type, settings, dynamicAds]);
 
     if (loading || !showAds) return null;
 
     let adCode = '';
-    if (type === 'top') adCode = settings.ADS_TOP_BANNER;
-    if (type === 'mid') adCode = settings.ADS_MID_CONTENT;
-    if (type === 'bottom') adCode = settings.ADS_BOTTOM_BANNER;
-    if (type === 'left') adCode = settings.ADS_LEFT_SIDEBAR;
-    if (type === 'right') adCode = settings.ADS_RIGHT_SIDEBAR;
+
+    // Map legacy 'type' to new 'ad_type'
+    const typeMapping = {
+        'top': 'banner_top',
+        'mid': 'banner_middle',
+        'bottom': 'banner_bottom'
+    };
+
+    const dynamicType = typeMapping[type];
+    if (dynamicType && dynamicAds[dynamicType]) {
+        adCode = dynamicAds[dynamicType];
+    } else {
+        // Fallback to legacy settings
+        if (type === 'top') adCode = settings.ADS_TOP_BANNER;
+        if (type === 'mid') adCode = settings.ADS_MID_CONTENT;
+        if (type === 'bottom') adCode = settings.ADS_BOTTOM_BANNER;
+        if (type === 'left') adCode = settings.ADS_LEFT_SIDEBAR;
+        if (type === 'right') adCode = settings.ADS_RIGHT_SIDEBAR;
+    }
 
     if (!adCode) return null;
 

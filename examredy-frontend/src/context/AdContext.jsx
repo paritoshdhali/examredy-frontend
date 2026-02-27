@@ -9,18 +9,27 @@ export const AdProvider = ({ children }) => {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(true);
 
+    const [dynamicAds, setDynamicAds] = useState({});
+
     useEffect(() => {
-        const fetchSettings = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get(`/settings`);
-                setSettings(res.data);
+                // Fetch general settings
+                const settingsRes = await api.get(`/settings`);
+                setSettings(settingsRes.data);
+
+                // Fetch dynamic ads configuration
+                const adsRes = await api.get(`/ads?platform=web`);
+                if (adsRes.data?.success) {
+                    setDynamicAds(adsRes.data.ads);
+                }
             } catch (e) {
-                console.error('Failed to fetch ad settings', e);
+                console.error('Failed to fetch ad configuration', e);
             } finally {
                 setLoading(false);
             }
         };
-        fetchSettings();
+        fetchData();
     }, []);
 
     const showAds =
@@ -46,7 +55,7 @@ export const AdProvider = ({ children }) => {
     }, [showAds, settings.ADS_HEADER_SCRIPT]);
 
     return (
-        <AdContext.Provider value={{ settings, showAds, loading }}>
+        <AdContext.Provider value={{ settings, dynamicAds, showAds, loading }}>
             {children}
             {/* Body script if any */}
             {showAds && settings.ADS_BODY_SCRIPT && (

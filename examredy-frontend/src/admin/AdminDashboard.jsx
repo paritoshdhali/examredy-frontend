@@ -10,6 +10,7 @@ import { RevenueAnalytics } from './modules/RevenueAnalytics';
 import { AdSenseCore } from './modules/AdSenseCore';
 import { LegalCompliance } from './modules/LegalCompliance';
 import { SystemSettings } from './modules/SystemSettings';
+import { AdsManagement } from './modules/AdsManagement';
 import { DashboardOverview } from './modules/DashboardOverview';
 import { ReferralManagement } from './modules/ReferralManagement';
 import {
@@ -35,6 +36,7 @@ const MENU = [
     { id: 'legal', label: 'Legal Compliance', icon: FileText, color: 'text-gray-400' },
     { id: 'settings', label: 'System Settings', icon: Settings, color: 'text-slate-400' },
     { id: 'referral', label: 'Referral Program', icon: Users, color: 'text-pink-400' },
+    { id: 'ads_management', label: 'Ads Management', icon: PieChart, color: 'text-emerald-400' },
 ];
 
 // ─── Module placeholder renderer ──────────────────────────────────────────
@@ -53,6 +55,7 @@ const MODULE_META = {
     legal: { title: 'Legal Compliance', desc: 'Privacy Policy, Terms and legal docs editor', badge: 'POLICY' },
     settings: { title: 'System Settings', desc: 'SEO, branding, global toggles and config', badge: 'SYSTEM' },
     referral: { title: 'Referral Program', desc: 'Incentive tracking and reward management', badge: 'GROWTH' },
+    ads_management: { title: 'Ads Management', desc: 'Dynamic Ad Mob and Web banner IDs', badge: 'MARKETING' },
 };
 
 const BADGE_COLORS = {
@@ -84,6 +87,7 @@ function ModulePlaceholder({ id }) {
     if (id === 'legal') return <LegalCompliance />;
     if (id === 'settings') return <SystemSettings />;
     if (id === 'referral') return <ReferralManagement />;
+    if (id === 'ads_management') return <AdsManagement />;
 
     const meta = MODULE_META[id] || MODULE_META.dashboard;
     const menuItem = MENU.find(m => m.id === id) || MENU[0];
