@@ -1,0 +1,9 @@
+{
+    "name": "examredy-v1",
+    "private": true,
+    "scripts": {
+        "frontend-install": "npm install --prefix examredy-frontend",
+        "frontend-build": "npm run build --prefix examredy-frontend",
+        "build": "npm run frontend-install && npm run frontend-build"
+    }
+}
