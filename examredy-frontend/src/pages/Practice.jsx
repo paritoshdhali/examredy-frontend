@@ -104,25 +104,25 @@ const Practice = () => {
     // State changes -> Load Boards (School) OR Universities (University)
     useEffect(() => {
         if (selectedState && flowType === 'school') {
-            api.get(`/structure/boards/${selectedState}`).then(res => setBoards(res.data));
+            api.get(`/structure/boards/${selectedState}?language=${language}`).then(res => setBoards(res.data));
         } else if (selectedState && flowType === 'university') {
-            api.get(`/structure/universities/${selectedState}`).then(res => setUniversities(res.data));
+            api.get(`/structure/universities/${selectedState}?language=${language}`).then(res => setUniversities(res.data));
         } else {
             setBoards([]);
             setUniversities([]);
         }
-    }, [selectedState, flowType]);
+    }, [selectedState, flowType, language]);
 
     // Board changes -> Load Classes & Streams
     useEffect(() => {
         if (selectedBoard && flowType === 'school') {
-            api.get(`/structure/classes/${selectedBoard}`).then(res => setClasses(res.data));
-            api.get(`/structure/streams`).then(res => setStreams(res.data));
+            api.get(`/structure/classes/${selectedBoard}?language=${language}`).then(res => setClasses(res.data));
+            api.get(`/structure/streams?language=${language}`).then(res => setStreams(res.data));
         } else {
             setClasses([]);
             setStreams([]);
         }
-    }, [selectedBoard, flowType]);
+    }, [selectedBoard, flowType, language]);
 
     // University changes -> Load Degree Types
     useEffect(() => {
@@ -144,7 +144,7 @@ const Practice = () => {
 
     // Subject loading unified handler
     useEffect(() => {
-        let url = `/structure/subjects?category_id=${selectedCat}`;
+        let url = `/structure/subjects?category_id=${selectedCat}&language=${language}`;
         let shouldFetch = false;
 
         if (flowType === 'school' && selectedClass) {
@@ -164,16 +164,16 @@ const Practice = () => {
         } else {
             setSubjects([]);
         }
-    }, [selectedCat, flowType, selectedClass, selectedBoard, selectedStream, selectedUniversity, selectedDegreeType, selectedPaperStage]);
+    }, [selectedCat, flowType, selectedClass, selectedBoard, selectedStream, selectedUniversity, selectedDegreeType, selectedPaperStage, language]);
 
     // Chapter Loading
     useEffect(() => {
         if (selectedSubject) {
-            api.get(`/structure/chapters/${selectedSubject}`).then(res => setChapters(res.data));
+            api.get(`/structure/chapters/${selectedSubject}?language=${language}`).then(res => setChapters(res.data));
         } else {
             setChapters([]);
         }
-    }, [selectedSubject]);
+    }, [selectedSubject, language]);
 
 
     // Helper functions for School UI logic
@@ -376,6 +376,30 @@ const Practice = () => {
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
+
+                    {/* 2. Language Selector - Shown immediately after Category */}
+                    {selectedCat && (
+                        <div className="pt-2">
+                            <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">🌐 Exam Language</label>
+                            <select className="w-full p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold" value={language} onChange={e => setLanguage(e.target.value)}>
+                                <option value="English">English</option>
+                                <option value="Bengali">Bengali (বাংলা)</option>
+                                <option value="Hindi">Hindi (हिंदी)</option>
+                                <option value="Tamil">Tamil (தமிழ்)</option>
+                                <option value="Telugu">Telugu (తెలుగు)</option>
+                                <option value="Marathi">Marathi (मराठी)</option>
+                                <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                                <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                                <option value="Malayalam">Malayalam (മലയാളം)</option>
+                                <option value="Odia">Odia (ଓଡ଼ିଆ)</option>
+                                <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+                                <option value="Assamese">Assamese (অসমীয়া)</option>
+                                <option value="Urdu">Urdu (اردو)</option>
+                                <option value="Sanskrit">Sanskrit (संस्कृत)</option>
+                            </select>
+                            <p className="text-xs text-indigo-500 font-medium mt-2">* Class, Subject & Chapter names and MCQs will be shown in your chosen language.</p>
+                        </div>
+                    )}
 
                     {/* ── FLOW SPECIFIC UIs ── */}
 
@@ -596,20 +620,8 @@ const Practice = () => {
                                 </div>
                             )}
 
-                            <div className="pt-4 border-t border-gray-100">
-                                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Exam Language</label>
-                                <select className="w-full p-3 bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl outline-none focus:ring-2 focus:ring-primary font-bold" value={language} onChange={e => setLanguage(e.target.value)}>
-                                    <option value="English">English</option>
-                                    <option value="Bengali">Bengali (বাংলা)</option>
-                                    <option value="Hindi">Hindi (हिंदी)</option>
-                                    <option value="Urdu">Urdu (اردو)</option>
-                                    <option value="Assamese">Assamese (অসমীয়া)</option>
-                                    <option value="Gujarati">Gujarati (ગુજરાતી)</option>
-                                    <option value="Marathi">Marathi (मराठी)</option>
-                                    <option value="Tamil">Tamil (தமிழ்)</option>
-                                    <option value="Telugu">Telugu (తెలుగు)</option>
-                                </select>
-                                <p className="text-xs text-indigo-500 font-medium mt-2">* Exam MCQs will be instantly generated by AI in your chosen language.</p>
+                            <div className="pt-4 border-t border-gray-100 text-center text-xs text-indigo-400 font-medium">
+                                🌐 MCQs will be generated in <strong>{language}</strong>
                             </div>
 
                             <button
