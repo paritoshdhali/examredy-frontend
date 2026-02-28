@@ -28,7 +28,7 @@ export const UserManagement = () => {
     const [showActivity, setShowActivity] = useState(false);
     const [showSub, setShowSub] = useState(false);
     const [activityData, setActivityData] = useState({ history: [], todayCount: 0 });
-    const [subData, setSubData] = useState({ action: 'extend', hours: 24 });
+    const [subData, setSubData] = useState({ action: 'extend', hours: 24, sessions: 0 });
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -141,7 +141,7 @@ export const UserManagement = () => {
                                 <tr key={user.id} className="group hover:bg-gray-800/20 transition-all duration-300">
                                     <td className="px-6 py-5">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-lg ${user.role === 'admin' ? 'bg-indigo-600 shadow-indigo-500/20' : 'bg-gray-800 shadow-black/20'
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-lg ${user.role === 'admin' ? 'bg-indigo-600 shadow-indigo-500/20' : user.sessions_left === -1 ? 'bg-gradient-to-br from-pink-500 to-purple-600 shadow-pink-500/20' : 'bg-gray-800 shadow-black/20'
                                                 }`}>
                                                 {user.username?.[0].toUpperCase() || '?'}
                                             </div>
@@ -176,16 +176,20 @@ export const UserManagement = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
-                                        {user.is_premium ? (
-                                            <div className="space-y-1">
-                                                <span className="px-2 py-0.5 bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-widest rounded animate-pulse">Prime Active</span>
+                                        <div className="space-y-1">
+                                            {user.sessions_left === -1 ? (
+                                                <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-widest rounded animate-pulse">Unlimited Sessions</span>
+                                            ) : user.sessions_left > 0 ? (
+                                                <span className="px-2 py-0.5 bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-widest rounded">{user.sessions_left} Sessions Left</span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 bg-gray-500/10 border border-gray-500/20 text-gray-400 text-[9px] font-black uppercase tracking-widest rounded">Free Tier</span>
+                                            )}
+                                            {user.premium_expiry && (
                                                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
                                                     EXP: {new Date(user.premium_expiry).toLocaleDateString()}
                                                 </p>
-                                            </div>
-                                        ) : (
-                                            <span className="px-2 py-0.5 bg-gray-500/10 border border-gray-500/20 text-gray-400 text-[9px] font-black uppercase tracking-widest rounded">Free Tier</span>
-                                        )}
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-5">
                                         <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
@@ -219,8 +223,8 @@ export const UserManagement = () => {
                                                 title={user.is_active ? "Restrict User" : "Enable User"}
                                                 onClick={() => toggleStatus(user)}
                                                 className={`p-2 bg-gray-800 border border-gray-700 rounded-lg transition-all ${user.is_active
-                                                        ? 'hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-gray-400'
-                                                        : 'hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400 text-gray-400'
+                                                    ? 'hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-gray-400'
+                                                    : 'hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400 text-gray-400'
                                                     }`}
                                             >
                                                 {user.is_active ? <UserMinus size={14} /> : <UserCheck size={14} />}
@@ -289,8 +293,8 @@ export const UserManagement = () => {
                                             </p>
                                         </div>
                                         <div className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest border ${h.is_correct
-                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                                : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            : 'bg-red-500/10 border-red-500/20 text-red-400'
                                             }`}>
                                             {h.is_correct ? 'CORRECT' : 'WRONG'}
                                         </div>
@@ -316,22 +320,22 @@ export const UserManagement = () => {
                             <div>
                                 <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Operational Logic</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {['extend', 'reduce', 'cancel'].map(act => (
+                                    {['extend', 'reduce', 'set_sessions', 'cancel'].map(act => (
                                         <button
                                             key={act}
                                             onClick={() => setSubData({ ...subData, action: act })}
                                             className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${subData.action === act
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
-                                                    : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
                                                 }`}
                                         >
-                                            {act}
+                                            {act.replace('_', ' ')}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {subData.action !== 'cancel' && (
+                            {(subData.action === 'extend' || subData.action === 'reduce') && (
                                 <div>
                                     <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Temporal Shift (Hours)</label>
                                     <div className="grid grid-cols-4 gap-2">
@@ -340,8 +344,8 @@ export const UserManagement = () => {
                                                 key={h}
                                                 onClick={() => setSubData({ ...subData, hours: h })}
                                                 className={`px-2 py-3 rounded-xl text-[10px] font-black text-white border transition-all ${subData.hours === h
-                                                        ? 'bg-pink-600 border-pink-500'
-                                                        : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
+                                                    ? 'bg-pink-600 border-pink-500'
+                                                    : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
                                                     }`}
                                             >
                                                 {h >= 8760 ? '1Y' : h >= 720 ? '1M' : h >= 168 ? '1W' : '1D'}
@@ -354,6 +358,39 @@ export const UserManagement = () => {
                                         onChange={(e) => setSubData({ ...subData, hours: parseInt(e.target.value) || 0 })}
                                         className="mt-3 w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white text-xs font-black font-mono focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                                         placeholder="CUSTOM HOURS..."
+                                    />
+                                </div>
+                            )}
+
+                            {subData.action === 'set_sessions' && (
+                                <div>
+                                    <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Session Count Control</label>
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <button
+                                            onClick={() => setSubData({ ...subData, sessions: -1 })}
+                                            className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${subData.sessions === -1
+                                                ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg'
+                                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
+                                                }`}
+                                        >
+                                            Unlimited Status
+                                        </button>
+                                        <button
+                                            onClick={() => setSubData({ ...subData, sessions: 10 })}
+                                            className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${subData.sessions === 10
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
+                                                }`}
+                                        >
+                                            Standard (10)
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={subData.sessions}
+                                        onChange={(e) => setSubData({ ...subData, sessions: parseInt(e.target.value) || 0 })}
+                                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white text-xs font-black font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                                        placeholder="INPUT SESSION COUNT (-1 for unlimited)..."
                                     />
                                 </div>
                             )}
