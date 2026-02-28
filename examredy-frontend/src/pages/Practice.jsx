@@ -117,12 +117,21 @@ const Practice = () => {
     useEffect(() => {
         if (selectedBoard && flowType === 'school') {
             api.get(`/structure/classes/${selectedBoard}?language=${language}`).then(res => setClasses(res.data));
-            api.get(`/structure/streams?language=${language}`).then(res => setStreams(res.data));
         } else {
             setClasses([]);
             setStreams([]);
         }
     }, [selectedBoard, flowType, language]);
+
+    // Class changes -> Load Streams (with auto-fetch AI if empty)
+    useEffect(() => {
+        if (selectedBoard && selectedClass && flowType === 'school') {
+            api.get(`/structure/streams?board_id=${selectedBoard}&class_id=${selectedClass}&language=${language}`)
+                .then(res => setStreams(res.data));
+        } else if (!selectedClass) {
+            setStreams([]);
+        }
+    }, [selectedBoard, selectedClass, flowType, language]);
 
     // University changes -> Load Degree Types
     useEffect(() => {
