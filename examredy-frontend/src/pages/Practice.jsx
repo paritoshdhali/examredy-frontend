@@ -16,6 +16,7 @@ const Practice = () => {
     const [error, setError] = useState('');
     const [showPopup, setShowPopup] = useState(false);
     const [language, setLanguage] = useState('English');
+    const [sessionInfo, setSessionInfo] = useState(null);
 
     // Global Data States
     const [categories, setCategories] = useState([]);
@@ -213,10 +214,11 @@ const Practice = () => {
                 limit: 5 // Reduced from 10 to halve AI processing time
             });
 
-            if (res.data.length === 0) {
+            if (!res.data.mcqs || res.data.mcqs.length === 0) {
                 setError('No questions available for this selection. Try another chapter.');
             } else {
-                setQuestions(res.data);
+                setQuestions(res.data.mcqs);
+                setSessionInfo(res.data.sessionInfo);
                 setMode('solo');
             }
         } catch (err) {
@@ -355,7 +357,7 @@ const Practice = () => {
     if (mode === 'solo' && questions.length > 0) {
         return (
             <div className="container mx-auto px-4 py-8">
-                <MCQSession questions={questions} onComplete={handleSessionComplete} />
+                <MCQSession questions={questions} sessionInfo={sessionInfo} onComplete={handleSessionComplete} />
             </div>
         );
     }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import api from '../services/api';
 
-const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null }) => {
+const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null, sessionInfo = null }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
     const [isChecked, setIsChecked] = useState(false);
@@ -11,21 +11,14 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
 
     const currentQuestion = questions[currentIndex];
 
-    const handleOptionSelect = (index) => {
+    const handleOptionSelect = async (index) => {
         if (isChecked) return;
         setSelectedOption(index);
-    };
-
-    const handleCheckAnswer = async () => {
-        if (selectedOption === null) return;
 
         try {
-            // For group mode, we might just submit and move on without immediate explanation if it's a "test"
-            // But prompt says "Wrong -> red + explanation". So we do show it.
-
             const res = await api.post('/mcq/submit', {
                 mcq_id: currentQuestion.id,
-                selected_option: selectedOption,
+                selected_option: index,
                 actual_correct_option: currentQuestion.correct_option
             });
 
@@ -33,12 +26,16 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
             setIsChecked(true);
 
             if (res.data.is_correct) {
-                setScore(score + 1);
+                setScore(s => s + 1);
             }
 
             // If group mode, submit score update
             if (mode === 'group' && sessionId) {
-                await api.post(`/group/${sessionId}/submit`, { score: score + (res.data.is_correct ? 1 : 0) });
+                setScore(currentScore => {
+                    const newScore = currentScore + (res.data.is_correct ? 1 : 0);
+                    api.post(`/group/${sessionId}/submit`, { score: newScore });
+                    return newScore;
+                });
             }
 
         } catch (error) {
@@ -67,9 +64,19 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
     return (
         <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
             {/* Header */}
-            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-                <span className="text-gray-600 font-medium">Question {currentIndex + 1} / {questions.length}</span>
-                <span className="text-primary font-bold">Score: {score}</span>
+            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center text-sm md:text-base">
+                <span className="text-gray-600 font-medium whitespace-nowrap">Q: {currentIndex + 1} / {questions.length}</span>
+                {sessionInfo && !sessionInfo.isPremium && (
+                    <span className="text-indigo-600 font-bold bg-indigo-100 px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap hidden sm:inline-block">
+                        Sessions Used: {sessionInfo.used} / {sessionInfo.total}
+                    </span>
+                )}
+                {sessionInfo && sessionInfo.isPremium && sessionInfo.left > 0 && (
+                    <span className="text-amber-600 font-bold bg-amber-100 px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap hidden sm:inline-block">
+                        Premium Sessions left: {sessionInfo.left}
+                    </span>
+                )}
+                <span className="text-primary font-bold whitespace-nowrap">Score: {score}</span>
             </div>
 
             {/* Question Body */}
@@ -127,15 +134,7 @@ const MCQSession = ({ questions, onComplete, mode = 'practice', sessionId = null
 
                 {/* Actions */}
                 <div className="mt-8 flex justify-end space-x-4">
-                    {!isChecked ? (
-                        <button
-                            onClick={handleCheckAnswer}
-                            disabled={selectedOption === null}
-                            className={`px-8 py-3 rounded-xl font-bold transition shadow-lg ${selectedOption === null ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:bg-indigo-700'}`}
-                        >
-                            <>Check Answer</>
-                        </button>
-                    ) : (
+                    {isChecked && (
                         <button
                             onClick={handleNext}
                             className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 shadow-lg transition"
