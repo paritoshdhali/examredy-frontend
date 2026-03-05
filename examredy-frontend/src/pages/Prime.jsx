@@ -74,8 +74,9 @@ const Prime = () => {
                     description: 'Premium Subscription',
                     'prefill[name]': user.username || '',
                     'prefill[email]': user.email || '',
-                    callback_url: callbackUrl,
-                    cancel_url: `${window.location.origin}/prime?payment=failed&reason=cancelled`,
+                    // planId in callback_url as query param so backend can read it from req.query
+                    callback_url: `https://examredy-backend1-production.up.railway.app/api/subscription/payment-callback?planId=${planId}`,
+                    cancel_url: `https://examredy-frontend.vercel.app/prime?payment=failed&reason=cancelled`,
                 };
 
                 Object.entries(fields).forEach(([name, value]) => {
