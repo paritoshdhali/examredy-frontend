@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Mail, MapPin, Twitter, Github, Linkedin, MessageCircle } from 'lucide-react';
+import api from '../services/api';
 
 const Footer = () => {
     const year = new Date().getFullYear();
+    const [settings, setSettings] = useState(null);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/settings');
+                if (res.data && res.data.system) {
+                    setSettings(res.data.system);
+                }
+            } catch (err) {
+                console.error("Failed to load footer settings:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     return (
         <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
@@ -79,13 +95,13 @@ const Footer = () => {
                                 <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
                                     <Mail size={14} />
                                 </div>
-                                support@examredy.in
+                                {settings?.SUPPORT_EMAIL || 'support@examredy.in'}
                             </div>
                             <div className="flex items-center gap-3 text-gray-500 text-sm font-bold">
                                 <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
                                     <MapPin size={14} />
                                 </div>
-                                Kolkata, West Bengal
+                                {settings?.WHATSAPP_NUMBER || '+91 XXXX XXXX'}
                             </div>
                             <button className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all">
                                 <MessageCircle size={14} /> Contact Expert
