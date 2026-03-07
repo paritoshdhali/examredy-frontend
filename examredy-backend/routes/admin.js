@@ -776,7 +776,8 @@ router.get('/settings', async (req, res) => {
 
 router.put('/settings/global', async (req, res) => {
     for (const [key, value] of Object.entries(req.body.settings)) {
-        await query('INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, String(value)]);
+        const safeValue = (value === null || value === undefined) ? '' : String(value);
+        await query('INSERT INTO system_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, safeValue]);
     }
     res.json({ message: 'Settings updated' });
 });
