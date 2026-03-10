@@ -64,8 +64,14 @@ export const AuthProvider = ({ children }) => {
         return res.data;
     };
 
+    const phoneLogin = async (idToken, referrerId = null) => {
+        const res = await api.post('/auth/phone', { idToken, referrer_id: referrerId });
+        setAuthData(res.data);
+        return res.data;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, googleLogin, logout, loading, setAuthData }}>
+        <AuthContext.Provider value={{ user, login, register, googleLogin, phoneLogin, logout, loading, setAuthData }}>
             {children}
         </AuthContext.Provider>
     );

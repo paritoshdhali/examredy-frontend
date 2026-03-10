@@ -150,6 +150,11 @@ export const UserManagement = () => {
                                                 <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5">
                                                     <Mail size={10} /> {user.email}
                                                 </p>
+                                                {user.phone_number && (
+                                                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                                                        <span>📱</span> {user.phone_number}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
