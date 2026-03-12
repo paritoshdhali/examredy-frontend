@@ -18,7 +18,8 @@ const AdminLogin = () => {
         setLoading(true);
         try {
             console.log(`[DEBUG] Admin Login Process Started`);
-            const res = await api.post('/admin/login', { email, password });
+            const cleanEmail = email.trim().toLowerCase();
+            const res = await api.post('/admin/login', { email: cleanEmail, password });
             console.log('[DEBUG] Admin Login Success! Response:', res.data);
 
             if (res.data.token && res.data.user?.role === 'admin') {
