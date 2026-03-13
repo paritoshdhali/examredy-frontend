@@ -8,7 +8,7 @@ const API_URL = isProd
 
 const api = axios.create({
     baseURL: API_URL,
-    timeout: 30000,
+    timeout: 90000,
     headers: {
         'Content-Type': 'application/json',
     },
