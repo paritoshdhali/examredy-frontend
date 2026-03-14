@@ -283,10 +283,15 @@ const Group = () => {
     };
 
     const handleStart = async () => {
-        if (!selectedCat) return;
+        console.log("[GroupBattle] Start requested. Category:", selectedCat, "Session:", sessionCode);
+        if (!selectedCat) {
+            console.warn("[GroupBattle] Category not selected. Aborting.");
+            return;
+        }
         setLoading(true);
         setError('');
         try {
+            console.log("[GroupBattle] Sending /start request to backend...");
             const res = await api.post('/group/start', {
                 code: sessionCode,
                 categoryId: selectedCat,
@@ -300,9 +305,11 @@ const Group = () => {
                 chapterId: selectedChapter,
                 language: selectedLanguage
             });
+            console.log("[GroupBattle] Backend responded success. Questions count:", res.data.questions?.length);
             setBattleQuestions(res.data.questions);
             setStep('active');
         } catch (err) {
+            console.error("[GroupBattle] Start failed:", err.response?.status, err.response?.data || err.message);
             if (err.response?.data?.code === 'SESSIONS_EXHAUSTED') {
                 setShowPopup(true);
             } else {
