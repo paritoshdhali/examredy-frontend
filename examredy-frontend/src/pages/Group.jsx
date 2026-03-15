@@ -41,6 +41,7 @@ const Group = () => {
     const [selectedSemester, setSelectedSemester] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
+    const [selectedLanguage, setSelectedLanguage] = useState('English');
     const [flowType, setFlowType] = useState('competitive');
 
     // Flow Detection

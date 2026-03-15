@@ -537,6 +537,10 @@ const initDB = async () => {
             creator_id INTEGER REFERENCES users(id), 
             status VARCHAR(20) DEFAULT 'lobby', 
             category_id INTEGER REFERENCES categories(id),
+            subject_id INTEGER REFERENCES subjects(id),
+            chapter_id INTEGER REFERENCES chapters(id),
+            topic_name TEXT,
+            language VARCHAR(100) DEFAULT 'English',
             mcq_ids JSONB,
             mcq_data JSONB,
             is_active BOOLEAN DEFAULT TRUE, 
@@ -547,6 +551,10 @@ const initDB = async () => {
         try {
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'lobby';`);
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);`);
+            await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS subject_id INTEGER REFERENCES subjects(id);`);
+            await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS chapter_id INTEGER REFERENCES chapters(id);`);
+            await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS topic_name TEXT;`);
+            await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS language VARCHAR(100) DEFAULT 'English';`);
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS mcq_ids JSONB;`);
             await query(`ALTER TABLE group_sessions ADD COLUMN IF NOT EXISTS mcq_data JSONB;`);
         } catch (e) { console.log('Group sessions migration: Handled.'); }
