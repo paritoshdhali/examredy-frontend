@@ -330,7 +330,10 @@ const Group = () => {
 
     const fetchNextQuestion = async () => {
         try {
-            const res = await api.post(`/group/${sessionCode}/next`, { language: selectedLanguage });
+            const res = await api.post(`/group/${sessionCode}/next`, { 
+                language: selectedLanguage,
+                currentCount: battleQuestions.length
+            });
             setBattleQuestions(res.data.questions);
             return true;
         } catch (err) {
@@ -338,6 +341,24 @@ const Group = () => {
             return false;
         }
     };
+
+    // Polling to keep questions in sync during battle
+    useEffect(() => {
+        if (step !== 'active' || !sessionCode) return;
+
+        const syncInterval = setInterval(async () => {
+            try {
+                const res = await api.get(`/group/${sessionCode}/status`);
+                if (res.data.questions && res.data.questions.length > battleQuestions.length) {
+                    console.log("[GroupBattle] Syncing new questions from server...");
+                    setBattleQuestions(res.data.questions);
+                }
+            } catch (e) {
+                console.error("Sync polling error", e);
+            }
+        }, 3000);
+        return () => clearInterval(syncInterval);
+    }, [step, sessionCode, battleQuestions.length]);
 
     if (step === 'active') {
         return (
