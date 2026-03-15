@@ -86,6 +86,8 @@ router.get('/:code/status', verifyToken, async (req, res) => {
         res.json({
             status: session.status,
             categoryId: session.category_id,
+            subjectId: session.subject_id,
+            chapterId: session.chapter_id,
             language: session.language,
             isHost: session.creator_id === req.user.id,
             questions,
@@ -229,8 +231,8 @@ router.post('/start', verifyToken, async (req, res) => {
 
         // 3. Update session
         await query(
-            'UPDATE group_sessions SET status = \'active\', category_id = $1, language = $2, mcq_data = $3 WHERE id = $4',
-            [categoryId, language, JSON.stringify([firstQuestion]), code]
+            'UPDATE group_sessions SET status = \'active\', category_id = $1, subject_id = $2, chapter_id = $3, topic_name = $4, language = $5, mcq_data = $6 WHERE id = $7',
+            [categoryId, subjectId, chapterId, topic, language, JSON.stringify([firstQuestion]), code]
         );
 
         res.json({ message: 'Battle started', questions: [firstQuestion] });
@@ -264,10 +266,9 @@ router.post('/:code/next', verifyToken, async (req, res) => {
             return res.json({ message: 'Session complete', questions: currentQuestions });
         }
 
-        // 2. Resolve topic and language for AI
+        // 2. Resolve topic and language for AI (From DB session)
         const sessionLang = session.language || 'English';
-        const catRes = await query('SELECT name FROM categories WHERE id = $1', [session.category_id]);
-        const topic = catRes.rows[0]?.name || 'General Knowledge';
+        const topic = session.topic_name || 'General Knowledge';
 
         console.log(`[GroupBattle] NEXT: Generating question ${currentQuestions.length + 1} for: ${topic} in ${sessionLang}`);
         const generatedMcqs = await generateMCQInitial(topic, 1, sessionLang);

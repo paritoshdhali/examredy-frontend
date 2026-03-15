@@ -131,11 +131,14 @@ const Group = () => {
             interval = setInterval(async () => {
                 try {
                     const res = await api.get(`/group/${sessionCode}/status`);
-                    setParticipants(res.data.participants);
-                    setIsHost(res.data.isHost);
-
                     if (res.data.language && !isHost) {
                         setSelectedLanguage(res.data.language);
+                    }
+                    if (res.data.subjectId && !isHost && !selectedSubject) {
+                        setSelectedSubject(res.data.subjectId);
+                    }
+                    if (res.data.chapterId && !isHost && !selectedChapter) {
+                        setSelectedChapter(res.data.chapterId);
                     }
 
                     if (res.data.status === 'active' && res.data.questions.length > 0) {
